@@ -51,12 +51,8 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
     return (
       <div className={cn('relative grid h-full transition-opacity', dimmed && 'opacity-40')}>
         <MetricCard label={matched === undefined ? title : `${title} · of ${formatNumber(total)}`} value={formatNumber(matched ?? total)} description={subtitle ?? source} />
-        {(badge || actions) && (
-          <div className="absolute top-3 right-3 flex items-center gap-1">
-            {badge}
-            {actions}
-          </div>
-        )}
+        {badge && <div className="absolute top-3 left-3 flex items-center">{badge}</div>}
+        {actions && <div className="absolute top-3 right-3 flex items-center gap-1">{actions}</div>}
       </div>
     )
   }

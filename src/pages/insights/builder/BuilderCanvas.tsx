@@ -3,7 +3,7 @@ import { ArrowDown } from 'lucide-react'
 import type { Dashboard, SqlDataset } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
 import type { DataObject } from '../../../data/dataSources'
-import { isPageSummary, mediaItem, summaryItem, textItem, type CanvasItem } from '../../../data/widgets'
+import { isGraph, isPageSummary, mediaItem, summaryItem, textItem, type CanvasItem } from '../../../data/widgets'
 import { useResolvedAppearance } from '../../../lib/appearance'
 import type { FixedFilterStyle } from '../../../lib/fixedFilterStyle'
 import { cn } from '../../../lib/cn'
@@ -125,15 +125,17 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
           }}
           className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
         >
-          <FilterBar
-            dashboard={shown}
-            canEdit={!readOnly}
-            adding={addingFilter}
-            onAddingChange={setAddingFilter}
-            onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
-            onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
-            fixedStyle={fixedFilterStyle}
-          />
+          {widgets.some(isGraph) && (
+            <FilterBar
+              dashboard={shown}
+              canEdit={!readOnly}
+              adding={addingFilter}
+              onAddingChange={setAddingFilter}
+              onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
+              onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+              fixedStyle={fixedFilterStyle}
+            />
+          )}
           {empty && readOnly ? (
             <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
           ) : empty ? (
