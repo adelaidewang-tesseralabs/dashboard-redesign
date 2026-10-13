@@ -12,13 +12,14 @@ const TONES = {
 
 export type ChipTone = keyof typeof TONES
 
-type ChipProps = { value: string; tone?: ChipTone; className?: string }
+type ChipProps = { value: string; tone?: ChipTone; className?: string; title?: string }
 
 /** Tonal badge — mirrors the DH `Chip variant="tonal"` (auto-colored with a tag icon when untoned). */
-export function Chip({ value, tone, className }: ChipProps) {
+export function Chip({ value, tone, className, title }: ChipProps) {
   const auto = tone ? undefined : stringToColor(value)
   return (
     <span
+      title={title}
       className={cn(
         'inline-flex h-[22px] max-w-[160px] items-center gap-1 rounded px-1.5 text-xs font-medium',
         tone && TONES[tone],

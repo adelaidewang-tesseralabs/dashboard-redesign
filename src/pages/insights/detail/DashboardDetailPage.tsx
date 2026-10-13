@@ -47,7 +47,7 @@ export function DashboardDetailPage() {
 function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
   const toast = useToast()
   const { updateDashboard } = useDashboards()
-  const [dialog, setDialog] = useState<'share' | 'preferences' | 'history' | null>(null)
+  const [dialog, setDialog] = useState<'share' | 'details' | 'history' | null>(null)
   const [lineage, setLineage] = useState<LineageTarget | null>(null)
   const [builderVersion] = useBuilderVersion()
   const role = useEffectiveRole(dashboard)
@@ -68,7 +68,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
     dashboard,
     role,
     onShare: share,
-    onPreferences: () => setDialog('preferences'),
+    onEditDetails: () => setDialog('details'),
     onHistory: openHistory,
     onLineage: inBuilderV2 && !readOnly ? () => setLineage({ kind: 'dashboard' }) : undefined,
   }
@@ -105,7 +105,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
       <ShareDialog open={dialog === 'share'} onClose={() => setDialog(null)} dashboard={dashboard} role={role} invitee={invitee} />
 
       <DashboardFormDialog
-        open={dialog === 'preferences'}
+        open={dialog === 'details'}
         dashboard={dashboard}
         onClose={() => setDialog(null)}
         onSubmit={(draft) => {

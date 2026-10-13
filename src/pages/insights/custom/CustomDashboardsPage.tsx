@@ -50,7 +50,7 @@ export function CustomDashboardsPage() {
     const created = store.createDashboard({
       name: defaultDashboardName(new Date()),
       description: '',
-      workstream: '',
+      tags: [],
     })
     navigate(builderPath(`/insights/dashboards/${created.id}`, builderVersion))
   }

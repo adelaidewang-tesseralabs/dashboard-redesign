@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Dashboard } from "../../../data/dashboards";
 import { useDashboards } from "../../../data/DashboardsStore";
-import { Chip } from "../../../ui/Chip";
+import { TagChips } from "../../../ui/TagChips";
 import { EditableTitle } from "./EditableTitle";
 
 type BuilderHeaderProps = {
@@ -13,7 +13,7 @@ type BuilderHeaderProps = {
   readOnly?: boolean;
 };
 
-/** Builder header: editable name, access badge and workstream with an optional right-hand slot, and the description below. */
+/** Builder header: editable name, access badge and tags with an optional right-hand slot, and the description below. */
 export function BuilderHeader({
   dashboard,
   badge,
@@ -35,13 +35,13 @@ export function BuilderHeader({
               updateDashboard(dashboard.id, {
                 name,
                 description: dashboard.description ?? "",
-                workstream: dashboard.workstream ?? "",
+                tags: dashboard.tags ?? [],
               })
             }
           />
         )}
         {badge}
-        {dashboard.workstream && <Chip value={dashboard.workstream} />}
+        {dashboard.tags?.length ? <TagChips tags={dashboard.tags} max={2} /> : null}
         {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
       </div>
       {dashboard.description && (

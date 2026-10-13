@@ -1,5 +1,5 @@
 import { roleOf } from '../../../data/access'
-import { CURRENT_USER, workstreamNames, type Dashboard } from '../../../data/dashboards'
+import { CURRENT_USER, tagNames, type Dashboard } from '../../../data/dashboards'
 import type { FilterField, FilterValues } from '../../../ui/FilterBuilder'
 
 export type SortField = 'updated' | 'name' | 'score'
@@ -14,7 +14,7 @@ export const SORT_FIELDS: { id: SortField; label: string }[] = [
   { id: 'score', label: 'Quality score' },
 ]
 
-export const FILTER_KEYS = ['favorites', 'ownership', 'owner', 'workstream', 'quality'] as const
+export const FILTER_KEYS = ['favorites', 'ownership', 'owner', 'tags', 'quality'] as const
 
 type QualityStatus = 'on-target' | 'below-target' | 'not-executed'
 
@@ -42,7 +42,7 @@ export function buildFilterFields(dashboards: Dashboard[]): FilterField[] {
       label: 'Owner',
       options: owners.map((email) => ({ value: email, label: email === CURRENT_USER ? `${email} (you)` : email })),
     },
-    { key: 'workstream', label: 'Workstream', options: workstreamNames(dashboards).map((name) => ({ value: name, label: name })) },
+    { key: 'tags', label: 'Tags', options: tagNames(dashboards).map((name) => ({ value: name, label: name })) },
     {
       key: 'quality',
       label: 'Quality',
@@ -56,13 +56,13 @@ export function buildFilterFields(dashboards: Dashboard[]): FilterField[] {
 }
 
 function matchesFilters(dashboard: Dashboard, values: FilterValues, favoriteIds: string[]) {
-  const { favorites = [], ownership = [], owner = [], workstream = [], quality = [] } = values
+  const { favorites = [], ownership = [], owner = [], tags = [], quality = [] } = values
   if (favorites.includes('favorited') && !favoriteIds.includes(dashboard.id)) return false
   if (ownership.includes('owned') && dashboard.owner !== CURRENT_USER) return false
   if (ownership.includes('shared') && !dashboard.members.some((member) => member.user === CURRENT_USER)) return false
   if (ownership.includes('company') && dashboard.generalAccess !== 'company') return false
   if (owner.length && !owner.includes(dashboard.owner)) return false
-  if (workstream.length && !workstream.includes(dashboard.workstream ?? '')) return false
+  if (tags.length && !dashboard.tags?.some((tag) => tags.includes(tag))) return false
   if (quality.length && !quality.includes(qualityStatus(dashboard))) return false
   return true
 }
@@ -70,7 +70,7 @@ function matchesFilters(dashboard: Dashboard, values: FilterValues, favoriteIds:
 function matchesSearch(dashboard: Dashboard, search: string) {
   const needle = search.trim().toLowerCase()
   if (!needle) return true
-  return [dashboard.name, dashboard.description, dashboard.workstream].some((field) => field?.toLowerCase().includes(needle))
+  return [dashboard.name, dashboard.description, ...(dashboard.tags ?? [])].some((field) => field?.toLowerCase().includes(needle))
 }
 
 function compareDashboards(a: Dashboard, b: Dashboard, field: SortField) {

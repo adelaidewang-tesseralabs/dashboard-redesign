@@ -50,7 +50,7 @@ export const DATA_OBJECTS: DataObject[] = [
     label: 'Dashboards',
     total: 42,
     fields: [
-      { key: 'workstream', label: 'Workstream', values: ['Vendor MDM', 'SAP BP Migration', 'Finance Close'] },
+      { key: 'tags', label: 'Tags', values: ['Vendor MDM', 'SAP BP Migration', 'Finance Close'] },
       { key: 'type', label: 'Type', values: ['Harmonization', 'Analytics'] },
     ],
   },

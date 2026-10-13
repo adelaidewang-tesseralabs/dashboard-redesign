@@ -49,7 +49,7 @@ export function DashboardsToolbar(props: DashboardsToolbarProps) {
           <ToolbarButton Icon={Archive} active={props.archived} aria-pressed={props.archived} onClick={() => props.onArchivedChange(!props.archived)}>
             Archived
           </ToolbarButton>
-          <ToolbarSearch value={props.search} onChange={props.onSearchChange} placeholder="Search by name, description, or workstream" />
+          <ToolbarSearch value={props.search} onChange={props.onSearchChange} placeholder="Search by name, description, or tag" />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">

@@ -86,7 +86,7 @@ export type Dashboard = {
   id: string
   name: string
   description?: string
-  workstream?: string
+  tags?: string[]
   updatedAt: string
   updatedBy: string
   /** Exactly one per dashboard; transferable to a member. Not repeated in `members`. */
@@ -127,15 +127,15 @@ export type Dashboard = {
   table: string
 }
 
-export const WORKSTREAMS = ['Vendor MDM', 'Olivier', 'SAP BP Migration', 'Finance Close']
+export const TAGS = ['Vendor MDM', 'Olivier', 'SAP BP Migration', 'Finance Close']
 
 /**
- * The built-in workstreams plus any a dashboard is tagged with. A workstream someone adds lives only on the
- * dashboards using it, so it drops off the list once none does. Case-insensitive: the first spelling wins.
+ * The built-in tags plus any a dashboard carries. A tag someone adds lives only on the dashboards using it,
+ * so it drops off the list once none does. Case-insensitive: the first spelling wins.
  */
-export function workstreamNames(dashboards: { workstream?: string }[], extra: string[] = []): string[] {
+export function tagNames(dashboards: { tags?: string[] }[], extra: string[] = []): string[] {
   const names = new Map<string, string>()
-  for (const name of [...WORKSTREAMS, ...dashboards.map((dashboard) => dashboard.workstream ?? ''), ...extra]) {
+  for (const name of [...TAGS, ...dashboards.flatMap((dashboard) => dashboard.tags ?? []), ...extra]) {
     const key = name.trim().toLowerCase()
     if (key && !names.has(key)) names.set(key, name.trim())
   }
@@ -195,7 +195,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'data-quality-overview',
     name: 'Data Quality Overview',
     description: 'Data checks by status, priority and dimension, next to open work items',
-    workstream: 'Vendor MDM',
+    tags: ['Vendor MDM', 'SAP BP Migration'],
     updatedAt: '2026-10-08T09:00:00-07:00',
     updatedBy: 'adelaide@tesseralabs.ai',
     lastExecution: '2026-10-08T06:00:00-07:00',
@@ -210,7 +210,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'vendor-master-data',
     name: 'Vendor Master Data',
     description: 'Core vendor master quality across ECC and S/4',
-    workstream: 'Vendor MDM',
+    tags: ['Vendor MDM'],
     updatedAt: '2026-10-06T21:00:00-07:00',
     updatedBy: 'arihant@tesseralabs.ai',
     lastExecution: '2026-10-06T23:39:39-07:00',
@@ -225,7 +225,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'testing-adelaide',
     name: 'Testing- Adelaide',
     description: 'Sandbox dashboard for vignette experiments',
-    workstream: 'Olivier',
+    tags: ['Olivier'],
     updatedAt: '2026-10-07T03:00:00-07:00',
     updatedBy: 'adelaide@tesseralabs.ai',
     qualityScore: null,
@@ -252,7 +252,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'customer-bp-quality',
     name: 'Customer BP Quality',
     description: 'Business partner readiness for the S/4 cutover',
-    workstream: 'SAP BP Migration',
+    tags: ['SAP BP Migration'],
     updatedAt: '2026-10-01T10:00:00-07:00',
     updatedBy: 'neeraj@tesseralabs.ai',
     lastExecution: '2026-10-05T06:00:00-07:00',
@@ -267,7 +267,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'material-master-sync',
     name: 'Material Master Sync',
     description: 'Automated data quality dashboard',
-    workstream: 'SAP BP Migration',
+    tags: ['SAP BP Migration'],
     updatedAt: '2026-09-30T12:00:00-07:00',
     updatedBy: 'neeraj@tesseralabs.ai',
     lastExecution: '2026-10-04T02:00:00-07:00',
@@ -282,7 +282,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'ap-open-items',
     name: 'AP Open Items Check',
     description: 'Open payables reconciliation before period close',
-    workstream: 'Finance Close',
+    tags: ['Finance Close'],
     updatedAt: '2026-09-29T09:00:00-07:00',
     updatedBy: 'adelaide@tesseralabs.ai',
     lastExecution: '2026-10-03T22:00:00-07:00',
@@ -296,7 +296,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
   {
     id: 'gl-account-harmonization',
     name: 'GL Account Harmonization',
-    workstream: 'Finance Close',
+    tags: ['Finance Close'],
     updatedAt: '2026-09-28T15:00:00-07:00',
     updatedBy: 'olivier@tesseralabs.ai',
     lastExecution: '2026-10-02T04:00:00-07:00',
@@ -310,7 +310,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
   {
     id: 'plant-data-completeness',
     name: 'Plant Data Completeness',
-    workstream: 'Vendor MDM',
+    tags: ['Vendor MDM'],
     updatedAt: '2026-09-26T11:00:00-07:00',
     updatedBy: 'sophia@tesseralabs.ai',
     lastExecution: '2026-09-30T04:00:00-07:00',
@@ -324,7 +324,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
   {
     id: 'bank-master-validation',
     name: 'Bank Master Validation',
-    workstream: 'Finance Close',
+    tags: ['Finance Close', 'Vendor MDM'],
     updatedAt: '2026-09-24T11:00:00-07:00',
     updatedBy: 'arihant@tesseralabs.ai',
     lastExecution: '2026-09-28T04:00:00-07:00',
@@ -350,7 +350,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
   {
     id: 'employee-org-integrity',
     name: 'Employee Org Integrity',
-    workstream: 'Olivier',
+    tags: ['Olivier'],
     updatedAt: '2026-09-20T11:00:00-07:00',
     updatedBy: 'sophia@tesseralabs.ai',
     lastExecution: '2026-09-25T04:00:00-07:00',
@@ -365,7 +365,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     id: 'sales-order-completeness',
     name: 'Sales Order Completeness',
     description: 'Automated data quality dashboard',
-    workstream: 'SAP BP Migration',
+    tags: ['SAP BP Migration'],
     updatedAt: '2026-09-18T11:00:00-07:00',
     updatedBy: 'neeraj@tesseralabs.ai',
     lastExecution: '2026-09-24T04:00:00-07:00',
@@ -379,7 +379,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
   {
     id: 'purchase-org-checks',
     name: 'Purchase Org Checks',
-    workstream: 'Vendor MDM',
+    tags: ['Vendor MDM'],
     updatedAt: '2026-09-15T11:00:00-07:00',
     updatedBy: 'adelaide@tesseralabs.ai',
     lastExecution: '2026-09-20T04:00:00-07:00',
@@ -417,7 +417,7 @@ export const SAMPLE_DASHBOARDS: Dashboard[] = withSeedVersions([
     id: 'sample-vendor-readiness',
     name: 'Vendor Master Readiness',
     description: 'Tracks vendor data quality toward an S/4 cutover target',
-    workstream: 'Vendor MDM',
+    tags: ['Vendor MDM'],
     updatedAt: '2026-10-07T08:00:00-07:00',
     updatedBy: SAMPLE_OWNER,
     owner: SAMPLE_OWNER,
@@ -439,7 +439,7 @@ export const SAMPLE_DASHBOARDS: Dashboard[] = withSeedVersions([
     id: 'sample-customer-cleanup',
     name: 'Customer Data Cleanup',
     description: 'Finds duplicate and incomplete customer records to fix',
-    workstream: 'SAP BP Migration',
+    tags: ['SAP BP Migration'],
     updatedAt: '2026-10-07T08:00:00-07:00',
     updatedBy: SAMPLE_OWNER,
     owner: SAMPLE_OWNER,

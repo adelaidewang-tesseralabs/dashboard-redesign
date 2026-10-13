@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Dashboard } from '../../../data/dashboards'
-import { workstreamNames } from '../../../data/dashboards'
+import { tagNames } from '../../../data/dashboards'
 import { useDashboards, type DashboardDraft } from '../../../data/DashboardsStore'
 import { Button } from '../../../ui/Button'
 import { Dialog } from '../../../ui/Dialog'
-import { Select, type SelectOption } from '../../../ui/Select'
+import { TagInput } from '../../../ui/TagInput'
 
 type DashboardFormDialogProps = {
   open: boolean
@@ -16,24 +16,19 @@ type DashboardFormDialogProps = {
 const fieldClass =
   'h-9 w-full rounded-lg border border-white/10 bg-tlai-3 px-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/25'
 
-/** Every known workstream, plus one just added here that no saved dashboard uses yet. */
-const workstreamOptions = (names: string[]): SelectOption[] => [{ value: '', label: 'None' }, ...names.map((name) => ({ value: name, label: name }))]
-
-/** Create / Edit dashboard modal — same fields as `CreateDashboardForm`. */
+/** Create dashboard / Dashboard details modal — same fields as `CreateDashboardForm`. */
 export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: DashboardFormDialogProps) {
   const { dashboards } = useDashboards()
-  const [draft, setDraft] = useState<DashboardDraft>({ name: '', description: '', workstream: '' })
+  const [draft, setDraft] = useState<DashboardDraft>({ name: '', description: '', tags: [] })
 
   useEffect(() => {
     if (!open) return
     setDraft({
       name: dashboard?.name ?? '',
       description: dashboard?.description ?? '',
-      workstream: dashboard?.workstream ?? '',
+      tags: dashboard?.tags ?? [],
     })
   }, [open, dashboard])
-
-  const workstreams = workstreamNames(dashboards, [draft.workstream])
 
   const editing = dashboard != null
   const canSubmit = draft.name.trim().length > 0
@@ -42,7 +37,7 @@ export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: Dash
     <Dialog
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit dashboard' : 'Create dashboard'}
+      title={editing ? 'Dashboard details' : 'Create dashboard'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -83,17 +78,8 @@ export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: Dash
           />
         </label>
         <div className="flex flex-col gap-1.5 text-sm text-white/80">
-          Workstream
-          <Select
-            aria-label="Workstream"
-            size="form"
-            value={draft.workstream}
-            options={workstreamOptions(workstreams)}
-            onChange={(workstream) => setDraft({ ...draft, workstream })}
-            searchable
-            searchPlaceholder="Search workstreams…"
-            onCreate={(workstream) => setDraft({ ...draft, workstream })}
-          />
+          Tags
+          <TagInput aria-label="Tags" value={draft.tags} options={tagNames(dashboards, draft.tags)} onChange={(tags) => setDraft({ ...draft, tags })} />
         </div>
         <button type="submit" hidden />
       </form>

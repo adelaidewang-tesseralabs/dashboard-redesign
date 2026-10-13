@@ -1,4 +1,4 @@
-import { Ellipsis, FileOutput, History, Send, Settings, Star, Waypoints } from 'lucide-react'
+import { Ellipsis, FileOutput, History, Pencil, Send, Star, Waypoints } from 'lucide-react'
 import { can, type Access } from '../../../data/access'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
@@ -12,7 +12,7 @@ type DetailHeaderActionsProps = {
   dashboard: Dashboard
   role: Access
   onShare: () => void
-  onPreferences: () => void
+  onEditDetails: () => void
   onHistory: () => void
   /** Builder V2+, owners and editors. */
   onLineage?: () => void
@@ -38,8 +38,8 @@ export function DetailHeaderActions(props: DetailHeaderActionsProps) {
   )
 }
 
-/** Favorite, share and the more menu (export, history, preferences). Appearance lives on the canvas toolbar. */
-export function DashboardIconActions({ dashboard, role, onShare, onPreferences, onHistory, onLineage }: DetailHeaderActionsProps) {
+/** Favorite, share and the more menu (export, history, details). Appearance lives on the canvas toolbar. */
+export function DashboardIconActions({ dashboard, role, onShare, onEditDetails, onHistory, onLineage }: DetailHeaderActionsProps) {
   const toast = useToast()
   const { isFavorite, toggleFavorite } = useDashboards()
   const favorite = isFavorite(dashboard.id)
@@ -47,7 +47,7 @@ export function DashboardIconActions({ dashboard, role, onShare, onPreferences, 
   const editorItems: MenuEntry[] = [
     { type: 'separator' },
     { label: 'Version history', Icon: History, onSelect: onHistory },
-    { label: 'Dashboard preferences', Icon: Settings, onSelect: onPreferences },
+    { label: 'Edit details', Icon: Pencil, onSelect: onEditDetails },
   ]
   const moreItems: MenuEntry[] = [
     {

@@ -4,7 +4,7 @@ import type { CanvasItem } from './widgets'
 /** Everything a version restores. Sharing, archive state and run results are not versioned. */
 export type DashboardContent = Pick<
   Dashboard,
-  'name' | 'description' | 'workstream' | 'appearance' | 'widgets' | 'layout' | 'sources' | 'sqlDatasets' | 'datasetTransforms' | 'filters' | 'pages' | 'groups' | 'fieldLinks'
+  'name' | 'description' | 'tags' | 'appearance' | 'widgets' | 'layout' | 'sources' | 'sqlDatasets' | 'datasetTransforms' | 'filters' | 'pages' | 'groups' | 'fieldLinks'
 >
 
 export type DashboardVersion = {
@@ -29,7 +29,7 @@ export function contentOf(dashboard: DashboardContent): DashboardContent {
   return {
     name: dashboard.name,
     description: dashboard.description,
-    workstream: dashboard.workstream,
+    tags: dashboard.tags,
     appearance: dashboard.appearance,
     widgets: dashboard.widgets,
     layout: dashboard.layout,
@@ -67,7 +67,7 @@ function listChanges<T>(before: T[] = [], after: T[] = [], key: (entry: T) => st
 export function describeChanges(before: DashboardContent, after: DashboardContent): string[] {
   const changes = [
     ...(before.name !== after.name ? [`Renamed to "${after.name}"`] : []),
-    ...(before.description !== after.description || before.workstream !== after.workstream ? ['Edited details'] : []),
+    ...(before.description !== after.description || !same(before.tags, after.tags) ? ['Edited details'] : []),
     ...(before.appearance !== after.appearance ? ['Changed appearance'] : []),
     ...listChanges(before.widgets, after.widgets, (item) => item.id, itemName, ''),
     ...(!same(before.layout, after.layout) ? ['Moved graphs'] : []),

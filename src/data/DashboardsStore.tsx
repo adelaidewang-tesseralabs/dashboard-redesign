@@ -25,7 +25,7 @@ import { PROTOTYPE_NOW } from '../lib/format'
 
 const FAVORITES_KEY = 'tessera-insights-favorites'
 
-export type DashboardDraft = { name: string; description: string; workstream: string }
+export type DashboardDraft = { name: string; description: string; tags: string[] }
 
 type DashboardsStore = {
   dashboards: Dashboard[]
@@ -255,7 +255,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
           id: slugify(draft.name),
           name: draft.name,
           description: draft.description || undefined,
-          workstream: draft.workstream || undefined,
+          tags: draft.tags.length ? draft.tags : undefined,
           updatedAt: nowIso,
           updatedBy: CURRENT_USER,
           owner: CURRENT_USER,
@@ -287,7 +287,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
                   ...dashboard,
                   name: draft.name,
                   description: draft.description || undefined,
-                  workstream: draft.workstream || undefined,
+                  tags: draft.tags.length ? draft.tags : undefined,
                   updatedAt: nowIso,
                   updatedBy: CURRENT_USER,
                 }

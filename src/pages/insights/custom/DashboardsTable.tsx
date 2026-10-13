@@ -5,8 +5,8 @@ import { builderPath, useBuilderVersion } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { formatDateTime, formatRelative } from '../../../lib/format'
 import { effectiveRole, useRoleOverride } from '../../../lib/roleOverride'
-import { Chip } from '../../../ui/Chip'
 import { Menu } from '../../../ui/Menu'
+import { TagChips } from '../../../ui/TagChips'
 import { dashboardMenuItems } from './dashboardMenuItems'
 import { SampleBadge } from './SampleBadge'
 
@@ -21,7 +21,7 @@ type DashboardsTableProps = {
 
 const GRID = 'grid grid-cols-[40px_minmax(300px,2fr)_minmax(128px,1fr)_minmax(144px,1fr)_minmax(168px,1fr)_48px]'
 
-/** Columns match `useDashboardsColumns`: favorite, Name, Workstream, Updated At, Updated By, actions. */
+/** Columns match `useDashboardsColumns`: favorite, Name, Tags, Updated At, Updated By, actions. */
 export function DashboardsTable({ rows, favorites, onToggleFavorite, onEdit, onDelete, onToggleArchived }: DashboardsTableProps) {
   const [builderVersion] = useBuilderVersion()
   const override = useRoleOverride()
@@ -32,7 +32,7 @@ export function DashboardsTable({ rows, favorites, onToggleFavorite, onEdit, onD
           <Star className="size-4 text-white/70" aria-label="Favorites" />
         </span>
         <span className="px-3">Name</span>
-        <span className="px-3">Workstream</span>
+        <span className="px-3">Tags</span>
         <span className="px-3">Updated At</span>
         <span className="px-3">Updated By</span>
         <span className="sr-only">Actions</span>
@@ -70,7 +70,7 @@ export function DashboardsTable({ rows, favorites, onToggleFavorite, onEdit, onD
               </Link>
               {dashboard.sample && <SampleBadge />}
             </span>
-            <span className="min-w-0 px-3">{dashboard.workstream ? <Chip value={dashboard.workstream} /> : <span className="text-white/30">—</span>}</span>
+            <span className="min-w-0 px-3">{dashboard.tags?.length ? <TagChips tags={dashboard.tags} /> : <span className="text-white/30">—</span>}</span>
             <span className="px-3 text-white/80" title={formatDateTime(dashboard.updatedAt)}>
               {formatRelative(dashboard.updatedAt)}
             </span>

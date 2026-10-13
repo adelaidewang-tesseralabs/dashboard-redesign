@@ -5,8 +5,8 @@ import { builderPath, useBuilderVersion } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { formatDateTime, formatRelative } from '../../../lib/format'
 import { effectiveRole, useRoleOverride } from '../../../lib/roleOverride'
-import { Chip } from '../../../ui/Chip'
 import { Menu } from '../../../ui/Menu'
+import { TagChips } from '../../../ui/TagChips'
 import { dashboardMenuItems } from './dashboardMenuItems'
 import { DashboardPreview } from './DashboardPreview'
 import { SampleBadge } from './SampleBadge'
@@ -98,9 +98,9 @@ function DashboardCard({ dashboard, favorite, onToggleFavorite, onEdit, onDelete
       </header>
 
       <footer className="mt-auto flex items-center justify-between gap-2 px-1">
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
           {dashboard.sample && <SampleBadge />}
-          {dashboard.workstream && <Chip value={dashboard.workstream} />}
+          {dashboard.tags?.length ? <TagChips tags={dashboard.tags} /> : null}
         </span>
         <span className="truncate font-mono text-[11px] text-white/50" title={`${formatDateTime(dashboard.updatedAt)} · ${dashboard.updatedBy}`}>
           Updated {formatRelative(dashboard.updatedAt)}
