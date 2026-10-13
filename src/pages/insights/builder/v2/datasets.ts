@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react'
 import { FileCode2 } from 'lucide-react'
 import type { Dashboard, DatasetRef, SqlDataset } from '../../../../data/dashboards'
-import { findObject, runSql, type DataObject, type SourceOrigin } from '../../../../data/dataSources'
+import { findObject, runSql, type DataObject, type SourceOrigin, type SqlResult } from '../../../../data/dataSources'
 import { objectItem, sqlDatasetItem, type CanvasItem } from '../../../../data/widgets'
-import { applyTransforms } from '../../../../data/transforms'
+import { applyTransforms, columnTypes } from '../../../../data/transforms'
 import { ORIGIN_META } from '../sourceKinds'
 
 /** Everything a dashboard reads: an attached or charted table, or a saved SQL query. */
@@ -75,4 +75,32 @@ export function graphFor(dataset: Dataset): CanvasItem {
   }
   const field = dataset.object.fields[0]
   return { ...objectItem(dataset.object.name, field.key), title: `${dataset.label} by ${field.label}` }
+}
+
+export type GraphColumn = { key: string; label: string }
+
+/**
+ * What a new graph can group by: a table's fields, or a query's text columns that repeat, either way only those left
+ * after the dataset's transforms. A column unique on every row (an id) would chart one bar per row.
+ */
+export function graphColumns(dataset: Dataset, result: SqlResult): GraphColumn[] {
+  if (!result.ok) return []
+  if (dataset.kind === 'table') return dataset.object.fields.filter((field) => result.columns.includes(field.key)).map(({ key, label }) => ({ key, label }))
+  const types = columnTypes(result)
+  return result.columns
+    .filter((column, index) => types.get(column) !== 'number' && new Set(result.rows.map((row) => row[index])).size < result.rows.length)
+    .map((column) => ({ key: column, label: column }))
+}
+
+export function graphForColumn(dataset: Dataset, column: GraphColumn): CanvasItem {
+  const title = `${dataset.label} by ${column.label}`
+  if (dataset.kind === 'table') return { ...objectItem(dataset.object.name, column.key), title }
+  const { id, sql } = dataset.dataset
+  return { id: `sql-${crypto.randomUUID()}`, source: 'sql', title, sql, chart: 'bar', datasetId: id, query: { groupBy: column.key } }
+}
+
+/** Whether a graph on this dataset already groups by `column`. */
+export function graphsColumn(item: CanvasItem, column: string) {
+  if (item.source === 'object') return item.fieldKey === column
+  return item.source === 'sql' && item.query?.groupBy === column
 }

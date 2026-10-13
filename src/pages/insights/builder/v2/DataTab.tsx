@@ -21,6 +21,7 @@ import {
   datasetUsage,
   sqlKey,
   type Dataset,
+  type GraphColumn,
 } from "./datasets";
 import { DatasetWorkspace } from "./DatasetWorkspace";
 import type { ConsoleTab, ConsoleTabs } from "./useConsoleTabs";
@@ -47,7 +48,9 @@ type DataTabProps = {
   onSaveQuery: (tab: ConsoleTab) => void;
   onOpenDataset: (key: string) => void;
   onEditAsSql: (dataset: Extract<Dataset, { kind: "table" }>) => void;
-  onCreateGraph: (dataset: Dataset) => void;
+  onCreateGraph: (dataset: Dataset, column?: GraphColumn) => void;
+  /** Builder V6: Create graph lists columns to group by, plus Ask Tessera AI. */
+  onAskAi?: () => void;
   onOpenWidget: (itemId: string) => void;
   /** Builder V3: drops the Catalog console, so the tab lists only added datasets and adds more through the production source menu. */
   onAddSourceKind?: (kind: AddSourceKind) => void;
@@ -72,6 +75,7 @@ export function DataTab(props: DataTabProps) {
     onOpenDataset,
     onEditAsSql,
     onCreateGraph,
+    onAskAi,
     onOpenWidget,
     onAddSourceKind,
     sqlEditing = true,
@@ -218,7 +222,8 @@ export function DataTab(props: DataTabProps) {
                       updateSqlDataset(dashboard.id, dataset)
                   : undefined
               }
-              onCreateGraph={() => onCreateGraph(active)}
+              onCreateGraph={(column) => onCreateGraph(active, column)}
+              onAskAi={onAskAi}
               onDuplicate={() => duplicate(active)}
               onDownload={() => download(active)}
               onRemove={() => setRemoving(active)}

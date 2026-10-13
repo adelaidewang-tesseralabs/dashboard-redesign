@@ -5,7 +5,7 @@ import type { CanvasItem, GraphItem } from '../../../../data/widgets'
 import { Select } from '../../../../ui/Select'
 import { filterColumns } from '../dashboardFilters'
 import { EditorSection } from '../EditorFields'
-import { datasetIcon, datasetResult, graphFor, itemDatasetKey, type Dataset } from './datasets'
+import { datasetIcon, datasetResult, graphColumns, graphFor, itemDatasetKey, type Dataset } from './datasets'
 import type { TransformColumn } from './transforms/controls'
 import { FilterCards, isCardFilter } from './FilterCards'
 import { TopNField } from './TopNField'
@@ -47,7 +47,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
   const types = result ? columnTypes(result) : new Map()
   const columns: TransformColumn[] = result?.ok ? result.columns.map((column) => ({ key: column, type: types.get(column) ?? 'text' })) : []
   const query = item.query ?? {}
-  const groupKey = item.source === 'object' ? item.fieldKey : columns[0]?.key
+  const groupKey = item.source === 'object' ? item.fieldKey : (query.groupBy ?? columns[0]?.key)
   const setQuery = (patch: Partial<GraphQuery>) => onChange({ ...item, query: { ...query, ...patch } })
   const graphFilters = query.filters ?? []
   const setFilters = (filters: RowFilter[]) => setQuery({ filters: filters.length ? filters : undefined })
@@ -105,6 +105,20 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
             />
           </>
         )}
+        {item.source === 'sql' && dataset && (
+          <>
+            <span className="text-xs text-white/50">Group by</span>
+            <Select
+              aria-label="Group by"
+              value={query.groupBy ?? DEFAULT_OPTION}
+              options={[
+                { value: DEFAULT_OPTION, label: 'Not grouped, the query as is' },
+                ...(result ? graphColumns(dataset, result) : []).map((column) => ({ value: column.key, label: column.label })),
+              ]}
+              onChange={(value) => setQuery({ groupBy: value === DEFAULT_OPTION ? undefined : value })}
+            />
+          </>
+        )}
         {item.source === 'sql' && dataset?.kind === 'sql' && (
           <pre className="max-h-32 overflow-auto rounded-md border border-white/10 bg-white/[0.03] p-2 font-mono text-[11px] leading-5 whitespace-pre-wrap text-white/70">
             {dataset.dataset.sql}
@@ -119,7 +133,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
           options={valueOptions}
           onChange={(id) => setQuery({ value: parseValue(id) })}
         />
-        {item.source === 'sql' && query.value && <p className="text-xs text-white/45">Grouped by {groupKey}, the query's first column.</p>}
+        {item.source === 'sql' && query.value && !query.groupBy && <p className="text-xs text-white/45">Grouped by {groupKey}, the query's first column.</p>}
       </EditorSection>
 
       <EditorSection title="Filters">

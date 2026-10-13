@@ -64,11 +64,13 @@ type BuilderCanvasProps = {
   summaries?: boolean
   /** Builder V6: how fixed filters are set apart from the ones viewers change. */
   fixedFilterStyle?: FixedFilterStyle
+  /** Builder V6: an expanded graph keeps a slim toolbar (AI, undo, redo, appearance) instead of hiding it. */
+  fullScreenToolbar?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, the floating toolbar, and the Tessera AI launcher. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -111,6 +113,41 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     insertWidget(dashboard.id, summaryItem(summaryBasis(dashboard)), [])
   }
   const theme = useResolvedAppearance(dashboard.appearance)
+  const fullScreenTools = fullScreenToolbar && !readOnly
+  /** `expandedId`: the graph filling the canvas, which opening Tessera AI aims the chat at. */
+  const toolbar = (expandedId: string | null) => (
+    <CanvasToolbar
+      fullScreen={expandedId !== null}
+      chatOpen={chat.chatOpen}
+      widgets={widgets}
+      sources={sources}
+      queries={queries}
+      sourcesLabel={sourcesLabel}
+      datasetsFirst={datasetsFirst}
+      datasetsOnly={datasetsOnly}
+      onToggleChat={() => {
+        if (expandedId && !chat.chatOpen) onSelect(expandedId)
+        chat.setChatOpen((current) => !current)
+      }}
+      onOpenChat={() => chat.setChatOpen(true)}
+      onAddSource={onAddSource}
+      onOpenAddSource={onOpenAddSource}
+      onAddWidget={onAdd}
+      onAddText={() => {
+        const item = textItem()
+        onAdd(item)
+        onSelect(item.id)
+      }}
+      onAddSummary={summaries ? addSummary : undefined}
+      onAddFilter={setAddingFilter}
+      onAddMedia={() => onAdd(mediaItem())}
+      onAddSection={sections ? addSection : undefined}
+      onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
+      onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
+      appearance={dashboard.appearance ?? 'dark'}
+      onAppearanceChange={(appearance) => setAppearance(dashboard.id, appearance)}
+    />
+  )
 
   return (
     <FullScreenContext value={fullScreen}>
@@ -166,10 +203,16 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
         <div
           ref={setFullScreenHost}
           data-dashboard-theme={theme}
-          className={cn('absolute inset-0 z-30 bg-[var(--dash-canvas)]', !fullScreenId && 'hidden')}
+          className={cn('absolute inset-0 z-30 bg-[var(--dash-canvas)]', !fullScreenId && 'hidden', fullScreenTools && 'pb-12')}
         />
 
-        {fullScreenId ? null : readOnly ? (
+        {fullScreenId ? (
+          fullScreenTools && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center">
+              <div className="pointer-events-auto">{toolbar(fullScreenId)}</div>
+            </div>
+          )
+        ) : readOnly ? (
           highlight && (
             // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
             <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
@@ -187,35 +230,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 <ArrowDown className="size-3.5" />
               </div>
             )}
-            <div className="pointer-events-auto">
-              <CanvasToolbar
-                chatOpen={chat.chatOpen}
-                widgets={widgets}
-                sources={sources}
-                queries={queries}
-                sourcesLabel={sourcesLabel}
-                datasetsFirst={datasetsFirst}
-                datasetsOnly={datasetsOnly}
-                onToggleChat={() => chat.setChatOpen((current) => !current)}
-                onOpenChat={() => chat.setChatOpen(true)}
-                onAddSource={onAddSource}
-                onOpenAddSource={onOpenAddSource}
-                onAddWidget={onAdd}
-                onAddText={() => {
-                  const item = textItem()
-                  onAdd(item)
-                  onSelect(item.id)
-                }}
-                onAddSummary={summaries ? addSummary : undefined}
-                onAddFilter={setAddingFilter}
-                onAddMedia={() => onAdd(mediaItem())}
-                onAddSection={sections ? addSection : undefined}
-                onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
-                onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
-                appearance={dashboard.appearance ?? 'dark'}
-                onAppearanceChange={(appearance) => setAppearance(dashboard.id, appearance)}
-              />
-            </div>
+            <div className="pointer-events-auto">{toolbar(null)}</div>
           </div>
         )}
 

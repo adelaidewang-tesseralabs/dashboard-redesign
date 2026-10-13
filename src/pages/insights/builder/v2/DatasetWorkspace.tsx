@@ -10,10 +10,11 @@ import { Button } from '../../../../ui/Button'
 import { Menu } from '../../../../ui/Menu'
 import { filterColumns, findFilterColumn } from '../dashboardFilters'
 import { EditableTitle } from '../EditableTitle'
+import { CreateGraphMenu } from './CreateGraphMenu'
 import { datasetMenuItems } from './DatasetList'
 import { DatasetUsedIn } from './DatasetUsedIn'
 import { FieldLinks } from './FieldLinks'
-import { datasetOriginLabel, datasetPath, datasetSql, type Dataset } from './datasets'
+import { datasetOriginLabel, datasetPath, datasetSql, graphColumns, type Dataset, type GraphColumn } from './datasets'
 import { ResultWorkbench } from './ResultWorkbench'
 
 type WorkspaceTab = 'result' | 'schema' | 'used'
@@ -31,7 +32,10 @@ type DatasetWorkspaceProps = {
   onRename: (label: string) => void
   /** Omitted when SQL is read-only (builder V6), which hides the query editor. */
   onSaveSql?: (dataset: SqlDataset) => void
-  onCreateGraph: () => void
+  /** Without a column, the dataset's default first graph. */
+  onCreateGraph: (column?: GraphColumn) => void
+  /** Builder V6: Create graph becomes a menu of columns to group by, ending in Ask Tessera AI. */
+  onAskAi?: () => void
   onDuplicate: () => void
   onDownload: () => void
   onRemove: () => void
@@ -44,7 +48,7 @@ type DatasetWorkspaceProps = {
 
 /** Right pane of the Data tab: the selected dataset's query or preview, its result, schema and the graphs using it. */
 export function DatasetWorkspace(props: DatasetWorkspaceProps) {
-  const { dashboard, dataset, usedIn, transforms, draft, onDraftChange, onApplyTransforms, onRename, onSaveSql, onCreateGraph, onDuplicate, onDownload, onRemove, onOpenWidget, onEditAsSql, rowLimit } =
+  const { dashboard, dataset, usedIn, transforms, draft, onDraftChange, onApplyTransforms, onRename, onSaveSql, onCreateGraph, onAskAi, onDuplicate, onDownload, onRemove, onOpenWidget, onEditAsSql, rowLimit } =
     props
   const [tab, setTab] = useState<WorkspaceTab>('result')
   const sectionRef = useRef<HTMLElement>(null)
@@ -52,6 +56,15 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
   const result = applyTransforms(source, transforms)
   const preview = draft ? applyTransforms(source, draft) : result
   const focusName = () => sectionRef.current?.querySelector<HTMLInputElement>('input[aria-label="Dataset name"]')?.focus()
+  const createAction = (variant: 'primary' | 'outline') =>
+    onAskAi ? (
+      <CreateGraphMenu columns={graphColumns(dataset, result)} usedIn={usedIn} disabled={!result.ok} variant={variant} onPick={onCreateGraph} onAskAi={onAskAi} />
+    ) : (
+      <Button size="sm" variant={variant === 'primary' ? 'default' : 'outline'} disabled={!result.ok} onClick={() => onCreateGraph()}>
+        <ChartColumn className="size-3.5" />
+        Create graph
+      </Button>
+    )
 
   return (
     <section ref={sectionRef} aria-label={dataset.label} className="flex min-w-0 flex-1 flex-col bg-tlai-1">
@@ -69,10 +82,7 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
             Edit as SQL
           </Button>
         )}
-        <Button size="sm" disabled={!result.ok} onClick={onCreateGraph}>
-          <ChartColumn className="size-3.5" />
-          Create graph
-        </Button>
+        {createAction('primary')}
         <Menu
           items={datasetMenuItems({ onRename: focusName, onDuplicate, onDownload, onRemove })}
           trigger={({ toggle }) => (
@@ -114,7 +124,7 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
       ) : (
         <div role="tabpanel" className="min-h-0 flex-1 overflow-auto p-4">
           {tab === 'schema' && <SchemaPane dashboard={dashboard} dataset={dataset} result={result} />}
-          {tab === 'used' && <DatasetUsedIn items={usedIn} onOpen={onOpenWidget} onCreateGraph={onCreateGraph} />}
+          {tab === 'used' && <DatasetUsedIn items={usedIn} onOpen={onOpenWidget} createAction={createAction('outline')} />}
         </div>
       )}
     </section>

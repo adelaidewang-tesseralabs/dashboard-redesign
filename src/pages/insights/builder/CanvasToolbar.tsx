@@ -34,6 +34,8 @@ type CanvasToolbarProps = {
   onRedo?: () => void
   appearance: DashboardAppearance
   onAppearanceChange: (appearance: DashboardAppearance) => void
+  /** A graph is expanded: only the tools that make sense over one graph (AI, undo, redo, appearance). */
+  fullScreen?: boolean
 }
 
 const MOD_KEY = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl+'
@@ -67,38 +69,43 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
     onRedo,
     appearance,
     onAppearanceChange,
+    fullScreen = false,
   } = props
 
   return (
     <div role="toolbar" aria-label="Canvas tools" className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-tlai-3 p-1 shadow-lg shadow-black/60">
       <Tool Icon={Sparkles} label="Tessera AI" active={chatOpen} onClick={onToggleChat} className="text-tlai-mint" />
       <Divider />
-      <AddGraphMenu
-        widgets={widgets}
-        sources={sources}
-        queries={queries}
-        sourcesLabel={sourcesLabel}
-        datasetsFirst={datasetsFirst}
-        datasetsOnly={datasetsOnly}
-        onAdd={onAddWidget}
-        onAddSource={onAddSource}
-        onOpenAddSource={onOpenAddSource}
-        onAskAi={onOpenChat}
-        trigger={({ open, toggle }) => <Tool Icon={ChartColumn} label="Add graph" active={open} onClick={toggle} />}
-      />
-      <Tool Icon={Type} label="Add text" onClick={onAddText} />
-      {onAddSummary && <Tool Icon={ScrollText} label="Summarize page" onClick={onAddSummary} />}
-      <Menu
-        side="top"
-        items={[
-          { label: 'Filter viewers can change', Icon: Eye, onSelect: () => onAddFilter('viewer') },
-          { label: 'Fixed filter, hidden from viewers', Icon: Pin, onSelect: () => onAddFilter('fixed') },
-        ]}
-        trigger={({ open, toggle }) => <Tool Icon={Filter} label="Add filter" active={open} onClick={toggle} />}
-      />
-      <Tool Icon={Image} label="Add media" onClick={onAddMedia} />
-      {onAddSection && <Tool Icon={Rows3} label="Add section" onClick={onAddSection} />}
-      <Divider />
+      {!fullScreen && (
+        <>
+          <AddGraphMenu
+            widgets={widgets}
+            sources={sources}
+            queries={queries}
+            sourcesLabel={sourcesLabel}
+            datasetsFirst={datasetsFirst}
+            datasetsOnly={datasetsOnly}
+            onAdd={onAddWidget}
+            onAddSource={onAddSource}
+            onOpenAddSource={onOpenAddSource}
+            onAskAi={onOpenChat}
+            trigger={({ open, toggle }) => <Tool Icon={ChartColumn} label="Add graph" active={open} onClick={toggle} />}
+          />
+          <Tool Icon={Type} label="Add text" onClick={onAddText} />
+          {onAddSummary && <Tool Icon={ScrollText} label="Summarize page" onClick={onAddSummary} />}
+          <Menu
+            side="top"
+            items={[
+              { label: 'Filter viewers can change', Icon: Eye, onSelect: () => onAddFilter('viewer') },
+              { label: 'Fixed filter, hidden from viewers', Icon: Pin, onSelect: () => onAddFilter('fixed') },
+            ]}
+            trigger={({ open, toggle }) => <Tool Icon={Filter} label="Add filter" active={open} onClick={toggle} />}
+          />
+          <Tool Icon={Image} label="Add media" onClick={onAddMedia} />
+          {onAddSection && <Tool Icon={Rows3} label="Add section" onClick={onAddSection} />}
+          <Divider />
+        </>
+      )}
       <Tool Icon={Undo2} label="Undo" shortcut={`${MOD_KEY}Z`} onClick={onUndo} disabled={!onUndo} />
       <Tool Icon={Redo2} label="Redo" shortcut={`${MOD_KEY}⇧Z`} onClick={onRedo} disabled={!onRedo} />
       <Divider />

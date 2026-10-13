@@ -1,25 +1,23 @@
-import { ArrowUpRight, ChartColumn } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { ArrowUpRight } from 'lucide-react'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
-import { Button } from '../../../../ui/Button'
 import { displayTitle, itemLabel } from '../canvasItems'
 import { CHART_STYLE_META } from '../chartStyles'
 
 type DatasetUsedInProps = {
   items: CanvasItem[]
   onOpen: (itemId: string) => void
-  onCreateGraph: () => void
+  /** The dataset's Create graph control, offered when nothing uses it yet. */
+  createAction: ReactNode
 }
 
 /** Graphs built on a dataset; each opens on the canvas with its settings panel. */
-export function DatasetUsedIn({ items, onOpen, onCreateGraph }: DatasetUsedInProps) {
+export function DatasetUsedIn({ items, onOpen, createAction }: DatasetUsedInProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3 text-sm text-white/45">
         No graphs use this dataset yet.
-        <Button variant="outline" size="sm" onClick={onCreateGraph}>
-          <ChartColumn className="size-3.5" />
-          Create graph
-        </Button>
+        {createAction}
       </div>
     )
   }

@@ -21,7 +21,8 @@ export function chartHighlight(highlight: CrossHighlight | null | undefined, dat
   const filter: RowFilter = { id: 'cross-highlight', key: highlight.column, operator: 'eq', value: highlight.value }
   const matched = graphResult(rows, groupKey, { ...query, filters: [...(query.filters ?? []), filter], limit: undefined })
   if (!matched.ok) return { kind: 'dim' }
-  const value = query.value ?? (groupKey ? defaultGraphValue(rows, groupKey) : undefined)
+  const key = groupKey ?? query.groupBy
+  const value = query.value ?? (key ? defaultGraphValue(rows, key) : undefined)
   return {
     kind: 'match',
     values: new Map(matched.rows.map((row) => [String(row[0]), Number(row[row.length - 1])])),

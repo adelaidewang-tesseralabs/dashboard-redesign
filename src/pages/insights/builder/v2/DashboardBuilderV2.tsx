@@ -31,7 +31,7 @@ import { BuilderViewSwitch, type BuilderView } from './BuilderViewSwitch'
 import { DashboardActions } from './DashboardActions'
 import { DatasetDataSection } from './DatasetDataSection'
 import { EditModeSwitch, type EditMode } from './EditModeSwitch'
-import { graphFor, listDatasets, sqlKey, tableKey, type Dataset } from './datasets'
+import { graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
 import { LayerSwitchButton } from './LayerSwitchButton'
@@ -80,7 +80,7 @@ type DashboardBuilderV2Props = {
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare } = props
-  const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
+  const { addWidgets, insertWidget, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
   const widgets = dashboard.widgets ?? []
@@ -199,10 +199,17 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     setSelectedId(null)
   }
   const modeSwitch = <EditModeSwitch mode={editMode} onChange={changeEditMode} />
-  const createGraph = (dataset: Dataset) => {
-    const item = graphFor(dataset)
-    add(item)
+  const createGraph = (dataset: Dataset, column?: GraphColumn) => {
+    const item = column ? graphForColumn(dataset, column) : graphFor(dataset)
+    // A picked column may already have a graph; the menu offers it on purpose for a second chart of the same data.
+    if (column) insertWidget(dashboard.id, item, [])
+    else add(item)
     openWidget(item.id)
+  }
+  const askAiFromData = () => {
+    setView('canvas')
+    setSelectedId(null)
+    v3Panel.showChat()
   }
   const newSql = () => {
     if (sourceDialogs) {
@@ -348,6 +355,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 sections={governed}
                 summaries={governed}
                 fixedFilterStyle={governed ? fixedFilterStyle : undefined}
+                fullScreenToolbar={governed}
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}
                 onSelect={selectWidget}
@@ -389,6 +397,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             onOpenDataset={showDataset}
             onEditAsSql={editAsSql}
             onCreateGraph={createGraph}
+            onAskAi={governed ? askAiFromData : undefined}
             onOpenWidget={openWidget}
             onAddSourceKind={sourceDialogs ? requestSource : undefined}
             sqlEditing={!governed}
