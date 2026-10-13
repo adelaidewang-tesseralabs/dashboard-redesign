@@ -9,7 +9,6 @@ import type { FixedFilterStyle } from '../../../lib/fixedFilterStyle'
 import { cn } from '../../../lib/cn'
 import { useToast } from '../../../ui/Toast'
 import { CanvasGrid } from './CanvasGrid'
-import { ChatLauncher } from './ChatLauncher'
 import { sameHighlight, type CrossHighlight } from './crossHighlight'
 import { HighlightChip } from './HighlightChip'
 import { CanvasHero } from './CanvasHero'
@@ -52,8 +51,6 @@ type BuilderCanvasProps = {
   previewing?: boolean
   refreshing?: boolean
   onComment?: (itemId: string, text: string) => void
-  /** Builder V3: open chat without clearing the selected graph, so it stacks on the settings. */
-  onOpenChatLauncher?: () => void
   /** Linked from the unavailable-data banner for people who can restore. */
   onOpenHistory?: () => void
   /** Builder V2+: in preview, clicking part of a graph highlights related data and greys out the rest. */
@@ -68,9 +65,9 @@ type BuilderCanvasProps = {
   fullScreenToolbar?: boolean
 }
 
-/** Dot-grid canvas shared by both builder versions: hero or widget grid, the floating toolbar, and the Tessera AI launcher. */
+/** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -233,17 +230,6 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             <div className="pointer-events-auto">{toolbar(null)}</div>
           </div>
         )}
-
-        <ChatLauncher
-          visible={!chat.chatOpen && !drawer && !readOnly && !fullScreenId}
-          onOpen={
-            onOpenChatLauncher ??
-            (() => {
-              onSelect(null)
-              chat.setChatOpen(true)
-            })
-          }
-        />
       </div>
     </FullScreenContext>
   )

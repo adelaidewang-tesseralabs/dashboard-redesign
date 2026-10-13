@@ -399,7 +399,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 previewing={previewing && !readOnly}
                 onOpenHistory={onOpenHistory}
                 refreshing={refreshing}
-                onOpenChatLauncher={productionFlow ? v3Panel.showChat : undefined}
                 crossHighlight
               />
             </PreviewPersonContext>
