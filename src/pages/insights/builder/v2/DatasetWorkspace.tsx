@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { ChartColumn, FileCode2, MoreHorizontal, Play } from 'lucide-react'
 import type { Dashboard, SqlDataset } from '../../../../data/dashboards'
 import { runSql, type SqlResult } from '../../../../data/dataSources'
-import { applyTransforms, columnTypes, transformCount, type DatasetTransforms } from '../../../../data/transforms'
+import { applyTransforms, columnTypes, type DatasetTransforms } from '../../../../data/transforms'
 import type { CanvasItem } from '../../../../data/widgets'
 import { cn } from '../../../../lib/cn'
 import { formatNumber } from '../../../../lib/format'
@@ -10,21 +10,24 @@ import { Button } from '../../../../ui/Button'
 import { Menu } from '../../../../ui/Menu'
 import { filterColumns, findFilterColumn } from '../dashboardFilters'
 import { EditableTitle } from '../EditableTitle'
-import { ResultTable } from '../SourceChart'
 import { datasetMenuItems } from './DatasetList'
 import { DatasetUsedIn } from './DatasetUsedIn'
 import { FieldLinks } from './FieldLinks'
 import { datasetOriginLabel, datasetPath, datasetSql, type Dataset } from './datasets'
-import { TransformsPanel } from './transforms/TransformsPanel'
+import { ResultWorkbench } from './ResultWorkbench'
 
-type WorkspaceTab = 'result' | 'transform' | 'schema' | 'used'
+type WorkspaceTab = 'result' | 'schema' | 'used'
 
 type DatasetWorkspaceProps = {
   dashboard: Dashboard
   dataset: Dataset
   usedIn: CanvasItem[]
+  /** Applied transforms: what graphs, the schema and new graphs read. */
   transforms: DatasetTransforms | undefined
-  onTransformsChange: (transforms: DatasetTransforms) => void
+  /** Unapplied edits, previewed on the Result tab only. */
+  draft: DatasetTransforms | undefined
+  onDraftChange: (draft: DatasetTransforms | null) => void
+  onApplyTransforms: (transforms: DatasetTransforms) => void
   onRename: (label: string) => void
   /** Omitted when SQL is read-only (builder V6), which hides the query editor. */
   onSaveSql?: (dataset: SqlDataset) => void
@@ -41,13 +44,13 @@ type DatasetWorkspaceProps = {
 
 /** Right pane of the Data tab: the selected dataset's query or preview, its result, schema and the graphs using it. */
 export function DatasetWorkspace(props: DatasetWorkspaceProps) {
-  const { dashboard, dataset, usedIn, transforms, onTransformsChange, onRename, onSaveSql, onCreateGraph, onDuplicate, onDownload, onRemove, onOpenWidget, onEditAsSql, rowLimit } =
+  const { dashboard, dataset, usedIn, transforms, draft, onDraftChange, onApplyTransforms, onRename, onSaveSql, onCreateGraph, onDuplicate, onDownload, onRemove, onOpenWidget, onEditAsSql, rowLimit } =
     props
   const [tab, setTab] = useState<WorkspaceTab>('result')
   const sectionRef = useRef<HTMLElement>(null)
   const source = runSql(datasetSql(dataset))
   const result = applyTransforms(source, transforms)
-  const transformTotal = transformCount(transforms)
+  const preview = draft ? applyTransforms(source, draft) : result
   const focusName = () => sectionRef.current?.querySelector<HTMLInputElement>('input[aria-label="Dataset name"]')?.focus()
 
   return (
@@ -85,11 +88,7 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
       <div role="tablist" aria-label="Dataset details" className="flex h-10 shrink-0 items-center gap-1 border-b border-white/10 px-4">
         <TabButton active={tab === 'result'} onClick={() => setTab('result')}>
           Result
-          {result.ok && <span className="text-white/45">{formatNumber(result.rows.length)}</span>}
-        </TabButton>
-        <TabButton active={tab === 'transform'} onClick={() => setTab('transform')}>
-          Transform
-          {transformTotal > 0 && <span className="text-white/45">{transformTotal}</span>}
+          {preview.ok && <span className="text-white/45">{formatNumber(preview.rows.length)}</span>}
         </TabButton>
         <TabButton active={tab === 'schema'} onClick={() => setTab('schema')}>
           Schema
@@ -98,12 +97,26 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
           Used in <span className="text-white/45">{usedIn.length}</span>
         </TabButton>
       </div>
-      <div role="tabpanel" className="min-h-0 flex-1 overflow-auto p-4">
-        {tab === 'result' && <ResultPane result={result} />}
-        {tab === 'transform' && <TransformsPanel source={source} transforms={transforms} onChange={onTransformsChange} rowLimit={rowLimit} />}
-        {tab === 'schema' && <SchemaPane dashboard={dashboard} dataset={dataset} result={result} />}
-        {tab === 'used' && <DatasetUsedIn items={usedIn} onOpen={onOpenWidget} onCreateGraph={onCreateGraph} />}
-      </div>
+      {tab === 'result' ? (
+        <div role="tabpanel" className="flex min-h-0 flex-1">
+          <ResultWorkbench
+            dashboard={dashboard}
+            datasetKey={dataset.key}
+            source={source}
+            applied={transforms}
+            draft={draft}
+            onDraftChange={onDraftChange}
+            onApply={onApplyTransforms}
+            usedIn={usedIn}
+            rowLimit={rowLimit}
+          />
+        </div>
+      ) : (
+        <div role="tabpanel" className="min-h-0 flex-1 overflow-auto p-4">
+          {tab === 'schema' && <SchemaPane dashboard={dashboard} dataset={dataset} result={result} />}
+          {tab === 'used' && <DatasetUsedIn items={usedIn} onOpen={onOpenWidget} onCreateGraph={onCreateGraph} />}
+        </div>
+      )}
     </section>
   )
 }
@@ -153,11 +166,6 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       {children}
     </button>
   )
-}
-
-function ResultPane({ result }: { result: SqlResult }) {
-  if (!result.ok) return <p className="rounded-md border border-red-400/20 bg-red-500/10 p-3 font-mono text-xs text-red-200">{result.error}</p>
-  return <ResultTable columns={result.columns} rows={result.rows} />
 }
 
 /** The columns the transformed result exposes; table fields also list their values, and filterable ones their links. */

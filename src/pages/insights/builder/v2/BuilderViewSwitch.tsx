@@ -4,10 +4,16 @@ import { cn } from '../../../../lib/cn'
 
 export type BuilderView = 'canvas' | 'data'
 
-type BuilderViewSwitchProps = { view: BuilderView; dataCount: number; onChange: (view: BuilderView) => void }
+type BuilderViewSwitchProps = {
+  view: BuilderView
+  dataCount: number
+  /** Some dataset has transform edits not yet applied to its graphs. */
+  unapplied?: boolean
+  onChange: (view: BuilderView) => void
+}
 
 /** Canvas | Data tab bar under the builder header. */
-export function BuilderViewSwitch({ view, dataCount, onChange }: BuilderViewSwitchProps) {
+export function BuilderViewSwitch({ view, dataCount, unapplied = false, onChange }: BuilderViewSwitchProps) {
   return (
     <div role="tablist" aria-label="Builder view" className="flex shrink-0 items-end gap-4 border-b border-white/10 px-5">
       <ViewTab active={view === 'canvas'} onClick={() => onChange('canvas')}>
@@ -20,6 +26,7 @@ export function BuilderViewSwitch({ view, dataCount, onChange }: BuilderViewSwit
         <span className={cn('rounded px-1.5 text-[11px] tabular-nums', view === 'data' ? 'bg-tlai-mint/15 text-tlai-mint' : 'bg-white/10 text-white/70')}>
           {dataCount}
         </span>
+        {unapplied && <span title="Unapplied transform changes" aria-label="Unapplied transform changes" className="size-1.5 rounded-full bg-amber-300" />}
       </ViewTab>
     </div>
   )

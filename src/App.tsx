@@ -5,6 +5,7 @@ import { EmptyPage } from './pages/EmptyPage'
 import { CustomDashboardsPage } from './pages/insights/custom/CustomDashboardsPage'
 import { DashboardDetailPage } from './pages/insights/detail/DashboardDetailPage'
 import { SystemDashboardsPage } from './pages/insights/system/SystemDashboardsPage'
+import { IconTooltips } from './ui/IconTooltips'
 import { ToastProvider } from './ui/Toast'
 
 export function App() {
@@ -25,6 +26,7 @@ export function App() {
             </Route>
           </Routes>
         </DashboardsProvider>
+        <IconTooltips />
       </ToastProvider>
     </BrowserRouter>
   )

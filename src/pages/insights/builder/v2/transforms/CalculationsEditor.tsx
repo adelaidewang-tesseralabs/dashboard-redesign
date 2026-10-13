@@ -78,23 +78,28 @@ export function CalculationsEditor({ calculations, columns, onChange }: Calculat
               defaultValue={calculation.key}
               onBlur={(event) => rename(index, event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
-              className={cn(fieldInputClass, 'w-36 text-tlai-mint')}
+              className={cn(fieldInputClass, 'w-[calc(100%-2.25rem)] text-tlai-mint')}
             />
-            <span className="text-sm text-white/40">=</span>
-            {operand(0)}
-            <Slot className="w-24">
-              <Select
-                aria-label={`Operator of ${calculation.key}`}
-                value={calculation.operator}
-                options={CALC_OPERATORS.map((operator) => ({ value: operator, label: operator }))}
-                onChange={(operator) => changeOperator(index, operator as CalcOperator)}
-              />
-            </Slot>
-            {calculation.operator !== 'abs' && operand(1)}
+            <RemoveButton label={`Remove ${calculation.key}`} onClick={() => onChange(calculations.filter((_, at) => at !== index))} />
+            <div className="flex w-full items-center gap-2">
+              <span className="w-6 shrink-0 text-center text-sm text-white/40">=</span>
+              {operand(0)}
+            </div>
+            <div className="flex w-full items-center gap-2">
+              <Slot className="w-16">
+                <Select
+                  aria-label={`Operator of ${calculation.key}`}
+                  value={calculation.operator}
+                  options={CALC_OPERATORS.map((operator) => ({ value: operator, label: operator }))}
+                  onChange={(operator) => changeOperator(index, operator as CalcOperator)}
+                />
+              </Slot>
+              {calculation.operator !== 'abs' && operand(1)}
+            </div>
             {(calculation.operator === '/' || calculation.operator === '%') && (
-              <span className="flex items-center gap-1.5">
-                <span className="text-xs text-white/40">if zero</span>
-                <Slot className="w-32">
+              <div className="flex w-full items-center gap-2">
+                <span className="shrink-0 text-xs text-white/40">If zero</span>
+                <Slot className="min-w-0 flex-1">
                   <Select
                     aria-label={`If zero for ${calculation.key}`}
                     value={calculation.onZero ?? 'empty'}
@@ -102,9 +107,8 @@ export function CalculationsEditor({ calculations, columns, onChange }: Calculat
                     onChange={(onZero) => update(index, { ...calculation, onZero: onZero as OnZero })}
                   />
                 </Slot>
-              </span>
+              </div>
             )}
-            <RemoveButton label={`Remove ${calculation.key}`} onClick={() => onChange(calculations.filter((_, at) => at !== index))} />
           </TransformRow>
         )
       })}
@@ -120,7 +124,7 @@ function OperandField({ label, value, columns, onChange }: OperandFieldProps) {
   const isNumber = typeof value === 'number'
   return (
     <>
-      <Slot className={isNumber ? 'w-36' : 'w-44'}>
+      <Slot className="min-w-0 flex-1">
         <Select
           aria-label={label}
           value={isNumber ? NUMBER_OPERAND : value}

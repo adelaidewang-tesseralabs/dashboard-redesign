@@ -3,6 +3,10 @@ import { Library, List, Plus, type LucideIcon } from "lucide-react";
 import type { Dashboard, SqlDataset } from "../../../../data/dashboards";
 import { useDashboards } from "../../../../data/DashboardsStore";
 import type { DataObject } from "../../../../data/dataSources";
+import {
+  transformCount,
+  type DatasetTransforms,
+} from "../../../../data/transforms";
 import { cn } from "../../../../lib/cn";
 import { downloadCsv, toCsv } from "../../../../lib/csv";
 import { Button } from "../../../../ui/Button";
@@ -23,6 +27,7 @@ import {
 } from "./datasets";
 import { DatasetWorkspace } from "./DatasetWorkspace";
 import type { ConsoleTab, ConsoleTabs } from "./useConsoleTabs";
+import type { TransformDrafts } from "./transforms/transformDrafts";
 
 export type DataPanel = "datasets" | "catalog";
 
@@ -50,6 +55,7 @@ type DataTabProps = {
   onAddSourceKind?: (kind: AddSourceKind) => void;
   /** Builder V6 turns this off: the catalog only previews and adds tables, and SQL datasets can't be edited. */
   sqlEditing?: boolean;
+  transformDrafts: TransformDrafts;
 };
 
 /** Builder V2's Data tab: manage what the dashboard reads. Building stays on the canvas. */
@@ -71,6 +77,7 @@ export function DataTab(props: DataTabProps) {
     onOpenWidget,
     onAddSourceKind,
     sqlEditing = true,
+    transformDrafts,
   } = props;
   const showCatalog = panel === "catalog" && !onAddSourceKind;
   const {
@@ -116,6 +123,20 @@ export function DataTab(props: DataTabProps) {
       return;
     }
     downloadCsv(dataset.label, toCsv(result.columns, result.rows));
+  };
+  const applyTransforms = (dataset: Dataset, transforms: DatasetTransforms) => {
+    setDatasetTransforms(
+      dashboard.id,
+      dataset.key,
+      transformCount(transforms) > 0 ? transforms : undefined,
+    );
+    transformDrafts.setDraft(dataset.key, null);
+    const graphs = datasetUsage(widgets, dataset.key).length;
+    toast(
+      graphs === 0
+        ? `Transforms saved to ${dataset.label}`
+        : `Applied to ${graphs === 1 ? "1 graph" : `${graphs} graphs`}`,
+    );
   };
   const confirmRemove = () => {
     if (!removing) return;
@@ -182,6 +203,7 @@ export function DataTab(props: DataTabProps) {
             datasets={datasets}
             widgets={widgets}
             activeKey={active?.key ?? null}
+            unapplied={new Set(Object.keys(transformDrafts.drafts))}
             onActivate={onActivate}
             onRename={rename}
             onDuplicate={duplicate}
@@ -197,9 +219,11 @@ export function DataTab(props: DataTabProps) {
               dataset={active}
               usedIn={datasetUsage(widgets, active.key)}
               transforms={dashboard.datasetTransforms?.[active.key]}
-              onTransformsChange={(transforms) =>
-                setDatasetTransforms(dashboard.id, active.key, transforms)
+              draft={transformDrafts.drafts[active.key]}
+              onDraftChange={(draft) =>
+                transformDrafts.setDraft(active.key, draft)
               }
+              onApplyTransforms={(transforms) => applyTransforms(active, transforms)}
               onRename={(label) => rename(active, label)}
               onSaveSql={
                 sqlEditing

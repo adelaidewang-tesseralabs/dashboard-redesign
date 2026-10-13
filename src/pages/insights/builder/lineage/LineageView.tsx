@@ -22,7 +22,6 @@ export function LineageView({ dashboard, target, onBack }: LineageViewProps) {
   const targetId = target.kind === 'graph' ? graphNodeId(target.itemId) : DASHBOARD_NODE_ID
   const [selectedId, setSelectedId] = useState(targetId)
   const selected = lineage.nodes.find((node) => node.id === selectedId) ?? lineage.nodes.find((node) => node.id === targetId)
-  const title = target.kind === 'graph' ? lineage.nodes.find((node) => node.id === targetId)?.label : dashboard.name
   const unusedToggle = unusedDatasets > 0 && (
     <button
       type="button"
@@ -38,26 +37,39 @@ export function LineageView({ dashboard, target, onBack }: LineageViewProps) {
     </button>
   )
 
+  const backButton = (
+    <button
+      type="button"
+      aria-label="Back to dashboard"
+      onClick={onBack}
+      className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-tlai-3 text-white/75 hover:border-white/25 hover:text-white"
+    >
+      <ArrowLeft className="size-4" />
+    </button>
+  )
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-5 py-2">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="size-4" />
-          Back to dashboard
-        </Button>
-        <span className="h-5 w-px bg-white/10" />
-        <h2 className="truncate text-sm text-white">
-          <span className="text-white/55">Lineage · </span>
-          {title ?? 'Graph removed'}
-        </h2>
-      </div>
       {selected ? (
         <div className="flex min-h-0 flex-1">
-          <LineageCanvas lineage={lineage} selectedId={selected.id} onSelect={setSelectedId} revealSelected={target.kind === 'graph'} toolbar={unusedToggle || undefined} />
+          <LineageCanvas
+            lineage={lineage}
+            selectedId={selected.id}
+            onSelect={setSelectedId}
+            revealSelected={target.kind === 'graph'}
+            leading={backButton}
+            toolbar={unusedToggle || undefined}
+          />
           <LineageDetails key={selected.id} node={selected} />
         </div>
       ) : (
-        <p className="p-10 text-center text-sm text-white/55">This graph is no longer on the dashboard.</p>
+        <div className="flex flex-col items-center gap-4 p-10 text-sm text-white/55">
+          This graph is no longer on the dashboard.
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft className="size-4" />
+            Back to dashboard
+          </Button>
+        </div>
       )}
     </div>
   )

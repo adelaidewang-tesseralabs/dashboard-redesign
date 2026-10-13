@@ -5,6 +5,8 @@ import { useDashboards } from '../../../../data/DashboardsStore'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView } from '../../../../data/pages'
 import type { CanvasItem } from '../../../../data/widgets'
+import { Button } from '../../../../ui/Button'
+import { Dialog } from '../../../../ui/Dialog'
 import { useToast } from '../../../../ui/Toast'
 import { BuilderCanvas } from '../BuilderCanvas'
 import { BuilderHeader } from '../BuilderHeader'
@@ -35,6 +37,8 @@ import { LayerSwitchButton } from './LayerSwitchButton'
 import { StackedEditorPanel } from './StackedEditorPanel'
 import { useBottomPanelHeight } from './useBottomPanelHeight'
 import { useConsoleTabs, type ConsoleTab } from './useConsoleTabs'
+import { useTransformDrafts } from './transforms/transformDrafts'
+import { useLeaveGuard } from './useLeaveGuard'
 import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
 import { PageTabs } from './PageTabs'
@@ -93,6 +97,33 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const bottomPanel = useBottomPanelHeight()
   const consoleTabs = useConsoleTabs()
   const datasets = listDatasets(dashboard)
+  const transformDrafts = useTransformDrafts()
+  const unappliedDatasets = datasets.filter((dataset) => transformDrafts.drafts[dataset.key])
+  const leaveGuard = useLeaveGuard(unappliedDatasets.length > 0)
+  const leaveDialog = (
+    <Dialog
+      open={leaveGuard.pendingHref !== null}
+      onClose={leaveGuard.stay}
+      title="Discard unapplied changes?"
+      description="These datasets have transform changes that haven't been applied to their graphs."
+      footer={
+        <>
+          <Button variant="ghost" onClick={leaveGuard.stay}>
+            Stay
+          </Button>
+          <Button variant="destructive" onClick={leaveGuard.leave}>
+            Discard and leave
+          </Button>
+        </>
+      }
+    >
+      <ul className="flex flex-col gap-1 text-sm text-white/80">
+        {unappliedDatasets.map((dataset) => (
+          <li key={dataset.key}>{dataset.label}</li>
+        ))}
+      </ul>
+    </Dialog>
+  )
   const productionFlow = addDatasetFlow !== 'catalog'
   const governed = addDatasetFlow === 'governed'
   const sourceDialogs = productionFlow && !governed
@@ -235,6 +266,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       <div className="flex min-h-0 flex-1 flex-col">
         <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />
         <LineageView key={JSON.stringify(lineage)} dashboard={dashboard} target={lineage} onBack={() => onLineageChange(null)} />
+        {leaveDialog}
       </div>
     )
   }
@@ -257,7 +289,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             />
           }
         />
-        {!asViewer && <BuilderViewSwitch view={view} dataCount={datasets.length} onChange={setView} />}
+        {!asViewer && <BuilderViewSwitch view={view} dataCount={datasets.length} unapplied={unappliedDatasets.length > 0} onChange={setView} />}
         {previewAs && !readOnly && (
           <PreviewBanner
             dashboard={dashboard}
@@ -325,6 +357,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             onOpenWidget={openWidget}
             onAddSourceKind={sourceDialogs ? requestSource : undefined}
             sqlEditing={!governed}
+            transformDrafts={transformDrafts}
           />
         )}
         {bottomSettings && showSettings && selected && (
@@ -419,6 +452,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             />
           )
         ))}
+      {leaveDialog}
     </div>
   )
 }

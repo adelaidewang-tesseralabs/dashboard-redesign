@@ -35,7 +35,7 @@ function shapeSummary({ shape }: DatasetTransforms) {
 
 /** Calculations, Filters and Result shape for one dataset; each step only offers the columns that exist at that point. */
 export function TransformsPanel({ source, transforms = EMPTY_TRANSFORMS, onChange, rowLimit = true }: TransformsPanelProps) {
-  if (!source.ok) return <p className="text-sm text-white/45">Fix the query to transform its result.</p>
+  if (!source.ok) return <p className="p-4 text-sm text-white/45">Fix the query to transform its result.</p>
   const { shape } = transforms
   const baseColumns = columnsOf(source)
   const calculated = columnsOf(applyTransforms(source, { ...EMPTY_TRANSFORMS, calculations: transforms.calculations }))
@@ -43,12 +43,13 @@ export function TransformsPanel({ source, transforms = EMPTY_TRANSFORMS, onChang
   const output = columnsOf(applyTransforms(source, { ...transforms, shape: { ...shape, orderBy: [], limit: undefined } }))
 
   return (
-    <div className="flex max-w-5xl flex-col gap-3">
+    <div className="flex flex-col">
       <TransformSection
+        step={1}
         title="Calculations"
         description="Derived columns computed from the dataset's columns"
         summary={plural(transforms.calculations.length, 'calculation', 'calculations')}
-        accentClass="border-l-tlai-mint"
+        accentClass="bg-tlai-mint/15 text-tlai-mint"
       >
         <CalculationsEditor
           calculations={transforms.calculations}
@@ -57,18 +58,20 @@ export function TransformsPanel({ source, transforms = EMPTY_TRANSFORMS, onChang
         />
       </TransformSection>
       <TransformSection
+        step={2}
         title="Filters"
         description="Row conditions applied before aggregation"
         summary={plural(transforms.filters.length, 'filter', 'filters')}
-        accentClass="border-l-sky-300"
+        accentClass="bg-sky-300/15 text-sky-300"
       >
-        <FiltersEditor filters={transforms.filters} columns={calculated} onChange={(filters) => onChange({ ...transforms, filters })} />
+        <FiltersEditor compact filters={transforms.filters} columns={calculated} onChange={(filters) => onChange({ ...transforms, filters })} />
       </TransformSection>
       <TransformSection
+        step={3}
         title="Result shape"
         description={rowLimit ? 'Grouping, ordering, and row limits' : 'Grouping and ordering'}
         summary={shapeSummary(transforms)}
-        accentClass="border-l-violet-300"
+        accentClass="bg-violet-300/15 text-violet-300"
       >
         <ResultShapeEditor
           shape={shape}

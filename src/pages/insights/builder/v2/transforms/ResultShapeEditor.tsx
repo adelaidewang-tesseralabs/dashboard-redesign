@@ -8,7 +8,6 @@ import {
   type ResultShape,
   type SortDirection,
 } from '../../../../../data/transforms'
-import { cn } from '../../../../../lib/cn'
 import { Select } from '../../../../../ui/Select'
 import { EditorCheckbox } from '../../EditorFields'
 import { AddRowButton, FieldLabel, RemoveButton, Slot, TransformRow, columnOptions, fieldInputClass, withCurrent, type TransformColumn } from './controls'
@@ -68,7 +67,7 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
             </span>
           ))}
           {ungrouped.length > 0 && (
-            <Slot className="w-44">
+            <Slot className="w-full">
               <Select
                 key={shape.groupBy.length}
                 aria-label="Add group by column"
@@ -94,7 +93,7 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
           />
         ))}
         <AddRowButton
-          label={shape.aggregates.length === 0 && shape.groupBy.length > 0 ? 'Add aggregate (counts rows by default)' : 'Add aggregate'}
+          label={shape.aggregates.length === 0 && shape.groupBy.length > 0 ? 'Add aggregate (default: count)' : 'Add aggregate'}
           onClick={() => set({ aggregates: [...shape.aggregates, { fn: 'count' }] })}
         />
       </div>
@@ -103,8 +102,8 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
         <FieldLabel>Order by</FieldLabel>
         <div className="flex flex-wrap items-center gap-2">
           {shape.orderBy.map((rule, index) => (
-            <span key={rule.key} className="flex items-center gap-1.5">
-              <Slot className="w-44">
+            <span key={rule.key} className="flex w-full items-center gap-1.5">
+              <Slot className="min-w-0 flex-1">
                 <Select
                   aria-label={`Order by column ${index + 1}`}
                   value={rule.key}
@@ -127,7 +126,7 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
             </span>
           ))}
           {unsorted.length > 0 && (
-            <Slot className="w-44">
+            <Slot className="w-full">
               <Select
                 key={shape.orderBy.length}
                 aria-label="Add sort column"
@@ -143,7 +142,7 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
 
       <div className="flex flex-wrap items-end gap-4">
         {(rowLimit || shape.limit) && (
-          <label className="flex flex-col gap-1.5">
+          <label className="flex w-full flex-col gap-1.5">
             <FieldLabel>Limit</FieldLabel>
             <input
               type="number"
@@ -152,7 +151,7 @@ export function ResultShapeEditor({ shape, columns, groupedColumns, outputColumn
               placeholder="All rows"
               value={shape.limit ?? ''}
               onChange={(event) => setLimit(event.target.value)}
-              className={cn(fieldInputClass, 'w-44')}
+              className={fieldInputClass}
             />
           </label>
         )}
@@ -178,7 +177,7 @@ function AggregateRow({ aggregate, columns, onChange, onRemove }: AggregateRowPr
   }
   return (
     <TransformRow>
-      <Slot className="w-40">
+      <Slot className="w-[calc(100%-2.25rem)]">
         <Select
           aria-label="Aggregate function"
           value={aggregate.fn}
@@ -186,10 +185,11 @@ function AggregateRow({ aggregate, columns, onChange, onRemove }: AggregateRowPr
           onChange={(fn) => changeFn(fn as AggregateFn)}
         />
       </Slot>
+      <RemoveButton label={`Remove ${aggregateKey(aggregate)}`} onClick={onRemove} />
       {aggregate.fn !== 'count' && (
-        <>
-          <span className="text-xs text-white/40">of</span>
-          <Slot className="w-44">
+        <div className="flex w-full items-center gap-2">
+          <span className="shrink-0 text-xs text-white/40">of</span>
+          <Slot className="min-w-0 flex-1">
             <Select
               aria-label="Aggregate column"
               value={aggregate.field ?? ''}
@@ -198,10 +198,9 @@ function AggregateRow({ aggregate, columns, onChange, onRemove }: AggregateRowPr
               onChange={(field) => onChange({ ...aggregate, field })}
             />
           </Slot>
-        </>
+        </div>
       )}
       <span className="font-mono text-xs text-white/40">→ {aggregateKey(aggregate)}</span>
-      <RemoveButton label={`Remove ${aggregateKey(aggregate)}`} onClick={onRemove} />
     </TransformRow>
   )
 }
@@ -220,15 +219,15 @@ function PivotCard({ shape, columns, onChange }: PivotCardProps) {
   }
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-1">
         <EditorCheckbox label="Pivot" checked={Boolean(pivot)} onChange={toggle} />
-        <span className="text-xs text-white/45">Turn one column's values into columns</span>
+        <span className="pl-6 text-xs text-white/45">Turn one column's values into columns</span>
       </div>
       {pivot && (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <FieldLabel>Columns from</FieldLabel>
-            <Slot className="w-44">
+            <Slot className="w-full">
               <Select
                 aria-label="Pivot columns from"
                 value={pivot.columnsFrom}
@@ -239,7 +238,7 @@ function PivotCard({ shape, columns, onChange }: PivotCardProps) {
           </label>
           <label className="flex flex-col gap-1.5">
             <FieldLabel>Values from</FieldLabel>
-            <Slot className="w-44">
+            <Slot className="w-full">
               <Select
                 aria-label="Pivot values from"
                 value={pivot.valuesFrom}
@@ -250,7 +249,7 @@ function PivotCard({ shape, columns, onChange }: PivotCardProps) {
           </label>
           <label className="flex flex-col gap-1.5">
             <FieldLabel>Aggregate</FieldLabel>
-            <Slot className="w-36">
+            <Slot className="w-full">
               <Select
                 aria-label="Pivot aggregate"
                 value={pivot.fn}

@@ -1,7 +1,5 @@
 import { useEffect, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
-
 type WidgetFullScreenProps = {
   label: string
   /** Covers the canvas only, so the header and the settings or chat panel stay usable. */
@@ -16,7 +14,7 @@ function isEditable(target: EventTarget | null) {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 }
 
-/** A graph filling the canvas. Esc or the close button returns to the dashboard. */
+/** A graph filling the canvas. Esc or the graph's exit button returns to the dashboard. */
 export function WidgetFullScreen({ label, host, contentRef, onClose, onSelect, children }: WidgetFullScreenProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -28,18 +26,7 @@ export function WidgetFullScreen({ label, host, contentRef, onClose, onSelect, c
   }, [onClose])
 
   return createPortal(
-    <div role="region" aria-label={`${label}, full screen`} className="flex h-full flex-col gap-3 p-5">
-      <div className="flex shrink-0 justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs text-[var(--dash-muted)] hover:bg-[var(--dash-card)] hover:text-[var(--dash-fg)]"
-        >
-          <X className="size-4" />
-          Exit full screen
-          <kbd className="rounded border border-[var(--dash-card-edge)] px-1 text-[10px]">Esc</kbd>
-        </button>
-      </div>
+    <div role="region" aria-label={`${label}, full screen`} className="flex h-full flex-col p-5">
       <div
         ref={contentRef}
         data-widget

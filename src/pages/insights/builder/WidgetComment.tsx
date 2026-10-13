@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Sparkles } from 'lucide-react'
-import { cn } from '../../../lib/cn'
+import { graphToolButtonClass } from './GraphActionsMenu'
 
 type WidgetCommentProps = {
   label: string
   onSubmit: (text: string) => void
 }
 
-/** Hover "Ask AI" button that opens a message box on a graph; sending it hands the request to Tessera AI. */
+/** "Ask AI" in a graph's toolbar: opens a message box; sending it hands the request to Tessera AI. */
 export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
@@ -34,20 +34,16 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
   }
 
   return (
-    // Clicks stay here so commenting doesn't also count as selecting the graph underneath.
-    <div ref={rootRef} data-comment-open={open || undefined} data-capture-ignore onClick={(event) => event.stopPropagation()} className="absolute -top-3 right-5 z-10">
+    <div ref={rootRef} data-comment-open={open || undefined} className="relative">
       <button
         type="button"
         aria-label={`Ask AI about ${label}`}
-        title="Ask Tessera AI to change this graph"
+        title="Ask AI"
+        data-popover-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
-        className={cn(
-          'flex h-6 cursor-pointer items-center gap-1 rounded-full border border-white/15 bg-tlai-4 px-2 text-xs text-white/80 shadow-sm transition-opacity hover:text-white',
-          open ? 'opacity-100' : 'opacity-0 group-hover/widget:opacity-100 focus-visible:opacity-100 in-data-selected:opacity-100',
-        )}
+        className={graphToolButtonClass}
       >
-        <Sparkles className="size-3" />
-        Ask AI
+        <Sparkles className="size-3.5" />
       </button>
       {open && (
         <form
@@ -56,7 +52,7 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
             event.preventDefault()
             submit()
           }}
-          className="absolute top-8 right-0 flex w-72 items-end gap-2 rounded-lg border border-white/10 bg-tlai-4 p-2 shadow-xl"
+          className="absolute top-8 right-0 z-30 flex w-72 items-end gap-2 rounded-lg border border-white/10 bg-tlai-4 p-2 shadow-xl"
         >
           <textarea
             autoFocus

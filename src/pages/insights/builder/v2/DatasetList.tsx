@@ -12,6 +12,8 @@ type DatasetListProps = {
   datasets: Dataset[]
   widgets: CanvasItem[]
   activeKey: string | null
+  /** Datasets with transform edits not yet applied to their graphs. */
+  unapplied: Set<string>
   onActivate: (key: string) => void
   onRename: (dataset: Dataset, label: string) => void
   onDuplicate: (dataset: Dataset) => void
@@ -24,7 +26,7 @@ type DatasetListProps = {
 
 /** Left pane of the Data tab: every dataset the dashboard reads, in one list whatever its kind. */
 export function DatasetList(props: DatasetListProps) {
-  const { datasets, widgets, activeKey, onActivate, onRename, onDuplicate, onDownload, onRemove, onAddSource, onAddSourceKind } = props
+  const { datasets, widgets, activeKey, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove, onAddSource, onAddSourceKind } = props
   const [renaming, setRenaming] = useState<string | null>(null)
   const addButton = (onClick: () => void) => (
     <Button variant="outline" size="xs" onClick={onClick}>
@@ -57,6 +59,7 @@ export function DatasetList(props: DatasetListProps) {
               dataset={dataset}
               usage={datasetUsage(widgets, dataset.key).length}
               active={dataset.key === activeKey}
+              unapplied={unapplied.has(dataset.key)}
               onActivate={() => onActivate(dataset.key)}
               onRename={() => setRenaming(dataset.key)}
               onDuplicate={() => onDuplicate(dataset)}
@@ -86,6 +89,7 @@ type DatasetRowProps = {
   dataset: Dataset
   usage: number
   active: boolean
+  unapplied: boolean
   onActivate: () => void
   onRename: () => void
   onDuplicate: () => void
@@ -93,7 +97,7 @@ type DatasetRowProps = {
   onRemove: () => void
 }
 
-function DatasetRow({ dataset, usage, active, onActivate, onRename, onDuplicate, onDownload, onRemove }: DatasetRowProps) {
+function DatasetRow({ dataset, usage, active, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove }: DatasetRowProps) {
   const Icon = datasetIcon(dataset)
   return (
     <div className={cn('group flex items-center gap-1 rounded-md pr-1 hover:bg-white/5', active && 'bg-white/10 hover:bg-white/10')}>
@@ -102,7 +106,10 @@ function DatasetRow({ dataset, usage, active, onActivate, onRename, onDuplicate,
           <Icon className="size-4 text-white/55" />
         </span>
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-[13px] text-white">{dataset.label}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[13px] text-white">{dataset.label}</span>
+            {unapplied && <span title="Unapplied transform changes" aria-label="Unapplied transform changes" className="size-1.5 shrink-0 rounded-full bg-amber-300" />}
+          </span>
           <span className="text-[11px] text-white/45">{usage === 0 ? 'Not used yet' : usage === 1 ? 'Used by 1 graph' : `Used by ${usage} graphs`}</span>
         </span>
       </button>

@@ -73,21 +73,25 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
     return colors[(start + (position < 0 ? index : position)) % colors.length]
   }
   return (
-    <ChartPanel className={cn('h-full transition-opacity', dimmed && 'opacity-40')} title={title} subtitle={subtitle} description={source} badge={badge} actions={actions}>
-      <div className={cn('h-full min-h-0 w-full', onSelectLabel && '[&_.recharts-layer]:cursor-pointer')}>
-        <ChartBody
-          chart={chart}
-          counts={counts}
-          split={!!match?.additive}
-          highlighting={!!match}
-          columns={columns}
-          rows={rows}
-          colorOf={colorOf}
-          accent={color ? CHART_SINGLE_COLORS[color].color : colors[start % colors.length]}
-          onSelectLabel={onSelectLabel}
-        />
-      </div>
-    </ChartPanel>
+    <div className={cn('relative h-full transition-opacity', dimmed && 'opacity-40')}>
+      <ChartPanel className="h-full" title={title} subtitle={subtitle} description={source} badge={badge}>
+        <div className={cn('h-full min-h-0 w-full', onSelectLabel && '[&_.recharts-layer]:cursor-pointer')}>
+          <ChartBody
+            chart={chart}
+            counts={counts}
+            split={!!match?.additive}
+            highlighting={!!match}
+            columns={columns}
+            rows={rows}
+            colorOf={colorOf}
+            accent={color ? CHART_SINGLE_COLORS[color].color : colors[start % colors.length]}
+            onSelectLabel={onSelectLabel}
+          />
+        </div>
+      </ChartPanel>
+      {/* Over the header's corner, not beside the title, so the title keeps its full width. */}
+      {actions && <div className="absolute top-2.5 right-3">{actions}</div>}
+    </div>
   )
 }
 

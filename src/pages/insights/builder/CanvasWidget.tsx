@@ -8,8 +8,9 @@ import { usesSingleColor, type CanvasItem } from '../../../data/widgets'
 import { formatNumber } from '../../../lib/format'
 import { chartHighlight, type CrossHighlight } from './crossHighlight'
 import { dashboardRowFilters } from './dashboardFilters'
-import { GraphActionsMenu, type GraphViewActions, type WidgetActions } from './GraphActionsMenu'
+import type { GraphViewActions, WidgetActions } from './GraphActionsMenu'
 import { GraphFilterBadge } from './GraphFilterBadge'
+import { GraphToolbar } from './GraphToolbar'
 import { displaySubtitle, displayTitle, itemLabel, resolveObjectItem } from './canvasItems'
 import { labelsOf, objectGraphQuery, type GraphColors } from './graphColors'
 import { MediaWidget } from './MediaWidget'
@@ -19,13 +20,12 @@ import { SummaryText } from './SummaryText'
 import { TextWidget } from './TextWidget'
 import { useGraphView } from './useGraphView'
 import { sqlKey, tableKey } from './v2/datasets'
-import { WidgetComment } from './WidgetComment'
 import { WidgetFullScreen } from './WidgetFullScreen'
 
 type CanvasWidgetProps = {
   dashboard: Dashboard
   item: CanvasItem
-  /** Editing actions in the "…" menu; omitted in preview, which keeps only Download CSV. */
+  /** Editing actions in the "…" menu; omitted for viewers and in preview, who get no "…". */
   actions?: WidgetActions
   /** Shows an "Ask AI" button that sends a request about this graph to Tessera AI. */
   onComment?: (text: string) => void
@@ -44,11 +44,10 @@ type CanvasWidgetProps = {
 export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = false, selected = false, highlight = null, onHighlight, colors }: CanvasWidgetProps) {
   const label = displayTitle(item) || itemLabel(item)
   const graphView = useGraphView({ dashboard, item, label, readOnly })
-  const body = { dashboard, item, readOnly, selected, highlight, onHighlight, colors }
+  const body = { dashboard, item, readOnly, selected, highlight, onHighlight, colors, onComment }
   return (
     <div ref={graphView.cardRef} data-widget-id={item.id} className="group/widget relative h-full">
       <WidgetBody {...body} actions={actions} viewFor={graphView.viewFor} />
-      {onComment && <WidgetComment label={itemLabel(item)} onSubmit={onComment} />}
       {graphView.fullScreenHost && (
         <WidgetFullScreen
           label={label}
@@ -65,21 +64,21 @@ export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = f
 }
 
 type WidgetBodyProps = Required<Pick<CanvasWidgetProps, 'dashboard' | 'item' | 'readOnly' | 'selected' | 'highlight'>> &
-  Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors'> & { viewFor: (columns: string[], rows: DataCell[][]) => GraphViewActions }
+  Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors' | 'onComment'> & { viewFor: (columns: string[], rows: DataCell[][]) => GraphViewActions }
 
-function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors }: WidgetBodyProps) {
+function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors, onComment }: WidgetBodyProps) {
   const previewPerson = usePreviewPerson()
   const title = displayTitle(item)
   const subtitle = displaySubtitle(item)
   const label = title || itemLabel(item)
-  const menu = (view?: GraphViewActions) => <GraphActionsMenu label={label} actions={actions} view={view} />
-  // Items without a chart header carry the menu in their top-right corner.
+  const toolbar = (view?: GraphViewActions) => <GraphToolbar label={label} actions={actions} view={view} onComment={onComment} />
+  // Items without a chart header carry the toolbar in their top-right corner.
   const withCornerMenu = (body: ReactNode, leading?: ReactNode) => (
     <>
       {body}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
         {leading}
-        {menu()}
+        {toolbar()}
       </div>
     </>
   )
@@ -111,7 +110,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           chart={item.chart}
           columns={columns}
           rows={result.rows}
-          actions={menu(viewFor(columns, result.rows))}
+          actions={toolbar(viewFor(columns, result.rows))}
           colorKeys={colors?.colorKeys ?? [...new Set([...field.values, ...labelsOf(graphResult(rows, field.key, objectGraphQuery(item)))])]}
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}
@@ -142,7 +141,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           chart={item.chart}
           columns={result.columns}
           rows={result.rows}
-          actions={menu(viewFor(result.columns, result.rows))}
+          actions={toolbar(viewFor(result.columns, result.rows))}
           colorKeys={colors?.colorKeys ?? labelsOf(graphResult(rows, undefined, item.query))}
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}

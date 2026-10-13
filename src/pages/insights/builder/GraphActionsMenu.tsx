@@ -1,5 +1,4 @@
 import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Rows3, Trash2, Waypoints } from 'lucide-react'
-import { cn } from '../../../lib/cn'
 import { Menu, type MenuEntry } from '../../../ui/Menu'
 
 export type WidgetActions = {
@@ -33,34 +32,27 @@ type GraphActionsMenuProps = {
   /** Owners and editors only. */
   actions?: WidgetActions
   view?: GraphViewActions
-  className?: string
+  /** Narrow cards drop the full screen, copy link and download buttons, so the menu carries them instead. */
+  viewInMenu?: boolean
 }
 
+/** Icon buttons in a canvas item's top-right toolbar. */
+export const graphToolButtonClass =
+  'flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-faint)] hover:bg-[var(--dash-canvas)] hover:text-[var(--dash-fg)] data-popover-open:bg-[var(--dash-canvas)] data-popover-open:text-[var(--dash-fg)]'
+
 /** The "…" on a canvas item. Editing actions also have shortcuts: ⌘C / ⌘V duplicates, ⌘ Delete removes. */
-export function GraphActionsMenu({ label, actions, view, className }: GraphActionsMenuProps) {
-  const items = menuItems(actions, view)
+export function GraphActionsMenu({ label, actions, view, viewInMenu = false }: GraphActionsMenuProps) {
+  const items = menuItems(actions, view, viewInMenu)
   if (items.length === 0) return null
   return (
-    // Clicks stay here so opening the menu doesn't also select the graph underneath. Left out of PNG downloads.
-    <div data-capture-ignore onClick={(event) => event.stopPropagation()} className={className}>
-      <Menu
-        items={items}
-        trigger={({ open, toggle }) => (
-          <button
-            type="button"
-            aria-label={`Actions for ${label}`}
-            data-popover-open={open || undefined}
-            onClick={toggle}
-            className={cn(
-              'flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-faint)] transition-opacity hover:bg-[var(--dash-canvas)] hover:text-[var(--dash-fg)]',
-              open || view?.fullScreen.open ? 'opacity-100' : 'opacity-0 group-hover/widget:opacity-100 focus-visible:opacity-100 in-data-selected:opacity-100',
-            )}
-          >
-            <MoreHorizontal className="size-4" />
-          </button>
-        )}
-      />
-    </div>
+    <Menu
+      items={items}
+      trigger={({ open, toggle }) => (
+        <button type="button" aria-label={`Actions for ${label}`} title="More actions" data-popover-open={open || undefined} onClick={toggle} className={graphToolButtonClass}>
+          <MoreHorizontal className="size-4" />
+        </button>
+      )}
+    />
   )
 }
 
@@ -76,35 +68,38 @@ function joinGroups(groups: MenuEntry[][]): MenuEntry[] {
   return groups.filter((group) => group.length > 0).flatMap((group, index) => (index ? [{ type: 'separator' } as const, ...group] : group))
 }
 
-function viewGroups(view: GraphViewActions | undefined): { opening: MenuEntry[]; data: MenuEntry[] } {
-  if (!view) return { opening: [], data: [] }
-  const { fullScreen, onCopyLink, onDownloadPng, onDownloadCsv, onViewLineage, dataset } = view
-  const download: MenuEntry = {
-    type: 'submenu',
-    label: 'Download',
-    Icon: Download,
-    items: [
-      { label: 'Download CSV', onSelect: onDownloadCsv },
-      { label: 'Download PNG', onSelect: onDownloadPng },
-    ],
-  }
-  return {
-    opening: [
-      fullScreen.open
-        ? { label: 'Exit full screen', Icon: Minimize2, onSelect: fullScreen.onToggle }
-        : { label: 'View full screen', Icon: Maximize2, onSelect: fullScreen.onToggle },
-      { label: 'Copy link', Icon: Link2, onSelect: onCopyLink },
-      download,
-    ],
-    data: [
-      ...(onViewLineage ? [{ label: 'View lineage', Icon: Waypoints, onSelect: onViewLineage }] : []),
-      ...(dataset ? [{ label: `View dataset: ${dataset.label}`, Icon: Database, onSelect: dataset.onOpen }] : []),
-    ],
-  }
+function viewGroup(view: GraphViewActions | undefined): MenuEntry[] {
+  if (!view) return []
+  const { fullScreen, onCopyLink, onDownloadCsv, onDownloadPng } = view
+  return [
+    fullScreen.open
+      ? { label: 'Exit full screen', Icon: Minimize2, onSelect: fullScreen.onToggle }
+      : { label: 'View full screen', Icon: Maximize2, onSelect: fullScreen.onToggle },
+    { label: 'Copy link', Icon: Link2, onSelect: onCopyLink },
+    {
+      type: 'submenu',
+      label: 'Download',
+      Icon: Download,
+      items: [
+        { label: 'Download CSV', onSelect: onDownloadCsv },
+        { label: 'Download PNG', onSelect: onDownloadPng },
+      ],
+    },
+  ]
 }
 
-function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined): MenuEntry[] {
-  const { opening, data } = viewGroups(view)
+function dataGroup(view: GraphViewActions | undefined): MenuEntry[] {
+  if (!view) return []
+  const { onViewLineage, dataset } = view
+  return [
+    ...(onViewLineage ? [{ label: 'View lineage', Icon: Waypoints, onSelect: onViewLineage }] : []),
+    ...(dataset ? [{ label: `View dataset: ${dataset.label}`, Icon: Database, onSelect: dataset.onOpen }] : []),
+  ]
+}
+
+function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined, viewInMenu: boolean): MenuEntry[] {
+  const opening = viewInMenu ? viewGroup(view) : []
+  const data = dataGroup(view)
   if (!actions) return joinGroups([opening, data])
   const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove } = actions
   const editing: MenuEntry[] = [
