@@ -104,3 +104,9 @@ export function graphsColumn(item: CanvasItem, column: string) {
   if (item.source === 'object') return item.fieldKey === column
   return item.source === 'sql' && item.query?.groupBy === column
 }
+
+/** The dataset's groupable columns, each with whether a graph on the dashboard already groups by it. */
+export function datasetGraphColumns(dataset: Dataset, dashboard: Dashboard) {
+  const graphs = datasetUsage(dashboard.widgets ?? [], dataset.key)
+  return graphColumns(dataset, datasetResult(dataset, dashboard)).map((column) => ({ ...column, graphed: graphs.some((item) => graphsColumn(item, column.key)) }))
+}

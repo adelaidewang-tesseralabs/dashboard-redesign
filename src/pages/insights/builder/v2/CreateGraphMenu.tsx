@@ -23,7 +23,7 @@ export function CreateGraphMenu({ columns, usedIn, disabled = false, variant = '
       return { label: `by ${column.label}`, active: used, disabled: used, onSelect: () => onPick(column) }
     }),
     ...(columns.length ? [{ type: 'separator' as const }] : []),
-    { label: 'Ask Tessera AI', Icon: Sparkles, onSelect: onAskAi },
+    { label: 'Ask AI', Icon: Sparkles, onSelect: onAskAi },
   ]
   return (
     <Menu

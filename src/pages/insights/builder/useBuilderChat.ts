@@ -11,13 +11,13 @@ const THINKING_MS = 1400
 
 /** What the assistant does with a prompt: graphs to add, sources to attach first, and the reply. */
 export type ChatPlan = { items: CanvasItem[]; reply: string; attach?: DashboardSource[]; sources?: ChatSource[]; choices?: ChatChoice[] }
-/** Must be stable (module-level) — it is an effect dependency. */
-export type ChatPlanner = (prompt: string, dashboard: Dashboard) => ChatPlan
+/** Must be stable (module-level) — it is an effect dependency. `datasetKey` asks for graphs from that dataset. */
+export type ChatPlanner = (prompt: string, dashboard: Dashboard, datasetKey?: string) => ChatPlan
 
 const planFromInsights: ChatPlanner = (prompt, dashboard) => planWidgets(prompt, dashboard.widgets ?? [])
 
 /** `targetId` scopes the prompt to one graph: the assistant edits it instead of adding graphs. */
-type PendingPrompt = { text: string; targetId?: string }
+type PendingPrompt = { text: string; targetId?: string; datasetKey?: string }
 
 /** Tessera AI chat for a builder: sends a prompt, "thinks", then adds or edits graphs and replies. */
 export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = planFromInsights) {
@@ -38,19 +38,19 @@ export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = plan
         if (edit.item) updateWidget(dashboard.id, edit.item)
         reply({ text: edit.reply })
       } else {
-        const { items, reply: text, attach, sources, choices } = planner(pending.text, dashboard)
+        const { items, reply: text, attach, sources, choices } = planner(pending.text, dashboard, pending.datasetKey)
         if (attach?.length) addSources(dashboard.id, attach)
         if (items.length) addWidgets(dashboard.id, items)
-        reply({ text, sources, choices })
+        reply({ text, sources, choices, graphIds: items.length ? items.map((item) => item.id) : undefined })
       }
       setPending(null)
     }, THINKING_MS)
     return () => window.clearTimeout(timer)
   }, [pending, dashboard, planner, addWidgets, addSources, updateWidget])
 
-  const send = (text: string, target?: CanvasItem) => {
+  const send = (text: string, target?: CanvasItem, datasetKey?: string) => {
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'user', text, target: target && itemLabel(target) }])
-    setPending({ text, targetId: target?.id })
+    setPending({ text, targetId: target?.id, datasetKey })
     setChatOpen(true)
   }
 

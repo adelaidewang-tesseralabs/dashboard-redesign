@@ -3,7 +3,7 @@ import { cn } from '../../../../lib/cn'
 import type { SidePanelLayer } from './useV3SidePanel'
 
 const META = {
-  chat: { label: 'Ask AI', title: 'Ask Tessera AI about this widget', Icon: Sparkles },
+  chat: { label: 'Ask AI', title: 'Ask AI about this widget', Icon: Sparkles },
   editor: { label: 'Settings', title: 'Back to widget settings', Icon: SlidersHorizontal },
 } as const
 

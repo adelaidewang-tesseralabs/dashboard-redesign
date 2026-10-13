@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { LoaderCircle, MessageSquare, MousePointer2, Sparkles, X } from 'lucide-react'
+import { LayoutDashboard, LoaderCircle, MessageSquare, MousePointer2, Sparkles, X } from 'lucide-react'
 import type { SourceOrigin } from '../../../data/dataSources'
 import { cn } from '../../../lib/cn'
 import { ChatComposer } from './ChatComposer'
@@ -12,11 +12,28 @@ export type ChatSource = { label: string; origin: SourceOrigin; table?: string }
 /** A suggested answer to a clarifying question; picking it sends `prompt`. */
 export type ChatChoice = { label: string; detail: string; prompt: string }
 
-/** `target` names the graph a user message was about. */
-export type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string; sources?: ChatSource[]; choices?: ChatChoice[]; target?: string }
+/** `target` names the graph a user message was about; `graphIds` are the graphs a reply added. */
+export type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string; sources?: ChatSource[]; choices?: ChatChoice[]; target?: string; graphIds?: string[] }
 
-/** The graph the next message is about, with a few edits to suggest for it. */
-export type ChatContext = { label: string; suggestions: string[]; onClear: () => void }
+/** The graph the next message is about (or, from the Data tab, the dataset new graphs come from), with prompts to suggest. */
+export type ChatContext = { label: string; suggestions: string[]; onClear: () => void; kind?: 'graph' | 'dataset' }
+
+const CONTEXT_COPY = {
+  graph: {
+    empty: (label: string) => `Tell me what to change on ${label}, or comment on any graph on the canvas.`,
+    chip: 'Editing',
+    clear: 'Stop editing this graph',
+    placeholder: 'Ask for a change to this graph',
+    thinking: 'Updating the graph…',
+  },
+  dataset: {
+    empty: (label: string) => `Describe the graphs you want from ${label}.`,
+    chip: 'Using',
+    clear: 'Stop using this dataset',
+    placeholder: 'Ask for a graph from this dataset',
+    thinking: 'Building graphs…',
+  },
+}
 
 type ChatPanelProps = {
   messages: ChatMessage[]
@@ -32,10 +49,13 @@ type ChatPanelProps = {
   headerExtra?: ReactNode
   /** Fill a parent column instead of being a standalone aside. */
   embedded?: boolean
+  /** Off the canvas: replies that added graphs link to them. */
+  onViewGraph?: (itemId: string) => void
 }
 
-export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSource, resize, context, headerExtra, embedded = false }: ChatPanelProps) {
+export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSource, resize, context, headerExtra, embedded = false, onViewGraph }: ChatPanelProps) {
   const endRef = useRef<HTMLDivElement>(null)
+  const copy = context && CONTEXT_COPY[context.kind ?? 'graph']
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -44,7 +64,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
   const Root = embedded ? 'div' : 'aside'
   return (
     <Root
-      aria-label="Tessera AI"
+      aria-label="Ask AI"
       style={!embedded && resize ? { width: resize.width } : undefined}
       className={cn(
         'relative flex flex-col bg-tlai-1',
@@ -55,7 +75,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
       {!embedded && resize && <PanelResizeHandle resize={resize} />}
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-4">
         <Sparkles className="size-4 text-tlai-mint" />
-        <span className="flex-1 text-sm font-medium text-white">Tessera AI</span>
+        <span className="flex-1 text-sm font-medium text-white">Ask AI</span>
         {headerExtra}
         <button
           type="button"
@@ -71,7 +91,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         {messages.length === 0 && (
           <p className="text-sm text-white/50">
-            {context ? `Tell me what to change on ${context.label}, or comment on any graph on the canvas.` : (intro ?? "Describe the graphs you want. I build them from this dashboard's data checks.")}
+            {context && copy ? copy.empty(context.label) : (intro ?? "Describe the graphs you want. I build them from this dashboard's data checks.")}
           </p>
         )}
         {messages.map((message) =>
@@ -90,6 +110,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
               <p className="text-sm text-white/80">{message.text}</p>
               {message.choices && <ChoiceList choices={message.choices} disabled={thinking} onPick={onSend} />}
               {message.sources && <SourceChips sources={message.sources} onOpen={onOpenSource} />}
+              {message.graphIds && onViewGraph && <ViewOnCanvas graphIds={message.graphIds} onView={onViewGraph} />}
             </AssistantRow>
           ),
         )}
@@ -97,7 +118,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
           <AssistantRow>
             <span className="flex items-center gap-2 text-sm text-white/50">
               <LoaderCircle className="size-3.5 animate-spin" />
-              {context ? 'Updating the graph…' : 'Building graphs…'}
+              {copy?.thinking ?? 'Building graphs…'}
             </span>
           </AssistantRow>
         )}
@@ -105,19 +126,16 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 p-3">
-        {context && <ContextBar context={context} disabled={thinking} onPick={onSend} />}
-        <ChatComposer
-          onSubmit={onSend}
-          disabled={thinking}
-          autoFocus
-          placeholder={context ? 'Ask for a change to this graph' : undefined}
-        />
+        {context && copy && <ContextBar context={context} chip={copy.chip} clearLabel={copy.clear} disabled={thinking} onPick={onSend} />}
+        <ChatComposer onSubmit={onSend} disabled={thinking} autoFocus placeholder={copy?.placeholder} />
       </div>
     </Root>
   )
 }
 
-function ContextBar({ context, disabled, onPick }: { context: ChatContext; disabled: boolean; onPick: (prompt: string) => void }) {
+type ContextBarProps = { context: ChatContext; chip: string; clearLabel: string; disabled: boolean; onPick: (prompt: string) => void }
+
+function ContextBar({ context, chip, clearLabel, disabled, onPick }: ContextBarProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5">
@@ -135,8 +153,10 @@ function ContextBar({ context, disabled, onPick }: { context: ChatContext; disab
       </div>
       <span className="flex h-6 w-fit max-w-full items-center gap-1.5 rounded-md bg-tlai-mint/10 pr-1 pl-2 text-xs text-tlai-mint">
         <MousePointer2 className="size-3 shrink-0" />
-        <span className="truncate">Editing {context.label}</span>
-        <button type="button" aria-label="Stop editing this graph" title="Stop editing this graph" onClick={context.onClear} className="cursor-pointer rounded p-0.5 hover:bg-tlai-mint/15">
+        <span className="truncate">
+          {chip} {context.label}
+        </span>
+        <button type="button" aria-label={clearLabel} title={clearLabel} onClick={context.onClear} className="cursor-pointer rounded p-0.5 hover:bg-tlai-mint/15">
           <X className="size-3" />
         </button>
       </span>
@@ -188,6 +208,21 @@ function SourceChips({ sources, onOpen }: { sources: ChatSource[]; onOpen?: (tab
         )
       })}
     </div>
+  )
+}
+
+function ViewOnCanvas({ graphIds, onView }: { graphIds: string[]; onView: (itemId: string) => void }) {
+  const [first] = graphIds
+  if (!first) return null
+  return (
+    <button
+      type="button"
+      onClick={() => onView(first)}
+      className="mt-2 flex h-7 cursor-pointer items-center gap-1 rounded-md border border-white/10 px-2 text-xs text-white/80 hover:bg-white/10 hover:text-white"
+    >
+      <LayoutDashboard className="size-3.5" />
+      View on canvas
+    </button>
   )
 }
 

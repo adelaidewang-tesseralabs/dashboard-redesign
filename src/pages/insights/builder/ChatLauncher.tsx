@@ -6,8 +6,8 @@ export function ChatLauncher({ visible, onOpen }: { visible: boolean; onOpen: ()
   return (
     <button
       type="button"
-      aria-label="Open Tessera AI"
-      title="Open Tessera AI"
+      aria-label="Ask AI"
+      title="Ask AI"
       tabIndex={visible ? 0 : -1}
       onClick={onOpen}
       className={cn(

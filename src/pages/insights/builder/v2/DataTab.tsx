@@ -49,7 +49,7 @@ type DataTabProps = {
   onOpenDataset: (key: string) => void;
   onEditAsSql: (dataset: Extract<Dataset, { kind: "table" }>) => void;
   onCreateGraph: (dataset: Dataset, column?: GraphColumn) => void;
-  /** Builder V6: Create graph lists columns to group by, plus Ask Tessera AI. */
+  /** Turns Create graph into a menu of columns to group by, plus Ask AI. */
   onAskAi?: () => void;
   onOpenWidget: (itemId: string) => void;
   /** Builder V3: drops the Catalog console, so the tab lists only added datasets and adds more through the production source menu. */
@@ -57,6 +57,10 @@ type DataTabProps = {
   /** Builder V6 turns this off: the catalog only previews and adds tables, and SQL datasets can't be edited. */
   sqlEditing?: boolean;
   transformDrafts: TransformDrafts;
+  /** Hides the dataset list or catalog column, e.g. while the AI chat needs the room. */
+  listCollapsed?: boolean;
+  /** A rail button was clicked while the list was collapsed. */
+  onShowList?: () => void;
 };
 
 /** Builder V2's Data tab: manage what the dashboard reads. Building stays on the canvas. */
@@ -80,8 +84,18 @@ export function DataTab(props: DataTabProps) {
     onAddSourceKind,
     sqlEditing = true,
     transformDrafts,
+    listCollapsed = false,
+    onShowList,
   } = props;
   const showCatalog = panel === "catalog" && !onAddSourceKind;
+  // Builder V3 has no catalog and no rail; it gets a dataset-list button only to bring a collapsed list back.
+  const railPanels = onAddSourceKind
+    ? PANELS.filter(({ value }) => value === "datasets")
+    : PANELS;
+  const pickPanel = (value: DataPanel) => {
+    onPanelChange(value);
+    if (listCollapsed) onShowList?.();
+  };
   const {
     renameSource,
     addSqlDataset,
@@ -141,25 +155,25 @@ export function DataTab(props: DataTabProps) {
 
   return (
     <div className="flex min-h-0 flex-1">
-      {!onAddSourceKind && (
+      {(!onAddSourceKind || listCollapsed) && (
         <div
           role="tablist"
           aria-label="Side panel"
           aria-orientation="vertical"
           className="flex w-10 shrink-0 flex-col items-center gap-1 border-r border-white/10 bg-tlai-1 pt-2"
         >
-          {PANELS.map(({ value, label, Icon }) => (
+          {railPanels.map(({ value, label, Icon }) => (
             <button
               key={value}
               type="button"
               role="tab"
-              aria-selected={panel === value}
+              aria-selected={panel === value && !listCollapsed}
               aria-label={label}
               title={label}
-              onClick={() => onPanelChange(value)}
+              onClick={() => pickPanel(value)}
               className={cn(
                 "flex size-7 cursor-pointer items-center justify-center rounded-md text-white/55 hover:bg-white/10 hover:text-white",
-                panel === value && "bg-white/10 text-white",
+                panel === value && !listCollapsed && "bg-white/10 text-white",
               )}
             >
               <Icon className="size-4" />
@@ -169,16 +183,18 @@ export function DataTab(props: DataTabProps) {
       )}
       {showCatalog ? (
         <>
-          <CatalogPanel
-            added={added}
-            activeTable={consoleTabs.active?.table?.name ?? null}
-            onAddTable={onAddTable}
-            onOpenTable={consoleTabs.openTable}
-            onNewSql={sqlEditing ? onNewSql : undefined}
-            onInsertColumn={
-              sqlEditing && consoleTabs.active ? consoleTabs.insert : undefined
-            }
-          />
+          {!listCollapsed && (
+            <CatalogPanel
+              added={added}
+              activeTable={consoleTabs.active?.table?.name ?? null}
+              onAddTable={onAddTable}
+              onOpenTable={consoleTabs.openTable}
+              onNewSql={sqlEditing ? onNewSql : undefined}
+              onInsertColumn={
+                sqlEditing && consoleTabs.active ? consoleTabs.insert : undefined
+              }
+            />
+          )}
           <CatalogConsole
             consoleTabs={consoleTabs}
             editable={sqlEditing}
@@ -190,19 +206,21 @@ export function DataTab(props: DataTabProps) {
         </>
       ) : (
         <>
-          <DatasetList
-            datasets={datasets}
-            widgets={widgets}
-            activeKey={active?.key ?? null}
-            unapplied={new Set(Object.keys(transformDrafts.drafts))}
-            onActivate={onActivate}
-            onRename={rename}
-            onDuplicate={duplicate}
-            onDownload={download}
-            onRemove={setRemoving}
-            onAddSource={() => onPanelChange("catalog")}
-            onAddSourceKind={onAddSourceKind}
-          />
+          {!listCollapsed && (
+            <DatasetList
+              datasets={datasets}
+              widgets={widgets}
+              activeKey={active?.key ?? null}
+              unapplied={new Set(Object.keys(transformDrafts.drafts))}
+              onActivate={onActivate}
+              onRename={rename}
+              onDuplicate={duplicate}
+              onDownload={download}
+              onRemove={setRemoving}
+              onAddSource={() => onPanelChange("catalog")}
+              onAddSourceKind={onAddSourceKind}
+            />
+          )}
           {active ? (
             <DatasetWorkspace
               key={active.key}

@@ -6,6 +6,7 @@ import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
+import { useCollapseNavWhile } from '../../../../nav/navSuppression'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
 import { useToast } from '../../../../ui/Toast'
@@ -31,7 +32,7 @@ import { BuilderViewSwitch, type BuilderView } from './BuilderViewSwitch'
 import { DashboardActions } from './DashboardActions'
 import { DatasetDataSection } from './DatasetDataSection'
 import { EditModeSwitch, type EditMode } from './EditModeSwitch'
-import { graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
+import { datasetGraphColumns, graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
 import { BackToDashboardPill } from './BackToDashboardPill'
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
@@ -90,6 +91,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [view, setView] = useState<BuilderView>('canvas')
   /** The graph "View dataset" came from, so the Data tab can offer a way back to it. */
   const [returnToId, setReturnToId] = useState<string | null>(null)
+  /** The user opened the dataset list again while the chat had it collapsed. */
+  const [listReopened, setListReopened] = useState(false)
+  /** The dataset whose "Using" chip the user cleared in the Data tab chat. */
+  const [contextClearedKey, setContextClearedKey] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [dataPanel, setDataPanel] = useState<DataPanel>('datasets')
   /** Who the preview shows the dashboard as; null when editing. */
@@ -211,11 +216,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     add(item)
     openWidget(item.id)
   }
-  const askAiFromData = () => {
-    changeView('canvas')
-    setSelectedId(null)
-    v3Panel.showChat()
-  }
+  const openChat = () => (productionFlow ? v3Panel.showChat() : chat.setChatOpen(true))
+  const closeDataChat = () => (productionFlow ? v3Panel.closeChat() : chat.setChatOpen(false))
   const newSql = () => {
     if (sourceDialogs) {
       setAddRequest({ kind: 'foundry', foundryMode: 'sql' })
@@ -296,6 +298,19 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       />
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage
+  const dataChatOpen = view === 'data' && !asViewer && !lineage && chat.chatOpen
+  const canvasChatOpen = showSettings && chat.chatOpen && (productionFlow || !(selected && editMode === 'manual'))
+  const chatShowing = dataChatOpen || canvasChatOpen
+  if (!chatShowing && listReopened) setListReopened(false)
+  const activeDataset = datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0]
+  const datasetOnScreen = dataPanel === 'datasets' || sourceDialogs
+  const chatDataset = datasetOnScreen && activeDataset?.key !== contextClearedKey ? activeDataset : undefined
+  const datasetSuggestions = (dataset: Dataset) =>
+    datasetGraphColumns(dataset, dashboard)
+      .filter((column) => !column.graphed)
+      .slice(0, 3)
+      .map((column) => `Graph by ${column.label}`)
+  useCollapseNavWhile(chatShowing)
   const viewDataset = (key: string, fromItemId: string) => {
     setDataPanel('datasets')
     openDataset(key)
@@ -309,7 +324,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   if (lineage && onLineageChange) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />
+        {lineage.kind !== 'graph' && <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />}
         <LineageView key={JSON.stringify(lineage)} dashboard={dashboard} target={lineage} onBack={() => onLineageChange(null)} />
         {leaveDialog}
       </div>
@@ -403,11 +418,13 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             onOpenDataset={showDataset}
             onEditAsSql={editAsSql}
             onCreateGraph={createGraph}
-            onAskAi={governed ? askAiFromData : undefined}
+            onAskAi={openChat}
             onOpenWidget={openWidget}
             onAddSourceKind={sourceDialogs ? requestSource : undefined}
             sqlEditing={!governed}
             transformDrafts={transformDrafts}
+            listCollapsed={chatShowing && !listReopened}
+            onShowList={() => setListReopened(true)}
           />
         )}
         {view === 'data' && returnToId && !asViewer && <BackToDashboardPill onBack={() => openWidget(returnToId)} />}
@@ -432,6 +449,20 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
           </BottomSettingsPanel>
         )}
       </div>
+
+      {dataChatOpen && (
+        <ChatPanel
+          messages={chat.messages}
+          thinking={chat.thinking}
+          onSend={(text) => chat.send(text, undefined, chatDataset?.key)}
+          onClose={closeDataChat}
+          intro="Describe the graphs you want. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
+          onOpenSource={(table) => showDataset(tableKey(table))}
+          resize={sidePanel}
+          context={chatDataset && { kind: 'dataset', label: chatDataset.label, suggestions: datasetSuggestions(chatDataset), onClear: () => setContextClearedKey(chatDataset.key) }}
+          onViewGraph={openWidget}
+        />
+      )}
 
       {sourceDialogs && (
         <AddDatasetDialogs

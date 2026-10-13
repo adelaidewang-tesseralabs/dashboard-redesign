@@ -71,8 +71,8 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
           />
           <button
             type="submit"
-            aria-label="Send to Tessera AI"
-            title="Send to Tessera AI"
+            aria-label="Send to AI"
+            title="Send to AI"
             disabled={!text.trim()}
             className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white text-black disabled:cursor-default disabled:opacity-40"
           >

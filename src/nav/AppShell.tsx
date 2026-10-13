@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { cn } from '../lib/cn'
 import { NavPanelContent } from './NavPanelContent'
 import { NavRail, RAIL_WIDTH } from './NavRail'
+import { NavSuppressionContext } from './navSuppression'
 import { PrototypeVersionToggle } from './PrototypeVersionToggle'
 import { useNavPanelState } from './useNavPanelState'
 
@@ -48,7 +49,9 @@ export function AppShell() {
           docked && 'rounded-l-none border-l-0',
         )}
       >
-        <Outlet />
+        <NavSuppressionContext value={nav.setSuppressed}>
+          <Outlet />
+        </NavSuppressionContext>
       </main>
       <PrototypeVersionToggle />
     </div>

@@ -28,7 +28,7 @@ export function StackedEditorPanel({ resize, chat, editor, front, split = false 
   return (
     <aside
       ref={asideRef}
-      aria-label={splitPanes ? 'Widget settings and Tessera AI' : editorOnTop ? 'Widget settings' : 'Tessera AI'}
+      aria-label={splitPanes ? 'Widget settings and Ask AI' : editorOnTop ? 'Widget settings' : 'Ask AI'}
       style={{ width: resize.width }}
       className="relative flex min-h-0 shrink-0 flex-col border-l border-white/10 bg-tlai-1"
     >

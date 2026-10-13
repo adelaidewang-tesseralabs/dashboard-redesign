@@ -74,7 +74,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
 
   return (
     <div role="toolbar" aria-label="Canvas tools" className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-tlai-3 p-1 shadow-lg shadow-black/60">
-      <Tool Icon={Sparkles} label="Tessera AI" active={chatOpen} onClick={onToggleChat} className="text-tlai-mint" />
+      <Tool Icon={Sparkles} label="Ask AI" active={chatOpen} onClick={onToggleChat} className="text-tlai-mint" />
       <Divider />
       {!fullScreen && (
         <>

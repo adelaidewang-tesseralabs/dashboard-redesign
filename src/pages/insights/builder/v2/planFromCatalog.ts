@@ -6,6 +6,7 @@ import type { ChatChoice, ChatSource } from '../ChatPanel'
 import { describe, matchObjects, planWidgets } from '../planWidgets'
 import { ORIGIN_META } from '../sourceKinds'
 import type { ChatPlan, ChatPlanner } from '../useBuilderChat'
+import { datasetGraphColumns, graphForColumn, listDatasets, type Dataset } from './datasets'
 
 /** Business terms per lake table — the stand-in for semantic search over table descriptions. Plurals match too. */
 const TABLE_TERMS: Record<string, string[]> = {
@@ -98,7 +99,22 @@ function askWhich(candidates: DataObject[], text: string): ChatPlan {
  * Builder V2 assistant: reads any source the tenant can access, not only what's attached.
  * Order: an explicit @table, then Mosaic objects, then the best catalog match, then Data Checks graphs.
  */
-export const planFromCatalog: ChatPlanner = (prompt, dashboard) => withAttached(plan(prompt, dashboard), dashboard)
+export const planFromCatalog: ChatPlanner = (prompt, dashboard, datasetKey) => {
+  const dataset = datasetKey && !mentionedTable(prompt) ? listDatasets(dashboard).find((entry) => entry.key === datasetKey) : undefined
+  return dataset ? planForDataset(prompt.toLowerCase(), dataset, dashboard) : withAttached(plan(prompt, dashboard), dashboard)
+}
+
+/** Asked from the Data tab with a dataset open: the column named after "by", else the first one without a graph yet. */
+function planForDataset(text: string, dataset: Dataset, dashboard: Dashboard): ChatPlan {
+  const columns = datasetGraphColumns(dataset, dashboard)
+  const requested = columns.find((column) => text.includes(`by ${column.label.toLowerCase()}`) || text.includes(`by ${column.key.toLowerCase()}`))
+  const column = requested ?? columns.find((entry) => !entry.graphed)
+  if (!column) return { items: [], reply: columns.length ? `Every column of ${dataset.label} already has a graph.` : `${dataset.label} has no column to group a graph by.` }
+  const item = graphForColumn(dataset, column)
+  if (column.graphed) return { items: [], reply: `The dashboard already shows ${item.title}.` }
+  const fallback = !requested && /\bby \w/.test(text) ? ` It has no column like that, so I grouped by ${column.label}.` : ''
+  return { items: [item], reply: `Added ${item.title}.${fallback}` }
+}
 
 function plan(prompt: string, dashboard: Dashboard): ChatPlan {
   const text = prompt.toLowerCase()

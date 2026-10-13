@@ -26,6 +26,9 @@ export function useNavPanelState() {
   const [navCollapsed, setNavCollapsedState] = useState(readCollapsed)
   const [openL1, setOpenL1] = useState<string | null>(null)
   const [hoverL1, setHoverL1] = useState<string | null>(null)
+  /** A page asked for the room (the builder's AI chat); clicking an L1 opens the panel anyway until it lets go. */
+  const [suppressed, setSuppressedState] = useState(false)
+  const [reopened, setReopened] = useState(false)
   const timer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function useNavPanelState() {
 
   const panelL1Id = openL1 ?? activeNav.l1Id
   const panelL1 = NAV_CONFIG.find((l1) => l1.id === panelL1Id && l1.l2s.length > 0)
-  const docked = !navCollapsed && panelL1 != null
+  const docked = !navCollapsed && (!suppressed || reopened) && panelL1 != null
   const floatingL1 = docked ? undefined : NAV_CONFIG.find((l1) => l1.id === hoverL1)
 
   const clearTimer = () => window.clearTimeout(timer.current)
@@ -76,7 +79,13 @@ export function useNavPanelState() {
     }
     setOpenL1(l1Id === activeNav.l1Id ? null : l1Id)
     setNavCollapsed(false)
+    if (suppressed) setReopened(true)
   }
+
+  const setSuppressed = useCallback((next: boolean) => {
+    setSuppressedState(next)
+    if (!next) setReopened(false)
+  }, [])
 
   return {
     activeNav,
@@ -90,5 +99,6 @@ export function useNavPanelState() {
     onPanelLeave: scheduleClose,
     clearHover,
     collapse: () => setNavCollapsed(true),
+    setSuppressed,
   }
 }

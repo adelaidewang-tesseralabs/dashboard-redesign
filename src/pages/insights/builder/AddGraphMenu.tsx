@@ -153,7 +153,7 @@ export function AddGraphMenu(props: AddGraphMenuProps) {
                   <div className="my-1 h-px bg-white/10" />
                   <ActionRow
                     icon={<Sparkles className="size-4 text-tlai-mint" />}
-                    label="Ask Tessera AI"
+                    label="Ask AI"
                     onHover={() => setSubmenu(null)}
                     onSelect={() => select(onAskAi)}
                   />

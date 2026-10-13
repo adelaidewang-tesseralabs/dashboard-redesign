@@ -30,7 +30,7 @@ export function ChatComposer({ onSubmit, disabled = false, autoFocus = false, pl
 
   return (
     <form
-      aria-label="Message Tessera AI"
+      aria-label="Message AI"
       onSubmit={(event) => {
         event.preventDefault()
         submit()

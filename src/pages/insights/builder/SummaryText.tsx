@@ -13,7 +13,7 @@ type SummaryTextProps = {
   selected: boolean
 }
 
-const NO_GRAPHS = 'Add graphs to this page and Tessera AI will summarize what they show.'
+const NO_GRAPHS = 'Add graphs to this page and AI will summarize what they show.'
 
 /** A page summary by Tessera AI. It rewrites itself as the graphs change until someone edits it; then it asks first. */
 export function SummaryText({ dashboard, item, title, readOnly, selected }: SummaryTextProps) {

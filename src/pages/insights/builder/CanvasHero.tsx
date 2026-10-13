@@ -55,7 +55,7 @@ export function CanvasHero({ onPrompt, sources, onAdd, onAddSource, onOpenData }
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-6 px-6 pt-10 pb-36">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h2 className="text-2xl font-semibold text-[var(--dash-fg)]">Create a dashboard with Tessera AI</h2>
+        <h2 className="text-2xl font-semibold text-[var(--dash-fg)]">Create a dashboard with AI</h2>
         <p className="max-w-sm text-sm text-[var(--dash-muted)]">
           {onOpenData ? 'Describe the insights you want, or start from your data.' : 'Describe the insights you want, pick data, or bring your own from Foundry.'}
         </p>
