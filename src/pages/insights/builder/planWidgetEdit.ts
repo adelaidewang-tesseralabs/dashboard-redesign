@@ -1,4 +1,4 @@
-import { isGraph, usesColor, usesSingleColor, type ChartStyle, type CanvasItem, type GraphItem } from '../../../data/widgets'
+import { isGraph, showsLegend, usesColor, usesLegend, usesSingleColor, type ChartStyle, type CanvasItem, type GraphItem } from '../../../data/widgets'
 import { CHART_COLOR_IDS, CHART_PALETTES, CHART_SINGLE_COLORS, resolvePalette, type ChartColor, type ChartPalette } from '../../../lib/colors'
 import { itemLabel } from './canvasItems'
 import { CHART_STYLE_META } from './chartStyles'
@@ -94,6 +94,19 @@ function planSingleColorEdit(item: GraphItem, name: string, named: ChartColor | 
   return { item: { ...item, color }, reply: directed ? reply : `${reply} ${COLOR_HINT}` }
 }
 
+const LEGEND_REQUEST = /\b(legends?|colou?r key)\b/
+const LEGEND_OFF = /\b(hide|remove|turn off|switch off|no|not|don'?t|without|drop|get rid of)\b/
+
+function planLegendEdit(text: string, item: GraphItem, name: string): WidgetEditPlan | undefined {
+  if (!LEGEND_REQUEST.test(text)) return undefined
+  if (!usesLegend(item.chart)) {
+    return { reply: `${CHART_STYLE_META[item.chart].label} graphs don't have a legend. Switch ${name} to a bar or pie chart first.` }
+  }
+  const legend = !LEGEND_OFF.test(text)
+  if (legend === showsLegend(item)) return { reply: legend ? `${name} already shows its legend.` : `${name} has no legend showing.` }
+  return { item: { ...item, legend }, reply: legend ? `Added a legend under ${name}.` : `Hid the legend on ${name}.` }
+}
+
 /** Up to three edits worth suggesting for this graph — enough to show what's possible without a menu of options. */
 export function widgetSuggestions(item: CanvasItem): string[] {
   const description = item.showDescription ? 'Rename the title' : 'Add a short description'
@@ -105,7 +118,7 @@ export function widgetSuggestions(item: CanvasItem): string[] {
   return [...suggestions, 'Only show the top 5', description].slice(0, 3)
 }
 
-/** Interprets a request to change one graph: its style, colors, title, description, sort or top N. */
+/** Interprets a request to change one graph: its style, colors, legend, title, description, sort or top N. */
 export function planWidgetEdit(prompt: string, item: CanvasItem): WidgetEditPlan {
   const text = prompt.toLowerCase()
   const name = itemLabel(item)
@@ -130,6 +143,10 @@ export function planWidgetEdit(prompt: string, item: CanvasItem): WidgetEditPlan
 
   if (item.source === 'media') return { reply: `I can change ${name}'s title or description. Replace the file from its settings panel.` }
   if (item.source === 'text') return { reply: 'I can change the block’s title or description. Select the block to edit its text, and use the Textbox settings for background, border and alignment.' }
+
+  // Before chart styles: "show the legend on the pie chart" names the current style without asking to change it.
+  const legendEdit = planLegendEdit(text, item, name)
+  if (legendEdit) return legendEdit
 
   // Before chart styles: "change the pie chart's colors" names the current style without asking to change it.
   const colorEdit = planColorEdit(text, item, name)
@@ -160,5 +177,5 @@ export function planWidgetEdit(prompt: string, item: CanvasItem): WidgetEditPlan
     return { item: { ...item, query: { ...item.query, sort: { by, direction } } }, reply: by === 'label' ? 'Sorted alphabetically.' : `Sorted by value, ${direction === 'desc' ? 'largest' : 'smallest'} first.` }
   }
 
-  return { reply: `I can change ${name}'s chart style, colors, title, description, sort order, or limit it to the top N. What would you like?` }
+  return { reply: `I can change ${name}'s chart style, colors, legend, title, description, sort order, or limit it to the top N. What would you like?` }
 }
