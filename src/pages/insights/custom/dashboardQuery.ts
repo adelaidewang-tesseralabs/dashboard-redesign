@@ -1,5 +1,5 @@
 import { roleOf } from '../../../data/access'
-import { CURRENT_USER, WORKSTREAMS, type Dashboard } from '../../../data/dashboards'
+import { CURRENT_USER, workstreamNames, type Dashboard } from '../../../data/dashboards'
 import type { FilterField, FilterValues } from '../../../ui/FilterBuilder'
 
 export type SortField = 'updated' | 'name' | 'score'
@@ -42,7 +42,7 @@ export function buildFilterFields(dashboards: Dashboard[]): FilterField[] {
       label: 'Owner',
       options: owners.map((email) => ({ value: email, label: email === CURRENT_USER ? `${email} (you)` : email })),
     },
-    { key: 'workstream', label: 'Workstream', options: WORKSTREAMS.map((name) => ({ value: name, label: name })) },
+    { key: 'workstream', label: 'Workstream', options: workstreamNames(dashboards).map((name) => ({ value: name, label: name })) },
     {
       key: 'quality',
       label: 'Quality',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Dashboard } from '../../../data/dashboards'
-import { WORKSTREAMS } from '../../../data/dashboards'
-import type { DashboardDraft } from '../../../data/DashboardsStore'
+import { workstreamNames } from '../../../data/dashboards'
+import { useDashboards, type DashboardDraft } from '../../../data/DashboardsStore'
 import { Button } from '../../../ui/Button'
 import { Dialog } from '../../../ui/Dialog'
 import { Select, type SelectOption } from '../../../ui/Select'
@@ -16,14 +16,12 @@ type DashboardFormDialogProps = {
 const fieldClass =
   'h-9 w-full rounded-lg border border-white/10 bg-tlai-3 px-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/25'
 
-/** Known workstreams, plus a saved one that's no longer in the list so editing doesn't drop it. */
-const workstreamOptions = (current?: string): SelectOption[] => {
-  const names = current && !WORKSTREAMS.includes(current) ? [...WORKSTREAMS, current] : WORKSTREAMS
-  return [{ value: '', label: 'None' }, ...names.map((name) => ({ value: name, label: name }))]
-}
+/** Every known workstream, plus one just added here that no saved dashboard uses yet. */
+const workstreamOptions = (names: string[]): SelectOption[] => [{ value: '', label: 'None' }, ...names.map((name) => ({ value: name, label: name }))]
 
 /** Create / Edit dashboard modal — same fields as `CreateDashboardForm`. */
 export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: DashboardFormDialogProps) {
+  const { dashboards } = useDashboards()
   const [draft, setDraft] = useState<DashboardDraft>({ name: '', description: '', workstream: '' })
 
   useEffect(() => {
@@ -34,6 +32,8 @@ export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: Dash
       workstream: dashboard?.workstream ?? '',
     })
   }, [open, dashboard])
+
+  const workstreams = workstreamNames(dashboards, [draft.workstream])
 
   const editing = dashboard != null
   const canSubmit = draft.name.trim().length > 0
@@ -88,8 +88,11 @@ export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: Dash
             aria-label="Workstream"
             size="form"
             value={draft.workstream}
-            options={workstreamOptions(dashboard?.workstream)}
+            options={workstreamOptions(workstreams)}
             onChange={(workstream) => setDraft({ ...draft, workstream })}
+            searchable
+            searchPlaceholder="Search workstreams…"
+            onCreate={(workstream) => setDraft({ ...draft, workstream })}
           />
         </div>
         <button type="submit" hidden />

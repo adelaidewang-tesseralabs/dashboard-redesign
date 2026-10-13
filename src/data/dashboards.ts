@@ -129,6 +129,19 @@ export type Dashboard = {
 
 export const WORKSTREAMS = ['Vendor MDM', 'Olivier', 'SAP BP Migration', 'Finance Close']
 
+/**
+ * The built-in workstreams plus any a dashboard is tagged with. A workstream someone adds lives only on the
+ * dashboards using it, so it drops off the list once none does. Case-insensitive: the first spelling wins.
+ */
+export function workstreamNames(dashboards: { workstream?: string }[], extra: string[] = []): string[] {
+  const names = new Map<string, string>()
+  for (const name of [...WORKSTREAMS, ...dashboards.map((dashboard) => dashboard.workstream ?? ''), ...extra]) {
+    const key = name.trim().toLowerCase()
+    if (key && !names.has(key)) names.set(key, name.trim())
+  }
+  return [...names.values()]
+}
+
 export const CURRENT_USER = 'adelaide@tesseralabs.ai'
 
 /** Teammates to share with; the owner of each seeded dashboard is whoever last updated it. */
