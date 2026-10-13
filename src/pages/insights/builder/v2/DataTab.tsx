@@ -62,8 +62,8 @@ type DataTabProps = {
   /** A rail button was clicked while the list was collapsed. */
   onShowList?: () => void;
   onCollapseList?: () => void;
-  transformsOpen?: boolean;
-  onTransformsOpenChange?: (open: boolean) => void;
+  isTransformsOpen?: (datasetKey: string) => boolean;
+  onTransformsOpenChange?: (datasetKey: string, open: boolean) => void;
 };
 
 /** Builder V2's Data tab: manage what the dashboard reads. Building stays on the canvas. */
@@ -90,7 +90,7 @@ export function DataTab(props: DataTabProps) {
     listCollapsed = false,
     onShowList,
     onCollapseList,
-    transformsOpen,
+    isTransformsOpen,
     onTransformsOpenChange,
   } = props;
   const showCatalog = panel === "catalog" && !onAddSourceKind;
@@ -254,8 +254,11 @@ export function DataTab(props: DataTabProps) {
               onDownload={() => download(active)}
               onRemove={() => setRemoving(active)}
               onOpenWidget={onOpenWidget}
-              transformsOpen={transformsOpen}
-              onTransformsOpenChange={onTransformsOpenChange}
+              transformsOpen={isTransformsOpen?.(active.key)}
+              onTransformsOpenChange={
+                onTransformsOpenChange &&
+                ((open) => onTransformsOpenChange(active.key, open))
+              }
               onEditAsSql={
                 sqlEditing && active.kind === "table"
                   ? () => onEditAsSql(active)

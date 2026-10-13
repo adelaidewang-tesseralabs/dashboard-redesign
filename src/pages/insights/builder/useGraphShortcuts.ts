@@ -17,7 +17,7 @@ function ownsKeys(target: EventTarget | null) {
   return isTextField(target) || (target instanceof HTMLElement && !!target.closest('[role=dialog], [role=menu]'))
 }
 
-/** A selected text block is always being typed in, so removing it has to work from inside its own editor. */
+/** A text block being edited holds focus in its editor, so removing it has to work from inside that editor. */
 function inSelectedTextBlock(target: EventTarget | null) {
   return target instanceof HTMLElement && target.matches('[data-text-block]') && !!target.closest('[data-selected]')
 }

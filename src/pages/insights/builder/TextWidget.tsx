@@ -32,12 +32,30 @@ type TextWidgetProps = {
   onSaveText?: (markdown: string) => void;
   /** Sized by its text, and the editor grows as you type, instead of filling a grid cell. */
   fitContent?: boolean;
+  /** Selecting only selects, so the block can be dragged and resized; double-click or Enter edits. */
+  doubleClickToEdit?: boolean;
 };
 
 const SHORTCUTS = COMMAND_GROUPS.flat().filter((entry) => entry.key);
 
+/** Blocks that should open straight into the editor when they mount, i.e. ones just added from the toolbar. */
+const pendingEdits = new Set<string>();
+
+export function requestTextEdit(itemId: string) {
+  pendingEdits.add(itemId);
+}
+
+function isTyping(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
+      !!target.closest("[role=dialog], [role=menu]"))
+  );
+}
+
 /**
- * A text block: rendered Markdown that turns into an editor while selected.
+ * A text block: rendered Markdown that turns into an editor while selected (or, with `doubleClickToEdit`, on double-click).
  * The draft saves when the textarea loses focus (or on Escape), so one edit session is one undo step.
  */
 export function TextWidget({
@@ -50,9 +68,20 @@ export function TextWidget({
   footer,
   onSaveText,
   fitContent = false,
+  doubleClickToEdit = false,
 }: TextWidgetProps) {
   const { updateWidget } = useDashboards();
-  const editing = !readOnly && selected;
+  const [editRequested, setEditRequested] = useState(() =>
+    pendingEdits.delete(item.id),
+  );
+  const [wasSelected, setWasSelected] = useState(selected);
+  if (selected !== wasSelected) {
+    setWasSelected(selected);
+    if (!selected) setEditRequested(false);
+  }
+  const editing =
+    !readOnly && selected && (!doubleClickToEdit || editRequested);
+  const canStartEditing = doubleClickToEdit && !readOnly && selected && !editing;
   const [draft, setDraft] = useState(item.markdown);
   const [syncedMarkdown, setSyncedMarkdown] = useState(item.markdown);
   const [blockType, setBlockType] = useState<BlockType>("paragraph");
@@ -73,6 +102,17 @@ export function TextWidget({
     textarea.setSelectionRange(textarea.value.length, textarea.value.length);
     setBlockType(blockTypeAt(textarea.value, textarea.value.length));
   }, [editing]);
+
+  useEffect(() => {
+    if (!canStartEditing) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Enter" || isTyping(event.target)) return;
+      event.preventDefault();
+      setEditRequested(true);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canStartEditing]);
 
   const commit = () => {
     if (draft === item.markdown) return;
@@ -111,6 +151,11 @@ export function TextWidget({
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
       commit();
+      if (doubleClickToEdit) {
+        // Stays selected so it can be dragged; the canvas would otherwise deselect on Escape.
+        event.stopPropagation();
+        setEditRequested(false);
+      }
       return;
     }
     if (!(event.metaKey || event.ctrlKey)) return;
@@ -130,7 +175,7 @@ export function TextWidget({
       {/* Only the content clips: the toolbar's dropdowns open downward over it. */}
       <div
         className={cn(
-          "flex flex-col rounded-lg border",
+          "relative flex flex-col rounded-lg border",
           !fitContent && "h-full",
           style.border ? TONE_BORDER[style.border] : "border-transparent",
           style.background && TONE_BACKGROUND[style.background],
@@ -171,12 +216,17 @@ export function TextWidget({
             />
           ) : (
             <div
+              onDoubleClick={
+                doubleClickToEdit && !readOnly
+                  ? () => setEditRequested(true)
+                  : undefined
+              }
               className={cn(
                 "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3",
                 badge && "pt-1.5",
                 VERTICAL_ALIGN_CLASS[style.verticalAlign ?? "top"],
                 TEXT_ALIGN_CLASS[textAlign],
-                !readOnly && "cursor-text",
+                !readOnly && !doubleClickToEdit && "cursor-text",
               )}
             >
               {item.markdown.trim() ? (
@@ -184,13 +234,20 @@ export function TextWidget({
               ) : (
                 !readOnly && (
                   <p className="text-sm text-[var(--dash-faint)]">
-                    Click to add text
+                    {doubleClickToEdit
+                      ? "Double-click to add text"
+                      : "Click to add text"}
                   </p>
                 )
               )}
             </div>
           )}
         </div>
+        {canStartEditing && item.markdown.trim() && (
+          <span className="pointer-events-none absolute right-2 bottom-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-2 py-0.5 text-[11px] text-[var(--dash-muted)]">
+            Double-click to edit
+          </span>
+        )}
         {footer}
       </div>
     </div>

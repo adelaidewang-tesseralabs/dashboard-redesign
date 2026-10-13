@@ -17,6 +17,7 @@ import { DataIssuesBanner } from './DataIssuesBanner'
 import { FilterBar, type FilterKind } from './FilterBar'
 import { FullScreenContext, type CanvasFullScreen } from './fullScreen'
 import { summarizePage, summaryBasis } from './pageSummary'
+import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
 import { personalOverrides, usePersonalFilters, withPersonalValues } from './usePersonalView'
 import type { AddSourceKind } from './sourceKinds'
@@ -134,6 +135,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       onAddWidget={onAdd}
       onAddText={() => {
         const item = textItem()
+        requestTextEdit(item.id)
         onAdd(item)
         onSelect(item.id)
       }}

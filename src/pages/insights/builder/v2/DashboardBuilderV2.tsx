@@ -37,6 +37,7 @@ import { EditModeSwitch, type EditMode } from './EditModeSwitch'
 import { datasetGraphColumns, graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
 import { BackPill } from './BackPill'
 import { useDismissOnInteraction } from './useDismissOnInteraction'
+import { useTransformsOpen } from './useTransformsOpen'
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
 import { LayerSwitchButton } from './LayerSwitchButton'
@@ -96,8 +97,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [returnToId, setReturnToId] = useState<string | null>(null)
   /** The dataset a graph was just created from, so the canvas can offer a way back to it. */
   const [backToDatasetKey, setBackToDatasetKey] = useState<string | null>(null)
-  /** Kept here so the transforms panel is as the user left it after a trip to the canvas. */
-  const [transformsOpen, setTransformsOpen] = useState(true)
+  const transformsPanel = useTransformsOpen(dashboard.id)
   const [, setSearchParams] = useSearchParams()
   /** The user opened the dataset list again while the chat had it collapsed. */
   const [listReopened, setListReopened] = useState(false)
@@ -464,8 +464,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
               setListCollapsedByUser(false)
             }}
             onCollapseList={() => setListCollapsedByUser(true)}
-            transformsOpen={transformsOpen}
-            onTransformsOpenChange={setTransformsOpen}
+            isTransformsOpen={transformsPanel.isOpen}
+            onTransformsOpenChange={transformsPanel.setOpen}
           />
         )}
         {view === 'data' && returnToId && !asViewer && (

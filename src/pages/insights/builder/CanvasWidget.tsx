@@ -90,7 +90,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
     case 'text': {
       const { summary } = item
       if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && <PinnedMark />)
-      return withCornerMenu(<TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} />)
+      return withCornerMenu(<TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} doubleClickToEdit />)
     }
     case 'object': {
       const resolved = resolveObjectItem(item)
