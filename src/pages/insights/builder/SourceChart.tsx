@@ -49,10 +49,17 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
     const total = hasCounts ? rows.reduce((sum, row) => sum + Number(row[1]), 0) : rows.length
     const matched = match ? [...match.values.values()].reduce((sum, value) => sum + value, 0) : undefined
     return (
-      <div className={cn('relative grid h-full transition-opacity', dimmed && 'opacity-40')}>
-        <MetricCard label={matched === undefined ? title : `${title} · of ${formatNumber(total)}`} value={formatNumber(matched ?? total)} description={subtitle ?? source} />
-        {badge && <div className="absolute top-3 left-3 flex items-center">{badge}</div>}
-        {actions && <div className="absolute top-3 right-3 flex items-center gap-1">{actions}</div>}
+      <div className={cn('relative h-full transition-opacity', dimmed && 'opacity-40')}>
+        <MetricCard
+          fill
+          label={title}
+          subtitle={subtitle}
+          description={source}
+          badge={badge}
+          value={formatNumber(matched ?? total)}
+          note={matched === undefined ? undefined : `of ${formatNumber(total)}`}
+        />
+        {actions && <div className="absolute top-2.5 right-3">{actions}</div>}
       </div>
     )
   }
