@@ -59,12 +59,13 @@ export function SectionRow({ group, count, collapsed, onToggleCollapsed, onChang
             { type: 'separator' },
             { label: 'Remove section', Icon: Trash2, danger: true, onSelect: onRemove },
           ]}
-          trigger={({ toggle }) => (
+          trigger={({ open, toggle }) => (
             <button
               type="button"
               aria-label={`Section actions for ${group.name}`}
+              data-popover-open={open || undefined}
               onClick={toggle}
-              className="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-muted)] opacity-0 group-hover/section:opacity-100 hover:bg-[var(--dash-card)] hover:text-[var(--dash-fg)] focus-visible:opacity-100"
+              className="flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-muted)] opacity-0 group-hover/section:opacity-100 hover:bg-[var(--dash-card)] hover:text-[var(--dash-fg)] focus-visible:opacity-100 data-popover-open:bg-[var(--dash-card)] data-popover-open:opacity-100"
             >
               <MoreHorizontal className="size-4" />
             </button>

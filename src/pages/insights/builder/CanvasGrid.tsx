@@ -186,7 +186,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
           }}
         >
           {shownGroups.map((group) => (
-            <div key={group.id} className={cn(!readOnly && 'cursor-grab active:cursor-grabbing')}>
+            <div key={group.id} className={cn(!readOnly && 'cursor-grab active:cursor-grabbing', 'has-[[data-popover-open]]:z-20')}>
               <SectionRow
                 group={group}
                 count={members.get(group.id)?.length ?? 0}
