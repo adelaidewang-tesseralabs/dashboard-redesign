@@ -6,6 +6,7 @@ import { Button } from '../../../../ui/Button'
 import { Menu, type MenuItem } from '../../../../ui/Menu'
 import type { AddSourceKind } from '../sourceKinds'
 import { AddDatasetMenu } from './AddDatasetMenu'
+import { CollapseListButton } from './CollapseListButton'
 import { datasetIcon, datasetOriginLabel, datasetUsage, type Dataset } from './datasets'
 
 type DatasetListProps = {
@@ -22,11 +23,12 @@ type DatasetListProps = {
   onAddSource: () => void
   /** Builder V3: "Add dataset" opens the production source menu instead of calling `onAddSource`. */
   onAddSourceKind?: (kind: AddSourceKind) => void
+  onCollapse?: () => void
 }
 
 /** Left pane of the Data tab: every dataset the dashboard reads, in one list whatever its kind. */
 export function DatasetList(props: DatasetListProps) {
-  const { datasets, widgets, activeKey, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove, onAddSource, onAddSourceKind } = props
+  const { datasets, widgets, activeKey, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove, onAddSource, onAddSourceKind, onCollapse } = props
   const [renaming, setRenaming] = useState<string | null>(null)
   const addButton = (onClick: () => void) => (
     <Button variant="outline" size="xs" onClick={onClick}>
@@ -37,9 +39,10 @@ export function DatasetList(props: DatasetListProps) {
 
   return (
     <nav aria-label="Datasets" className="flex w-72 shrink-0 flex-col border-r border-white/10 bg-tlai-1">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/10 pr-2 pl-4">
-        <span className="text-sm font-medium text-white">Datasets</span>
+      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-white/10 pr-2 pl-4">
+        <span className="flex-1 text-sm font-medium text-white">Datasets</span>
         {onAddSourceKind ? <AddDatasetMenu onSelect={onAddSourceKind} trigger={({ toggle }) => addButton(toggle)} /> : addButton(onAddSource)}
+        {onCollapse && <CollapseListButton onClick={onCollapse} />}
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-2">
         {datasets.length === 0 && <p className="px-2 py-3 text-xs text-white/45">Nothing yet. Data you add here or from the canvas shows up in this list.</p>}

@@ -3,6 +3,7 @@ import { FilePlus2, Search, Upload } from 'lucide-react'
 import type { DataObject } from '../../../../data/dataSources'
 import { uploadTable } from '../../../../data/externalSources'
 import { cn } from '../../../../lib/cn'
+import { CollapseListButton } from './CollapseListButton'
 import { buildSourceCatalog, filterCatalog, UPLOADS_KEY } from './sourceCatalog'
 import { SourceTree } from './SourceTree'
 
@@ -17,10 +18,11 @@ type CatalogPanelProps = {
   /** Omitted when SQL authoring is off (builder V6). */
   onNewSql?: () => void
   onInsertColumn?: (name: string) => void
+  onCollapse?: () => void
 }
 
 /** The Data tab's Catalog view: browse every source the tenant can read, open tables in the console, or add them as datasets. */
-export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNewSql, onInsertColumn }: CatalogPanelProps) {
+export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNewSql, onInsertColumn, onCollapse }: CatalogPanelProps) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(() => new Set(['mosaic']))
   const [dragging, setDragging] = useState(false)
@@ -80,6 +82,7 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
             event.target.value = ''
           }}
         />
+        {onCollapse && <CollapseListButton onClick={onCollapse} />}
       </div>
       <div className="px-2 pt-2">
         <label className="flex h-8 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2 text-sm focus-within:border-white/30">

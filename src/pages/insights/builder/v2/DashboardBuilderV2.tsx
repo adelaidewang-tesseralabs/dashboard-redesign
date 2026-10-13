@@ -93,6 +93,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [returnToId, setReturnToId] = useState<string | null>(null)
   /** The user opened the dataset list again while the chat had it collapsed. */
   const [listReopened, setListReopened] = useState(false)
+  const [listCollapsedByUser, setListCollapsedByUser] = useState(false)
   /** The dataset whose "Using" chip the user cleared in the Data tab chat. */
   const [contextClearedKey, setContextClearedKey] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
@@ -423,8 +424,12 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             onAddSourceKind={sourceDialogs ? requestSource : undefined}
             sqlEditing={!governed}
             transformDrafts={transformDrafts}
-            listCollapsed={chatShowing && !listReopened}
-            onShowList={() => setListReopened(true)}
+            listCollapsed={listCollapsedByUser || (chatShowing && !listReopened)}
+            onShowList={() => {
+              setListReopened(true)
+              setListCollapsedByUser(false)
+            }}
+            onCollapseList={() => setListCollapsedByUser(true)}
           />
         )}
         {view === 'data' && returnToId && !asViewer && <BackToDashboardPill onBack={() => openWidget(returnToId)} />}

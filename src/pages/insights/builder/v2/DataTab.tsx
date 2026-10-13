@@ -61,6 +61,7 @@ type DataTabProps = {
   listCollapsed?: boolean;
   /** A rail button was clicked while the list was collapsed. */
   onShowList?: () => void;
+  onCollapseList?: () => void;
 };
 
 /** Builder V2's Data tab: manage what the dashboard reads. Building stays on the canvas. */
@@ -86,6 +87,7 @@ export function DataTab(props: DataTabProps) {
     transformDrafts,
     listCollapsed = false,
     onShowList,
+    onCollapseList,
   } = props;
   const showCatalog = panel === "catalog" && !onAddSourceKind;
   // Builder V3 has no catalog and no rail; it gets a dataset-list button only to bring a collapsed list back.
@@ -193,6 +195,7 @@ export function DataTab(props: DataTabProps) {
               onInsertColumn={
                 sqlEditing && consoleTabs.active ? consoleTabs.insert : undefined
               }
+              onCollapse={onCollapseList}
             />
           )}
           <CatalogConsole
@@ -219,6 +222,7 @@ export function DataTab(props: DataTabProps) {
               onRemove={setRemoving}
               onAddSource={() => onPanelChange("catalog")}
               onAddSourceKind={onAddSourceKind}
+              onCollapse={onCollapseList}
             />
           )}
           {active ? (
