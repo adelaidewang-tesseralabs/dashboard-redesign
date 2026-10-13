@@ -5,6 +5,7 @@ import { useDashboards } from '../../../data/DashboardsStore'
 import type { DataObject } from '../../../data/dataSources'
 import { isPageSummary, mediaItem, summaryItem, textItem, type CanvasItem } from '../../../data/widgets'
 import { useResolvedAppearance } from '../../../lib/appearance'
+import type { FixedFilterStyle } from '../../../lib/fixedFilterStyle'
 import { cn } from '../../../lib/cn'
 import { useToast } from '../../../ui/Toast'
 import { CanvasGrid } from './CanvasGrid'
@@ -61,11 +62,13 @@ type BuilderCanvasProps = {
   sections?: boolean
   /** Builder V6: Tessera AI can sum up each page in a text block. */
   summaries?: boolean
+  /** Builder V6: how fixed filters are set apart from the ones viewers change. */
+  fixedFilterStyle?: FixedFilterStyle
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, the floating toolbar, and the Tessera AI launcher. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -129,6 +132,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             onAddingChange={setAddingFilter}
             onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
             onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+            fixedStyle={fixedFilterStyle}
           />
           {empty && readOnly ? (
             <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>

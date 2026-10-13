@@ -1,11 +1,13 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import type { Dashboard, DashboardFilter, FieldRef } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
+import type { FixedFilterStyle } from '../../../lib/fixedFilterStyle'
 import { AddFilterPicker } from './AddFilterPicker'
 import { filterColumns, findFilterColumn, fixedValuesFor, linkedFields } from './dashboardFilters'
 import { FilterChip } from './FilterChip'
 import { FilterReachNote } from './FilterReachNote'
 import { FilterSettingsDialog } from './FilterSettingsDialog'
+import { FixedFilters } from './FixedFilters'
 import { LinkFieldDialog } from './LinkFieldDialog'
 
 /** `viewer` filters are controls people can change; `fixed` ones shape the graphs and stay hidden from viewers. */
@@ -20,11 +22,13 @@ type FilterBarProps = {
   onValuesChange: (filterId: string, values: string[]) => void
   /** Viewers only, when their values differ from the defaults. */
   onResetPersonal?: () => void
+  /** Builder V6: how fixed filters are set apart; other versions keep the plain labelled row. */
+  fixedStyle?: FixedFilterStyle
 }
 
 type Linking = { from: FieldRef; datasetKey: string }
 
-export function FilterBar({ dashboard, canEdit, adding, onAddingChange, onValuesChange, onResetPersonal }: FilterBarProps) {
+export function FilterBar({ dashboard, canEdit, adding, onAddingChange, onValuesChange, onResetPersonal, fixedStyle }: FilterBarProps) {
   const { dashboards, addFilter, updateFilter, removeFilter, addFieldLink } = useDashboards()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [linking, setLinking] = useState<Linking | null>(null)
@@ -36,12 +40,13 @@ export function FilterBar({ dashboard, canEdit, adding, onAddingChange, onValues
   const columns = filterColumns(dashboards.find((entry) => entry.id === dashboard.id) ?? dashboard)
   const editing = canEdit ? filters.find((filter) => filter.id === editingId) : undefined
 
-  const chip = (filter: DashboardFilter) => {
+  const chip = (filter: DashboardFilter, options?: Pick<ComponentProps<typeof FilterChip>, 'appearance' | 'trigger'>) => {
     const column = findFilterColumn(columns, filter)
     const cap = filter.fixed ? undefined : fixedValuesFor(dashboard, filter)
     return (
       <FilterChip
         key={filter.id}
+        {...options}
         filter={filter}
         column={column && cap ? { ...column, values: column.values.filter((value) => cap.includes(value)) } : column}
         readOnly={!canEdit && filter.locked}
@@ -62,9 +67,10 @@ export function FilterBar({ dashboard, canEdit, adding, onAddingChange, onValues
       />
     )
   }
-  const picker = (kind: FilterKind) => (
+  const picker = (kind: FilterKind, variant?: ComponentProps<typeof AddFilterPicker>['variant']) => (
     <AddFilterPicker
-      label={kind === 'fixed' ? 'Add fixed filter' : 'Add filter'}
+      variant={variant}
+      label={kind === 'fixed' ? (variant === 'link' ? 'Add' : 'Add fixed filter') : 'Add filter'}
       open={adding === kind}
       onOpenChange={(open) => onAddingChange(open ? kind : null)}
       columns={columns}
@@ -85,15 +91,18 @@ export function FilterBar({ dashboard, canEdit, adding, onAddingChange, onValues
 
   return (
     <div role="toolbar" aria-label="Page filters" className="flex flex-col gap-2 px-5 pt-5">
-      {(fixed.length > 0 || adding === 'fixed') && (
+      {(fixed.length > 0 || adding === 'fixed') && fixedStyle && (
+        <FixedFilters style={fixedStyle} filters={fixed} adding={adding === 'fixed'} chip={chip} picker={(variant) => picker('fixed', variant)} />
+      )}
+      {(fixed.length > 0 || adding === 'fixed') && !fixedStyle && (
         <FilterRow label="Fixed · viewers don't see these">
-          {fixed.map(chip)}
+          {fixed.map((filter) => chip(filter))}
           {picker('fixed')}
         </FilterRow>
       )}
       {(viewer.length > 0 || adding === 'viewer') && (
         <FilterRow label={canEdit ? 'Defaults for everyone' : undefined}>
-          {viewer.map(chip)}
+          {viewer.map((filter) => chip(filter))}
           {canEdit && picker('viewer')}
           {onResetPersonal && (
             <span className="ml-auto flex items-center gap-2 text-xs text-[var(--dash-muted)]">

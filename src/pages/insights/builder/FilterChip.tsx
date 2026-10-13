@@ -18,10 +18,16 @@ type FilterChipProps = {
   readOnly?: boolean
   /** Shown above the values, e.g. which graphs the filter reaches. */
   note?: ReactNode
+  /** `tinted`: a fixed filter drawn as setup rather than as a control viewers get. */
+  appearance?: 'default' | 'tinted'
+  /** Replaces the chip button, keeping the same values popover. */
+  trigger?: (props: { open: boolean; toggle: () => void }) => ReactNode
 }
 
 export const filterChipClass =
   'flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-[var(--dash-border)] bg-[var(--dash-card)] px-2.5 text-xs text-[var(--dash-fg)] hover:border-[var(--dash-faint)]'
+
+export const tintedChipClass = 'border-dashed border-amber-300/35 bg-amber-300/[0.07] text-amber-50 hover:border-amber-300/60'
 
 const footerButtonClass = 'cursor-pointer rounded px-1.5 py-1 text-xs text-white/70 hover:text-white disabled:cursor-default disabled:opacity-40'
 
@@ -32,7 +38,8 @@ function summary(filter: DashboardFilter) {
 }
 
 /** One dashboard filter: pick any of the values its dataset column contains — one or several, per its settings. */
-export function FilterChip({ filter, column, onValuesChange, onEdit, onRemove, readOnly = false, note }: FilterChipProps) {
+export function FilterChip({ filter, column, onValuesChange, onEdit, onRemove, readOnly = false, note, appearance = 'default', trigger }: FilterChipProps) {
+  const tinted = appearance === 'tinted'
   const single = filter.selection === 'single'
   const toggle = (value: string) => {
     if (filter.values.includes(value)) onValuesChange(filter.values.filter((entry) => entry !== value))
@@ -41,22 +48,25 @@ export function FilterChip({ filter, column, onValuesChange, onEdit, onRemove, r
 
   return (
     <Popover
-      trigger={({ open, toggle: toggleOpen }) => (
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={toggleOpen}
-          title={column ? `${column.datasetLabel} · ${column.label}` : "This filter's dataset is no longer available"}
-          className={cn(filterChipClass, !column && 'border-red-400/40')}
-        >
-          {!column && <TriangleAlert className="size-3.5 text-red-300" aria-hidden />}
-          {column && filter.fixed && <Pin className="size-3 text-[var(--dash-muted)]" aria-label="Fixed, hidden from viewers" />}
-          {column && filter.locked && !filter.fixed && <Lock className="size-3 text-[var(--dash-muted)]" aria-label="Locked for viewers" />}
-          <span className="text-[var(--dash-muted)]">{filter.label}:</span>
-          <span className="max-w-40 truncate font-medium">{column ? summary(filter) : 'Unavailable'}</span>
-          <ChevronDown className="size-3 text-[var(--dash-muted)]" aria-hidden />
-        </button>
-      )}
+      trigger={
+        trigger ??
+        (({ open, toggle: toggleOpen }) => (
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={toggleOpen}
+            title={column ? `${column.datasetLabel} · ${column.label}` : "This filter's dataset is no longer available"}
+            className={cn(filterChipClass, tinted && tintedChipClass, !column && 'border-red-400/40')}
+          >
+            {!column && <TriangleAlert className="size-3.5 text-red-300" aria-hidden />}
+            {column && filter.fixed && <Pin className={cn('size-3', tinted ? 'text-amber-300' : 'text-[var(--dash-muted)]')} aria-label="Fixed, hidden from viewers" />}
+            {column && filter.locked && !filter.fixed && <Lock className="size-3 text-[var(--dash-muted)]" aria-label="Locked for viewers" />}
+            <span className={tinted ? 'text-amber-100/70' : 'text-[var(--dash-muted)]'}>{filter.label}:</span>
+            <span className="max-w-40 truncate font-medium">{column ? summary(filter) : 'Unavailable'}</span>
+            {!tinted && <ChevronDown className="size-3 text-[var(--dash-muted)]" aria-hidden />}
+          </button>
+        ))
+      }
       contentClassName={cn(menuSurfaceClass, 'w-72 bg-tlai-3')}
     >
       {(close) => (

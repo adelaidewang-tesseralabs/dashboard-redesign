@@ -4,7 +4,7 @@ import type { DashboardFilter } from '../../../data/dashboards'
 import { cn } from '../../../lib/cn'
 import { menuGroupLabelClass, menuItemClass, menuSurfaceClass } from '../../../ui/menuStyles'
 import type { FilterColumn } from './dashboardFilters'
-import { filterChipClass } from './FilterChip'
+import { filterChipClass, tintedChipClass } from './FilterChip'
 
 type AddFilterPickerProps = {
   label?: string
@@ -13,10 +13,18 @@ type AddFilterPickerProps = {
   columns: FilterColumn[]
   existing: DashboardFilter[]
   onPick: (column: FilterColumn, allPages: boolean) => void
+  /** `link`: plain text, so it doesn't read as a filter control; `tinted`: matches tinted fixed chips. */
+  variant?: 'chip' | 'link' | 'tinted'
+}
+
+const TRIGGER_CLASSES = {
+  chip: cn(filterChipClass, 'border-dashed text-[var(--dash-muted)]'),
+  tinted: cn(filterChipClass, tintedChipClass, 'text-amber-100/70'),
+  link: 'flex h-7 cursor-pointer items-center gap-1 rounded px-1.5 text-xs text-[var(--dash-muted)] hover:text-[var(--dash-fg)]',
 }
 
 /** Filters can only be built on a dataset column already on the dashboard; controlled so the toolbar's filter tool can open it. */
-export function AddFilterPicker({ label = 'Add filter', open, onOpenChange, columns, existing, onPick }: AddFilterPickerProps) {
+export function AddFilterPicker({ label = 'Add filter', open, onOpenChange, columns, existing, onPick, variant = 'chip' }: AddFilterPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [allPages, setAllPages] = useState(false)
 
@@ -38,7 +46,7 @@ export function AddFilterPicker({ label = 'Add filter', open, onOpenChange, colu
 
   return (
     <div ref={rootRef} className="relative">
-      <button type="button" aria-expanded={open} onClick={() => onOpenChange(!open)} className={cn(filterChipClass, 'border-dashed text-[var(--dash-muted)]')}>
+      <button type="button" aria-expanded={open} onClick={() => onOpenChange(!open)} className={TRIGGER_CLASSES[variant]}>
         <Plus className="size-3.5" aria-hidden />
         {label}
       </button>

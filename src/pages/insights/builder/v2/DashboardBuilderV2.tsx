@@ -5,6 +5,7 @@ import { useDashboards } from '../../../../data/DashboardsStore'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
+import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
 import { useToast } from '../../../../ui/Toast'
@@ -130,6 +131,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   )
   const productionFlow = addDatasetFlow !== 'catalog'
   const governed = addDatasetFlow === 'governed'
+  const fixedFilterStyle = useFixedFilterStyle()
   const sourceDialogs = productionFlow && !governed
   const bottomSettings = productionFlow && settingsPlacement === 'bottom'
   const layeredSettings = settingsPlacement === 'side'
@@ -345,6 +347,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 dashboard={page}
                 sections={governed}
                 summaries={governed}
+                fixedFilterStyle={governed ? fixedFilterStyle : undefined}
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}
                 onSelect={selectWidget}

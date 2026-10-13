@@ -1,6 +1,7 @@
-import { ChevronDown, FlaskConical, UserRound } from 'lucide-react'
+import { ChevronDown, FlaskConical, Pin, UserRound } from 'lucide-react'
 import { BUILDER_VERSIONS, useBuilderVersion, type BuilderVersion } from '../lib/builderVersion'
 import { cn } from '../lib/cn'
+import { FIXED_FILTER_STYLE_LABELS, FIXED_FILTER_STYLES, setFixedFilterStyle, useFixedFilterStyle } from '../lib/fixedFilterStyle'
 import { ROLE_OVERRIDE_LABELS, ROLE_OVERRIDES, setRoleOverride, useRoleOverride } from '../lib/roleOverride'
 import { Menu } from '../ui/Menu'
 
@@ -15,17 +16,49 @@ const VERSION_LABELS: Record<BuilderVersion, string> = {
 
 /** Prototype-only control, always on screen, for comparing dashboard builder concepts. */
 export function PrototypeVersionToggle() {
+  const [version, setVersion] = useBuilderVersion()
   return (
     <div className="fixed top-3.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/15 bg-tlai-3/95 p-1 text-xs shadow-lg shadow-black/60 backdrop-blur">
-      <VersionMenu />
+      <VersionMenu version={version} setVersion={setVersion} />
+      {version === 'v6' && (
+        <>
+          <span className="mx-0.5 h-4 w-px bg-white/15" />
+          <FixedFilterStyleMenu />
+        </>
+      )}
       <span className="mx-0.5 h-4 w-px bg-white/15" />
       <RoleOverrideMenu />
     </div>
   )
 }
 
-function VersionMenu() {
-  const [version, setVersion] = useBuilderVersion()
+function FixedFilterStyleMenu() {
+  const style = useFixedFilterStyle()
+  return (
+    <Menu
+      align="start"
+      items={[
+        { type: 'label', label: 'Fixed filter style' },
+        ...FIXED_FILTER_STYLES.map((option) => ({ label: FIXED_FILTER_STYLE_LABELS[option], active: style === option, onSelect: () => setFixedFilterStyle(option) })),
+      ]}
+      trigger={({ toggle }) => (
+        <button
+          type="button"
+          aria-label="Fixed filter style"
+          title="Compare how fixed filters are told apart"
+          onClick={toggle}
+          className="flex h-6 cursor-pointer items-center gap-1 rounded-full px-2.5 text-white/70 hover:text-white"
+        >
+          <Pin className="size-3.5" />
+          Fixed · {FIXED_FILTER_STYLE_LABELS[style].split(' · ')[0]}
+          <ChevronDown className="size-3" />
+        </button>
+      )}
+    />
+  )
+}
+
+function VersionMenu({ version, setVersion }: { version: BuilderVersion; setVersion: (next: BuilderVersion) => void }) {
   return (
     <Menu
       align="start"
