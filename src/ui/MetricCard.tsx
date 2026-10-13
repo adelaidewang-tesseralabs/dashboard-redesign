@@ -23,7 +23,7 @@ type MetricCardProps = {
   badge?: ReactNode
   /** Top-right controls, e.g. a graph's actions menu. */
   actions?: ReactNode
-  /** Fills its parent's height, shrinking the value when the card is short. */
+  /** Fills its parent's height, with the value sized to the card. */
   fill?: boolean
   delta?: MetricCardDelta
   reserveComparisonSpace?: boolean
@@ -57,8 +57,9 @@ export function MetricCard({ value, label, description, subtitle, note, badge, a
       <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-3 pb-3">
         <span
           className={cn(
-            'max-w-full truncate text-2xl font-semibold text-[var(--dash-fg)] xl:text-3xl',
-            fill && '[@container(max-height:140px)]:text-xl!',
+            'max-w-full truncate font-semibold text-[var(--dash-fg)]',
+            // Scales with the tile: height sets the size, width caps it so long values still fit.
+            fill ? 'text-[clamp(1.25rem,min(32cqh,16cqw),7rem)] leading-tight' : 'text-2xl xl:text-3xl',
           )}
         >
           {value}
