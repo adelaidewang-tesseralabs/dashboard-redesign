@@ -80,7 +80,7 @@ type DashboardBuilderV2Props = {
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare } = props
-  const { addWidgets, insertWidget, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
+  const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
   const widgets = dashboard.widgets ?? []
@@ -201,9 +201,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const modeSwitch = <EditModeSwitch mode={editMode} onChange={changeEditMode} />
   const createGraph = (dataset: Dataset, column?: GraphColumn) => {
     const item = column ? graphForColumn(dataset, column) : graphFor(dataset)
-    // A picked column may already have a graph; the menu offers it on purpose for a second chart of the same data.
-    if (column) insertWidget(dashboard.id, item, [])
-    else add(item)
+    add(item)
     openWidget(item.id)
   }
   const askAiFromData = () => {

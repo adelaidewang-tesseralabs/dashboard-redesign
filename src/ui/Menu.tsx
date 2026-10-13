@@ -11,6 +11,7 @@ export type MenuItem = {
   onSelect: () => void
   danger?: boolean
   active?: boolean
+  disabled?: boolean
 }
 
 /** Opens a nested list beside the menu on hover or click. */
@@ -68,11 +69,16 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
       key={item.label}
       type="button"
       role="menuitem"
+      disabled={item.disabled}
       onClick={(event) => {
         event.stopPropagation()
         select(item)
       }}
-      className={cn(menuItemClass, 'relative pr-10', item.danger && 'text-red-300 hover:bg-red-500/10')}
+      className={cn(
+        menuItemClass,
+        'relative pr-10 disabled:cursor-default disabled:text-white/40 disabled:hover:bg-transparent',
+        item.danger && 'text-red-300 hover:bg-red-500/10',
+      )}
     >
       {item.Icon && <item.Icon className="size-4 stroke-[1.5]" />}
       <span className="truncate">{item.label}</span>

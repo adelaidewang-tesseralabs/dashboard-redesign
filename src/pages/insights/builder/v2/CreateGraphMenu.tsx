@@ -6,7 +6,7 @@ import { graphsColumn, type GraphColumn } from './datasets'
 
 type CreateGraphMenuProps = {
   columns: GraphColumn[]
-  /** Graphs already on this dataset; their columns are checked but stay pickable for another chart of the same data. */
+  /** Graphs already on this dataset; their columns are checked and disabled, as in the canvas chart tool. */
   usedIn: CanvasItem[]
   disabled?: boolean
   variant?: 'primary' | 'outline'
@@ -18,7 +18,10 @@ type CreateGraphMenuProps = {
 export function CreateGraphMenu({ columns, usedIn, disabled = false, variant = 'primary', onPick, onAskAi }: CreateGraphMenuProps) {
   const items: MenuEntry[] = [
     ...(columns.length ? [{ type: 'label' as const, label: 'Group by' }] : []),
-    ...columns.map((column) => ({ label: `by ${column.label}`, active: usedIn.some((item) => graphsColumn(item, column.key)), onSelect: () => onPick(column) })),
+    ...columns.map((column) => {
+      const used = usedIn.some((item) => graphsColumn(item, column.key))
+      return { label: `by ${column.label}`, active: used, disabled: used, onSelect: () => onPick(column) }
+    }),
     ...(columns.length ? [{ type: 'separator' as const }] : []),
     { label: 'Ask Tessera AI', Icon: Sparkles, onSelect: onAskAi },
   ]
