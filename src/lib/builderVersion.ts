@@ -10,7 +10,7 @@ function isBuilderVersionOption(value: string | null): value is BuilderVersion {
   return BUILDER_VERSIONS.some((version) => version === value)
 }
 
-/** Keep the prototype version on in-app links so list → detail does not fall back to V1. */
+/** Keep the prototype version on in-app links so list → detail does not fall back to V6. */
 export function builderPath(path: string, version: BuilderVersion) {
   const [pathname, query] = path.split('?')
   const params = new URLSearchParams(query)
@@ -18,19 +18,22 @@ export function builderPath(path: string, version: BuilderVersion) {
   return `${pathname}?${params}`
 }
 
-/** Prototype-only switch between builder concepts; `?builder=v2` wins so a link can open a specific version. */
+/**
+ * Prototype-only switch between builder concepts; `?builder=v2` wins so a link can open a specific version.
+ * Session-scoped so every new visit opens on V6 while a switch survives in-app links that drop the param.
+ */
 export function useBuilderVersion() {
   const [params, setParams] = useSearchParams()
   const fromUrl = params.get('builder')
-  const stored = localStorage.getItem(STORAGE_KEY)
-  const version: BuilderVersion = isBuilderVersionOption(fromUrl) ? fromUrl : isBuilderVersionOption(stored) ? stored : 'v1'
+  const stored = sessionStorage.getItem(STORAGE_KEY)
+  const version: BuilderVersion = isBuilderVersionOption(fromUrl) ? fromUrl : isBuilderVersionOption(stored) ? stored : 'v6'
 
   useEffect(() => {
-    if (isBuilderVersionOption(fromUrl)) localStorage.setItem(STORAGE_KEY, fromUrl)
+    if (isBuilderVersionOption(fromUrl)) sessionStorage.setItem(STORAGE_KEY, fromUrl)
   }, [fromUrl])
 
   const setVersion = (next: BuilderVersion) => {
-    localStorage.setItem(STORAGE_KEY, next)
+    sessionStorage.setItem(STORAGE_KEY, next)
     setParams(
       (current) => {
         current.set('builder', next)
