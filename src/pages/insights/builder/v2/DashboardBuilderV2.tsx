@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
-import { pageView } from '../../../../data/pages'
+import { pageView, resolvePageId } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
 import { useCollapseNavWhile } from '../../../../nav/navSuppression'
@@ -25,6 +26,7 @@ import { WidgetEditor } from '../WidgetEditor'
 import { LineageView } from '../lineage/LineageView'
 import type { LineageTarget } from '../lineage/lineageGraph'
 import { PreviewPersonContext } from '../previewPerson'
+import { LINKED_WIDGET_PARAM } from '../useGraphView'
 import { WidgetNavigationContext, type WidgetNavigation } from '../widgetNavigation'
 import { AddDatasetDialogs, type AddDatasetRequest } from './AddDatasetDialogs'
 import { BottomSettingsPanel } from './BottomSettingsPanel'
@@ -33,7 +35,8 @@ import { DashboardActions } from './DashboardActions'
 import { DatasetDataSection } from './DatasetDataSection'
 import { EditModeSwitch, type EditMode } from './EditModeSwitch'
 import { datasetGraphColumns, graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
-import { BackToDashboardPill } from './BackToDashboardPill'
+import { BackPill } from './BackPill'
+import { useDismissOnInteraction } from './useDismissOnInteraction'
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
 import { LayerSwitchButton } from './LayerSwitchButton'
@@ -91,6 +94,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [view, setView] = useState<BuilderView>('canvas')
   /** The graph "View dataset" came from, so the Data tab can offer a way back to it. */
   const [returnToId, setReturnToId] = useState<string | null>(null)
+  /** The dataset a graph was just created from, so the canvas can offer a way back to it. */
+  const [backToDatasetKey, setBackToDatasetKey] = useState<string | null>(null)
+  /** Kept here so the transforms panel is as the user left it after a trip to the canvas. */
+  const [transformsOpen, setTransformsOpen] = useState(true)
+  const [, setSearchParams] = useSearchParams()
   /** The user opened the dataset list again while the chat had it collapsed. */
   const [listReopened, setListReopened] = useState(false)
   const [listCollapsedByUser, setListCollapsedByUser] = useState(false)
@@ -212,10 +220,34 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     setSelectedId(null)
   }
   const modeSwitch = <EditModeSwitch mode={editMode} onChange={changeEditMode} />
+  /** Lands on the canvas with the new graph selected, scrolled to and flashed (the copied-link treatment), and a way back. */
+  const showCreatedGraph = (item: Pick<CanvasItem, 'id' | 'pageId'>, datasetKey: string | undefined) => {
+    openWidget(item.id)
+    setBackToDatasetKey(datasetKey ?? null)
+    setSearchParams(
+      (current) => {
+        if (item.pageId) current.set('page', resolvePageId(dashboard, item.pageId))
+        current.set(LINKED_WIDGET_PARAM, item.id)
+        return current
+      },
+      { replace: true },
+    )
+  }
   const createGraph = (dataset: Dataset, column?: GraphColumn) => {
     const item = column ? graphForColumn(dataset, column) : graphFor(dataset)
     add(item)
-    openWidget(item.id)
+    showCreatedGraph(item, dataset.key)
+  }
+  const viewChatGraph = (itemId: string) => {
+    const item = widgets.find((widget) => widget.id === itemId)
+    if (item) showCreatedGraph(item, activeDataset?.key)
+    else openWidget(itemId)
+  }
+  const backToDataset = () => {
+    if (!backToDatasetKey) return
+    setBackToDatasetKey(null)
+    setDataPanel('datasets')
+    openDataset(backToDatasetKey)
   }
   const openChat = () => (productionFlow ? v3Panel.showChat() : chat.setChatOpen(true))
   const closeDataChat = () => (productionFlow ? v3Panel.closeChat() : chat.setChatOpen(false))
@@ -312,6 +344,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       .slice(0, 3)
       .map((column) => `Graph by ${column.label}`)
   useCollapseNavWhile(chatShowing)
+  const backToDatasetShown = backToDatasetKey !== null && view === 'canvas' && !asViewer
+  useDismissOnInteraction(backToDatasetShown, () => setBackToDatasetKey(null))
   const viewDataset = (key: string, fromItemId: string) => {
     setDataPanel('datasets')
     openDataset(key)
@@ -378,6 +412,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 summaries={governed}
                 fixedFilterStyle={governed ? fixedFilterStyle : undefined}
                 fullScreenToolbar={governed}
+                aboveToolbar={backToDatasetShown && <BackPill label="Back to dataset" onBack={backToDataset} onDismiss={() => setBackToDatasetKey(null)} />}
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}
                 onSelect={selectWidget}
@@ -429,9 +464,15 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
               setListCollapsedByUser(false)
             }}
             onCollapseList={() => setListCollapsedByUser(true)}
+            transformsOpen={transformsOpen}
+            onTransformsOpenChange={setTransformsOpen}
           />
         )}
-        {view === 'data' && returnToId && !asViewer && <BackToDashboardPill onBack={() => openWidget(returnToId)} />}
+        {view === 'data' && returnToId && !asViewer && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center">
+            <BackPill label="Back to dashboard" onBack={() => openWidget(returnToId)} />
+          </div>
+        )}
         {bottomSettings && showSettings && selected && (
           <BottomSettingsPanel resize={bottomPanel} itemId={selected.id}>
             <WidgetEditor
@@ -464,7 +505,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
           onOpenSource={(table) => showDataset(tableKey(table))}
           resize={sidePanel}
           context={chatDataset && { kind: 'dataset', label: chatDataset.label, suggestions: datasetSuggestions(chatDataset), onClear: () => setContextClearedKey(chatDataset.key) }}
-          onViewGraph={openWidget}
+          onViewGraph={viewChatGraph}
         />
       )}
 

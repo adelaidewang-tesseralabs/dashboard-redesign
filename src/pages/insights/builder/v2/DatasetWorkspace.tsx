@@ -44,12 +44,15 @@ type DatasetWorkspaceProps = {
   onEditAsSql?: () => void
   /** Builder V6 turns off new dataset row limits. */
   rowLimit?: boolean
+  transformsOpen?: boolean
+  onTransformsOpenChange?: (open: boolean) => void
 }
 
 /** Right pane of the Data tab: the selected dataset's query or preview, its result, schema and the graphs using it. */
 export function DatasetWorkspace(props: DatasetWorkspaceProps) {
   const { dashboard, dataset, usedIn, transforms, draft, onDraftChange, onApplyTransforms, onRename, onSaveSql, onCreateGraph, onAskAi, onDuplicate, onDownload, onRemove, onOpenWidget, onEditAsSql, rowLimit } =
     props
+  const { transformsOpen, onTransformsOpenChange } = props
   const [tab, setTab] = useState<WorkspaceTab>('result')
   const sectionRef = useRef<HTMLElement>(null)
   const source = runSql(datasetSql(dataset))
@@ -119,6 +122,8 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
             onApply={onApplyTransforms}
             usedIn={usedIn}
             rowLimit={rowLimit}
+            transformsOpen={transformsOpen}
+            onTransformsOpenChange={onTransformsOpenChange}
           />
         </div>
       ) : (

@@ -63,11 +63,13 @@ type BuilderCanvasProps = {
   fixedFilterStyle?: FixedFilterStyle
   /** Builder V6: an expanded graph keeps a slim toolbar (AI, undo, redo, appearance) instead of hiding it. */
   fullScreenToolbar?: boolean
+  /** Floats just above the toolbar, e.g. a way back to the Data tab. */
+  aboveToolbar?: ReactNode
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -227,6 +229,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 <ArrowDown className="size-3.5" />
               </div>
             )}
+            {aboveToolbar && <div className="mb-1">{aboveToolbar}</div>}
             <div className="pointer-events-auto">{toolbar(null)}</div>
           </div>
         )}

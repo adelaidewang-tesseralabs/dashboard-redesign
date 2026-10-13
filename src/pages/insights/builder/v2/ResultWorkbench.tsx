@@ -27,11 +27,17 @@ type ResultWorkbenchProps = {
   /** Graphs built on this dataset. */
   usedIn: CanvasItem[]
   rowLimit?: boolean
+  /** Controlled by the builder so the transforms panel survives a trip to the canvas and back. */
+  transformsOpen?: boolean
+  onTransformsOpenChange?: (open: boolean) => void
 }
 
 /** Result tab: transforms on the left, a live preview of the table they produce on the right, applied to graphs on confirm. */
-export function ResultWorkbench({ dashboard, datasetKey, source, applied, draft, onDraftChange, onApply, usedIn, rowLimit }: ResultWorkbenchProps) {
-  const [panelOpen, setPanelOpen] = useState(true)
+export function ResultWorkbench(props: ResultWorkbenchProps) {
+  const { dashboard, datasetKey, source, applied, draft, onDraftChange, onApply, usedIn, rowLimit, transformsOpen, onTransformsOpenChange } = props
+  const [localPanelOpen, setLocalPanelOpen] = useState(true)
+  const panelOpen = transformsOpen ?? localPanelOpen
+  const setPanelOpen = onTransformsOpenChange ?? setLocalPanelOpen
   const [showOriginal, setShowOriginal] = useState(false)
   const working = draft ?? applied
   const pending = draft && !sameTransforms(draft, applied) ? draft : undefined
