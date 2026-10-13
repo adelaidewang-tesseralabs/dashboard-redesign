@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Database, FileText, Image, Minus, Plus, Table2, Video, X } from 'lucide-react'
 import { DATA_OBJECTS, findObject, type DataObject } from '../../../data/dataSources'
-import { isChartStyle, usesColor, usesSingleColor, type CanvasItem, type GraphItem, type MediaKind } from '../../../data/widgets'
+import { isChartStyle, showsLegend, usesColor, usesLegend, usesSingleColor, type CanvasItem, type GraphItem, type MediaKind } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
 import { CHART_COLOR_IDS, CHART_PALETTE_IDS, CHART_PALETTES, CHART_SINGLE_COLORS, isChartColor, isChartPalette, resolvePalette, type ChartPalette } from '../../../lib/colors'
 import { Button } from '../../../ui/Button'
@@ -133,6 +133,7 @@ function GraphSections({ item, sources, onChange, dataSection }: GraphSectionsPr
             </>
           )
         )}
+        {usesLegend(item.chart) && <EditorCheckbox label="Legend" checked={showsLegend(item)} onChange={(legend) => onChange({ ...item, legend })} />}
       </EditorSection>
       {dataSection ?? (
         <>

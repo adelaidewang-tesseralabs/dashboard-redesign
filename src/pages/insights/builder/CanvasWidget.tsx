@@ -4,7 +4,7 @@ import type { Dashboard } from '../../../data/dashboards'
 import { problemMessage, widgetProblem } from '../../../data/dataIssues'
 import { runSql, type Cell as DataCell } from '../../../data/dataSources'
 import { aggregateLabel, applyTransforms, defaultGraphValue, graphResult, type GraphQuery } from '../../../data/transforms'
-import { usesSingleColor, type CanvasItem } from '../../../data/widgets'
+import { showsLegend, usesSingleColor, type CanvasItem } from '../../../data/widgets'
 import { formatNumber } from '../../../lib/format'
 import { chartHighlight, type CrossHighlight } from './crossHighlight'
 import { dashboardRowFilters } from './dashboardFilters'
@@ -115,6 +115,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}
           palette={item.palette}
+          legend={showsLegend(item)}
           highlight={chartHighlight(highlight, datasetKey, rows, field.key, query)}
           onSelectLabel={onHighlight && ((value) => onHighlight({ datasetKey, column: field.key, columnLabel: field.label, value }))}
           badge={<GraphFilterBadge dashboard={dashboard} item={item} highlight={highlight} />}
@@ -146,6 +147,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}
           palette={item.palette}
+          legend={showsLegend(item)}
           highlight={chartHighlight(highlight, datasetKey, rows, undefined, query)}
           onSelectLabel={onHighlight && labelColumn !== undefined ? (value) => onHighlight({ datasetKey, column: labelColumn, columnLabel: labelColumn, value }) : undefined}
           badge={<GraphFilterBadge dashboard={dashboard} item={item} highlight={highlight} />}

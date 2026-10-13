@@ -36,6 +36,8 @@ type CategoryAxisOptions = {
   insetPx: number
   /** Labels sit on points spread edge to edge (line, area) rather than centred in equal bands (bar). */
   points?: boolean
+  /** Something else names every label (a legend), so crowded labels are dropped rather than turned vertical. */
+  hideWhenCrowded?: boolean
 }
 
 /**
@@ -43,7 +45,7 @@ type CategoryAxisOptions = {
  * (capped, with "…"), then every nth label once even vertical ones would collide. Pass `onResize` to the
  * chart's `ResponsiveContainer`.
  */
-export function useCategoryAxis(labels: string[], { insetPx, points = false }: CategoryAxisOptions) {
+export function useCategoryAxis(labels: string[], { insetPx, points = false, hideWhenCrowded = false }: CategoryAxisOptions) {
   const [chartWidth, setChartWidth] = useState(0)
   const onResize = (width: number) => setChartWidth(width)
   const plot = chartWidth - Y_AXIS_PX - insetPx
@@ -51,6 +53,7 @@ export function useCategoryAxis(labels: string[], { insetPx, points = false }: C
   const labelWidths = labels.map(textWidth)
   const fits = chartWidth === 0 || labelWidths.every((width) => width + LABEL_GAP_PX <= slot)
   if (fits) return { onResize, axis: { interval: 0 } as const }
+  if (hideWhenCrowded) return { onResize, axis: { tick: false, height: 8 } as const }
   const step = slot > 0 ? Math.ceil(ROTATED_LINE_PX / slot) : 1
   return {
     onResize,

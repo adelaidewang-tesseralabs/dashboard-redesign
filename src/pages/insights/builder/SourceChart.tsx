@@ -8,6 +8,7 @@ import { formatNumber, formatPercent } from '../../../lib/format'
 import { ChartPanel, chartAxisProps, chartGridStroke, chartTooltipItemStyle, chartTooltipStyle } from '../../../ui/ChartPanel'
 import { MetricCard } from '../../../ui/MetricCard'
 import type { ChartHighlight } from './crossHighlight'
+import { ChartWithLegend } from './ChartLegend'
 import { useCategoryAxis } from './useCategoryAxis'
 
 type SourceChartProps = {
@@ -25,6 +26,8 @@ type SourceChartProps = {
   colorOffset?: number
   /** Line, area and gauge: the picked series color, which wins over the palette and auto colors. */
   color?: ChartColor
+  /** Bar and pie: show a key of each label's color. */
+  legend?: boolean
   /** Preview: another part of the dashboard is highlighted; this graph shows how it relates. */
   highlight?: ChartHighlight
   /** Preview: clicking a bar, slice, point or row highlights that label across the dashboard. */
@@ -42,7 +45,7 @@ const fade = (color: string) => `${color}33`
 type HighlightRow = CountRow & { matched: number; rest: number; lit: boolean }
 
 /** Graph for object- and SQL-sourced widgets: a metric card, or the counts in any of the supported chart styles. */
-export function SourceChart({ title, subtitle, source, chart, columns, rows, colorKeys = [], palette = 'default', colorOffset, color, highlight, onSelectLabel, badge, actions }: SourceChartProps) {
+export function SourceChart({ title, subtitle, source, chart, columns, rows, colorKeys = [], palette = 'default', colorOffset, color, legend = false, highlight, onSelectLabel, badge, actions }: SourceChartProps) {
   const dimmed = highlight?.kind === 'dim'
   const match = highlight?.kind === 'match' ? highlight : undefined
   if (chart === 'metric') {
@@ -77,22 +80,33 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
     const position = colorKeys.indexOf(label)
     return colors[(start + (position < 0 ? index : position)) % colors.length]
   }
+  const showLegend = legend && (chart === 'bar' || chart === 'pie') && counts.length > 0
+  const body = (
+    <div className={cn('h-full min-h-0 w-full', onSelectLabel && '[&_.recharts-layer]:cursor-pointer')}>
+      <ChartBody
+        chart={chart}
+        counts={counts}
+        split={!!match?.additive}
+        highlighting={!!match}
+        columns={columns}
+        rows={rows}
+        colorOf={colorOf}
+        accent={color ? CHART_SINGLE_COLORS[color].color : colors[start % colors.length]}
+        legend={showLegend}
+        onSelectLabel={onSelectLabel}
+      />
+    </div>
+  )
   return (
     <div className={cn('relative h-full transition-opacity', dimmed && 'opacity-40')}>
       <ChartPanel className="h-full" title={title} subtitle={subtitle} description={source} badge={badge} reserveActionSpace={!!actions}>
-        <div className={cn('h-full min-h-0 w-full', onSelectLabel && '[&_.recharts-layer]:cursor-pointer')}>
-          <ChartBody
-            chart={chart}
-            counts={counts}
-            split={!!match?.additive}
-            highlighting={!!match}
-            columns={columns}
-            rows={rows}
-            colorOf={colorOf}
-            accent={color ? CHART_SINGLE_COLORS[color].color : colors[start % colors.length]}
-            onSelectLabel={onSelectLabel}
-          />
-        </div>
+        {showLegend ? (
+          <ChartWithLegend entries={counts.map((row, index) => ({ label: row.label, color: colorOf(row.label, index), lit: row.lit }))} onSelectLabel={onSelectLabel}>
+            {body}
+          </ChartWithLegend>
+        ) : (
+          body
+        )}
       </ChartPanel>
       {/* Over the header's corner, not beside the title, so the title keeps its full width. */}
       {actions && <div className="absolute top-2.5 right-3">{actions}</div>}
@@ -112,13 +126,15 @@ type ChartBodyProps = {
   colorOf: (label: string, index: number) => string
   /** Single-series color for line, area and gauge charts. */
   accent: string
+  /** A legend names every color, so crowded axis labels drop instead of turning vertical. */
+  legend: boolean
   onSelectLabel?: (label: string) => void
 }
 
 /** Recharts hands click handlers the drawn item, with the original data row under `payload`. */
 const labelOf = (entry: { payload?: { label?: unknown } }) => (entry.payload?.label === undefined ? undefined : String(entry.payload.label))
 
-function ChartBody({ chart, counts, split, highlighting, columns, rows, colorOf, accent, onSelectLabel }: ChartBodyProps) {
+function ChartBody({ chart, counts, split, highlighting, columns, rows, colorOf, accent, legend, onSelectLabel }: ChartBodyProps) {
   const select = (label: string | undefined) => label !== undefined && onSelectLabel?.(label)
   const fillOf = (row: HighlightRow, index: number) => (row.lit ? colorOf(row.label, index) : fade(colorOf(row.label, index)))
   // Recharts replays its grow-in on every data change, so a highlight click would make bars and slices visibly move.
@@ -126,7 +142,7 @@ function ChartBody({ chart, counts, split, highlighting, columns, rows, colorOf,
   const points = chart === 'line' || chart === 'area'
   const { onResize, axis } = useCategoryAxis(
     counts.map((row) => row.label),
-    { insetPx: points ? 12 + 24 + 24 : 8, points },
+    { insetPx: points ? 12 + 24 + 24 : 8, points, hideWhenCrowded: legend },
   )
   switch (chart) {
     case 'bar':

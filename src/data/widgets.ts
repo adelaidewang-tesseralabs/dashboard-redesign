@@ -15,6 +15,12 @@ export const usesColor = (chart: ChartStyle) => chart !== 'metric' && chart !== 
 /** These draw one series color, so they take a single `color` rather than a `palette`. */
 export const usesSingleColor = (chart: ChartStyle) => chart === 'line' || chart === 'area' || chart === 'gauge'
 
+/** Only these color each label differently, so only their legend says anything the chart doesn't. */
+export const usesLegend = (chart: ChartStyle) => chart === 'bar' || chart === 'pie'
+
+/** Pie slices carry no labels of their own, so their legend is on unless turned off; bars are labelled on the axis. */
+export const showsLegend = (item: { chart: ChartStyle; legend?: boolean }) => usesLegend(item.chart) && (item.legend ?? item.chart === 'pie')
+
 export type FieldFilter = { fieldKey: string; value: string }
 
 /** Widget-panel overrides; unset means the source's default title and no description. */
@@ -47,10 +53,13 @@ export type PageSummary = { basis: string; edited?: boolean }
 export type CanvasItem = Presentation &
   Placement &
   (
-    /** `filters` are builder V1's equals-only filters; V2 graphs keep theirs in `query.filters`. `palette` colors multi-color charts, `color` single-color ones. */
-    | { id: string; source: 'object'; objectName: string; fieldKey: string; chart: ChartStyle; palette?: ChartPalette; color?: ChartColor; filters?: FieldFilter[]; query?: GraphQuery }
+    /**
+     * `filters` are builder V1's equals-only filters; V2 graphs keep theirs in `query.filters`. `palette` colors multi-color charts, `color` single-color ones.
+     * Unset `legend` means the chart's default (`showsLegend`).
+     */
+    | { id: string; source: 'object'; objectName: string; fieldKey: string; chart: ChartStyle; palette?: ChartPalette; color?: ChartColor; legend?: boolean; filters?: FieldFilter[]; query?: GraphQuery }
     /** `datasetId` links the graph to a saved SQL dataset (builder V2), whose query then wins over `sql`. */
-    | { id: string; source: 'sql'; title: string; sql: string; chart: ChartStyle; palette?: ChartPalette; color?: ChartColor; datasetId?: string; query?: GraphQuery }
+    | { id: string; source: 'sql'; title: string; sql: string; chart: ChartStyle; palette?: ChartPalette; color?: ChartColor; legend?: boolean; datasetId?: string; query?: GraphQuery }
     /** An image, PDF or video block; no `media` yet means it still shows the drop zone. */
     | { id: string; source: 'media'; media?: MediaFile }
     /** A rich text block written in basic Markdown. */
