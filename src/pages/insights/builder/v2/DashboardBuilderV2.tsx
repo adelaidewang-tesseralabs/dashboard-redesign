@@ -39,7 +39,6 @@ import { StackedEditorPanel } from './StackedEditorPanel'
 import { useBottomPanelHeight } from './useBottomPanelHeight'
 import { useConsoleTabs, type ConsoleTab } from './useConsoleTabs'
 import { useTransformDrafts } from './transforms/transformDrafts'
-import { useApplyTransforms } from './transforms/useApplyTransforms'
 import { useLeaveGuard } from './useLeaveGuard'
 import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
@@ -100,7 +99,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const consoleTabs = useConsoleTabs()
   const datasets = listDatasets(dashboard)
   const transformDrafts = useTransformDrafts()
-  const applyTransforms = useApplyTransforms(dashboard, transformDrafts)
   const [multiIds, setMultiIds] = useState<string[]>([])
   const multiGraphs = widgets.filter(isGraph).filter((item) => multiIds.includes(item.id))
   const multiActive = multiGraphs.length >= 2
@@ -281,8 +279,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
         dashboard={dashboard}
         onChange={(item) => updateWidget(dashboard.id, item)}
         onOpenDataset={openDataset}
-        transformDrafts={transformDrafts}
-        onApplyTransforms={applyTransforms}
       />
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage

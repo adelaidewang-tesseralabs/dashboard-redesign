@@ -61,6 +61,10 @@ export type DashboardFilter = {
   pageId?: string
   /** Viewers see the filter but can't change its values. */
   locked?: boolean
+  /** Set by editors to shape the graphs; viewers never see or change it. */
+  fixed?: boolean
+  /** Shown on every page instead of only `pageId`'s. */
+  allPages?: boolean
 }
 
 /** A tab of the dashboard; each has its own graphs, layout and filters. */

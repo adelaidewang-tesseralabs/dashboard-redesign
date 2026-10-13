@@ -19,7 +19,7 @@ export function pageView(dashboard: Dashboard, pageId: string): Dashboard {
   return {
     ...dashboard,
     widgets: dashboard.widgets?.filter(onPage),
-    filters: dashboard.filters?.filter(onPage),
+    filters: dashboard.filters?.filter((filter) => filter.allPages || onPage(filter)),
     groups: dashboard.groups?.filter(onPage),
   }
 }

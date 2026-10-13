@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { DashboardFilter } from '../../../data/dashboards'
 import { cn } from '../../../lib/cn'
@@ -7,16 +7,18 @@ import type { FilterColumn } from './dashboardFilters'
 import { filterChipClass } from './FilterChip'
 
 type AddFilterPickerProps = {
+  label?: string
   open: boolean
   onOpenChange: (open: boolean) => void
   columns: FilterColumn[]
   existing: DashboardFilter[]
-  onPick: (column: FilterColumn) => void
+  onPick: (column: FilterColumn, allPages: boolean) => void
 }
 
 /** Filters can only be built on a dataset column already on the dashboard; controlled so the toolbar's filter tool can open it. */
-export function AddFilterPicker({ open, onOpenChange, columns, existing, onPick }: AddFilterPickerProps) {
+export function AddFilterPicker({ label = 'Add filter', open, onOpenChange, columns, existing, onPick }: AddFilterPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const [allPages, setAllPages] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -38,10 +40,24 @@ export function AddFilterPicker({ open, onOpenChange, columns, existing, onPick 
     <div ref={rootRef} className="relative">
       <button type="button" aria-expanded={open} onClick={() => onOpenChange(!open)} className={cn(filterChipClass, 'border-dashed text-[var(--dash-muted)]')}>
         <Plus className="size-3.5" aria-hidden />
-        Add filter
+        {label}
       </button>
       {open && (
-        <div role="menu" aria-label="Add filter" className={cn(menuSurfaceClass, 'absolute top-full left-0 z-40 mt-2 max-h-80 w-64 overflow-y-auto bg-tlai-3')}>
+        <div role="menu" aria-label={label} className={cn(menuSurfaceClass, 'absolute top-full left-0 z-40 mt-2 max-h-80 w-64 overflow-y-auto bg-tlai-3')}>
+          <div role="radiogroup" aria-label="Applies to" className="mb-1 grid grid-cols-2 gap-0.5 rounded-md bg-white/5 p-0.5 text-xs">
+            {[false, true].map((option) => (
+              <button
+                key={String(option)}
+                type="button"
+                role="radio"
+                aria-checked={allPages === option}
+                onClick={() => setAllPages(option)}
+                className={cn('h-6 cursor-pointer rounded text-white/55 hover:text-white', allPages === option && 'bg-white/10 text-white')}
+              >
+                {option ? 'All pages' : 'This page'}
+              </button>
+            ))}
+          </div>
           {columns.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-white/60">Add a dataset first. Filters use columns from this dashboard's datasets.</p>
           ) : (
@@ -55,7 +71,7 @@ export function AddFilterPicker({ open, onOpenChange, columns, existing, onPick 
                   role="menuitem"
                   disabled={used(column)}
                   onClick={() => {
-                    onPick(column)
+                    onPick(column, allPages)
                     onOpenChange(false)
                   }}
                   className={cn(menuItemClass, 'justify-between disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent')}

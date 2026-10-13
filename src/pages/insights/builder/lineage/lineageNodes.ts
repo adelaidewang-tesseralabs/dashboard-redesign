@@ -121,7 +121,9 @@ export function graphColumnRoles(item: GraphItem, dashboard: Dashboard): { colum
   note(item.query?.value?.field, 'Value')
   for (const filter of item.query?.filters ?? []) note(filter.key, 'Graph filter')
   for (const filter of dashboard.filters ?? []) {
-    if (datasetKey && resolvePageId(dashboard, filter.pageId) === page) note(filterColumnIn(dashboard, filter, datasetKey), 'Dashboard filter')
+    if (datasetKey && (filter.allPages || resolvePageId(dashboard, filter.pageId) === page)) {
+      note(filterColumnIn(dashboard, filter, datasetKey), filter.fixed ? 'Fixed filter' : 'Dashboard filter')
+    }
   }
   return [...roles].map(([column, list]) => ({ column, roles: list }))
 }

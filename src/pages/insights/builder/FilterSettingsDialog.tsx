@@ -22,13 +22,23 @@ const SELECTION_OPTIONS: SelectOption[] = [
   { value: 'single', label: 'One value' },
 ]
 
+const KIND_OPTIONS: SelectOption[] = [
+  { value: 'viewer', label: 'Viewers can change it' },
+  { value: 'fixed', label: 'Fixed, hidden from viewers' },
+]
+
+const SCOPE_OPTIONS: SelectOption[] = [
+  { value: 'page', label: 'This page' },
+  { value: 'all', label: 'All pages' },
+]
+
 const columnKey = (column: Pick<FilterColumn, 'datasetKey' | 'column'>) => `${column.datasetKey}::${column.column}`
 
 /** Mounted only while open, so each opening starts from the saved filter. */
 export function FilterSettingsDialog({ dashboard, filter, columns, onClose, onSave }: FilterSettingsDialogProps) {
   const [draft, setDraft] = useState(filter)
   const column = findFilterColumn(columns, draft)
-  const taken = new Set((dashboard.filters ?? []).filter((entry) => entry.id !== filter.id).map(columnKey))
+  const taken = new Set((dashboard.filters ?? []).filter((entry) => entry.id !== filter.id && !entry.fixed === !draft.fixed).map(columnKey))
   const fieldOptions: SelectOption[] = columns.map((entry) => ({
     value: columnKey(entry),
     label: entry.label,
@@ -50,7 +60,7 @@ export function FilterSettingsDialog({ dashboard, filter, columns, onClose, onSa
     <Dialog
       open
       onClose={onClose}
-      title="Edit filter"
+      title={draft.fixed ? 'Edit fixed filter' : 'Edit filter'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -73,6 +83,27 @@ export function FilterSettingsDialog({ dashboard, filter, columns, onClose, onSa
           Title
           <input autoFocus className={fieldClass} value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
         </label>
+        <div className="flex flex-col gap-1.5 text-sm text-white/80">
+          Type
+          <Select
+            aria-label="Type"
+            size="form"
+            value={draft.fixed ? 'fixed' : 'viewer'}
+            options={KIND_OPTIONS}
+            onChange={(kind) => setDraft({ ...draft, fixed: kind === 'fixed' || undefined, locked: kind === 'fixed' ? undefined : draft.locked })}
+          />
+          {draft.fixed && <span className="text-xs text-white/45">Filters to these values on every graph it reaches. Viewer filters on this field only offer them.</span>}
+        </div>
+        <div className="flex flex-col gap-1.5 text-sm text-white/80">
+          Applies to
+          <Select
+            aria-label="Applies to"
+            size="form"
+            value={draft.allPages ? 'all' : 'page'}
+            options={SCOPE_OPTIONS}
+            onChange={(scope) => setDraft({ ...draft, allPages: scope === 'all' || undefined })}
+          />
+        </div>
         <div className="flex flex-col gap-1.5 text-sm text-white/80">
           Field
           <Select
@@ -101,10 +132,12 @@ export function FilterSettingsDialog({ dashboard, filter, columns, onClose, onSa
             }
           />
         </div>
+        {!draft.fixed && (
         <div className="flex flex-col gap-1">
           <EditorCheckbox label="Lock for viewers" checked={!!draft.locked} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
           <span className="pl-6 text-xs text-white/45">Viewers see the picked values but can't change them.</span>
         </div>
+        )}
       </form>
     </Dialog>
   )

@@ -14,7 +14,7 @@ import { HighlightChip } from './HighlightChip'
 import { CanvasHero } from './CanvasHero'
 import { CanvasToolbar } from './CanvasToolbar'
 import { DataIssuesBanner } from './DataIssuesBanner'
-import { FilterBar } from './FilterBar'
+import { FilterBar, type FilterKind } from './FilterBar'
 import { FullScreenContext, type CanvasFullScreen } from './fullScreen'
 import { summarizePage, summaryBasis } from './pageSummary'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
@@ -70,7 +70,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
   useUndoShortcuts(readOnly ? undefined : dashboard.id)
-  const [addingFilter, setAddingFilter] = useState(false)
+  const [addingFilter, setAddingFilter] = useState<FilterKind | null>(null)
   const highlighting = readOnly && crossHighlight
   const [highlight, setHighlight] = useState<CrossHighlight | null>(null)
   if (!highlighting && highlight) setHighlight(null)
@@ -201,7 +201,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                   onSelect(item.id)
                 }}
                 onAddSummary={summaries ? addSummary : undefined}
-                onAddFilter={() => setAddingFilter(true)}
+                onAddFilter={setAddingFilter}
                 onAddMedia={() => onAdd(mediaItem())}
                 onAddSection={sections ? addSection : undefined}
                 onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}

@@ -1,11 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
-import { ChartColumn, Filter, Image, Monitor, Moon, Redo2, Rows3, ScrollText, Sparkles, Sun, Type, Undo2 } from 'lucide-react'
+import { ChartColumn, Eye, Filter, Image, Pin, Monitor, Moon, Redo2, Rows3, ScrollText, Sparkles, Sun, Type, Undo2 } from 'lucide-react'
 import { DASHBOARD_APPEARANCES, type DashboardAppearance, type SqlDataset } from '../../../data/dashboards'
 import type { DataObject } from '../../../data/dataSources'
 import type { CanvasItem } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
 import { Menu } from '../../../ui/Menu'
 import { AddGraphMenu } from './AddGraphMenu'
+import type { FilterKind } from './FilterBar'
 import type { AddSourceKind } from './sourceKinds'
 
 type CanvasToolbarProps = {
@@ -24,7 +25,7 @@ type CanvasToolbarProps = {
   onAddText: () => void
   /** Builder V6: a text block where Tessera AI sums up the story the page's graphs tell. */
   onAddSummary?: () => void
-  onAddFilter: () => void
+  onAddFilter: (kind: FilterKind) => void
   onAddMedia: () => void
   /** Builder V6: a section row that groups the graphs below it. */
   onAddSection?: () => void
@@ -87,7 +88,14 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
       />
       <Tool Icon={Type} label="Add text" onClick={onAddText} />
       {onAddSummary && <Tool Icon={ScrollText} label="Summarize page" onClick={onAddSummary} />}
-      <Tool Icon={Filter} label="Add filter" onClick={onAddFilter} />
+      <Menu
+        side="top"
+        items={[
+          { label: 'Filter viewers can change', Icon: Eye, onSelect: () => onAddFilter('viewer') },
+          { label: 'Fixed filter, hidden from viewers', Icon: Pin, onSelect: () => onAddFilter('fixed') },
+        ]}
+        trigger={({ open, toggle }) => <Tool Icon={Filter} label="Add filter" active={open} onClick={toggle} />}
+      />
       <Tool Icon={Image} label="Add media" onClick={onAddMedia} />
       {onAddSection && <Tool Icon={Rows3} label="Add section" onClick={onAddSection} />}
       <Divider />

@@ -146,7 +146,7 @@ function copyPage(dashboard: Dashboard, pageId: string, page: DashboardPage): Da
     const next = ids.get(rect.i)
     return next ? [{ ...rect, i: next }] : []
   })
-  const filters = (dashboard.filters ?? []).filter(on).map((filter) => ({ ...filter, id: crypto.randomUUID(), pageId: page.id }))
+  const filters = (dashboard.filters ?? []).filter((filter) => !filter.allPages && on(filter)).map((filter) => ({ ...filter, id: crypto.randomUUID(), pageId: page.id }))
   const pages = dashboard.pages ?? []
   const index = pages.findIndex((entry) => entry.id === pageId)
   return {
@@ -167,7 +167,7 @@ function dropPage(dashboard: Dashboard, pageId: string): Dashboard {
     pages: dashboard.pages?.filter((page) => page.id !== pageId),
     widgets: dashboard.widgets?.filter(keep),
     groups: dashboard.groups?.filter(keep),
-    filters: dashboard.filters?.filter(keep),
+    filters: dashboard.filters?.filter((filter) => filter.allPages || keep(filter)),
     layout: dashboard.layout?.filter((rect) => !removed.has(rect.i)),
   }
 }

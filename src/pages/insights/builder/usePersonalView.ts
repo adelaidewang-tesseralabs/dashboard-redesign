@@ -57,12 +57,12 @@ export function usePersonalPage(dashboardId: string) {
 /** The filters as this person sees them: their own picks on unlocked filters, the editor's defaults everywhere else. */
 export function withPersonalValues(dashboard: Dashboard, values: PersonalFilterValues): Dashboard {
   if (!dashboard.filters?.length) return dashboard
-  return { ...dashboard, filters: dashboard.filters.map((filter) => (!filter.locked && values[filter.id] ? { ...filter, values: values[filter.id] } : filter)) }
+  return { ...dashboard, filters: dashboard.filters.map((filter) => (!filter.locked && !filter.fixed && values[filter.id] ? { ...filter, values: values[filter.id] } : filter)) }
 }
 
 const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((value) => b.includes(value))
 
 /** Filters on this page where the person's picks differ from the defaults everyone else opens with. */
 export function personalOverrides(dashboard: Dashboard, values: PersonalFilterValues): string[] {
-  return (dashboard.filters ?? []).filter((filter) => !filter.locked && values[filter.id] && !sameValues(values[filter.id], filter.values)).map((filter) => filter.id)
+  return (dashboard.filters ?? []).filter((filter) => !filter.locked && !filter.fixed && values[filter.id] && !sameValues(values[filter.id], filter.values)).map((filter) => filter.id)
 }

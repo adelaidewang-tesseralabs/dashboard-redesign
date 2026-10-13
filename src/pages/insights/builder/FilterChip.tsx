@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Check, ChevronDown, Lock, Settings2, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, Lock, Pin, Settings2, TriangleAlert } from 'lucide-react'
 import type { DashboardFilter } from '../../../data/dashboards'
 import { cn } from '../../../lib/cn'
 import { Popover } from '../../../ui/Popover'
@@ -50,7 +50,8 @@ export function FilterChip({ filter, column, onValuesChange, onEdit, onRemove, r
           className={cn(filterChipClass, !column && 'border-red-400/40')}
         >
           {!column && <TriangleAlert className="size-3.5 text-red-300" aria-hidden />}
-          {column && filter.locked && <Lock className="size-3 text-[var(--dash-muted)]" aria-label="Locked for viewers" />}
+          {column && filter.fixed && <Pin className="size-3 text-[var(--dash-muted)]" aria-label="Fixed, hidden from viewers" />}
+          {column && filter.locked && !filter.fixed && <Lock className="size-3 text-[var(--dash-muted)]" aria-label="Locked for viewers" />}
           <span className="text-[var(--dash-muted)]">{filter.label}:</span>
           <span className="max-w-40 truncate font-medium">{column ? summary(filter) : 'Unavailable'}</span>
           <ChevronDown className="size-3 text-[var(--dash-muted)]" aria-hidden />

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { FILTER_OPERATOR_LABELS, isListOperator, isNullOperator, operatorsFor, type FilterOperator, type RowFilter } from '../../../../../data/transforms'
 import { cn } from '../../../../../lib/cn'
 import { Select } from '../../../../../ui/Select'
@@ -10,13 +9,11 @@ type FiltersEditorProps = {
   onChange: (filters: RowFilter[]) => void
   /** Narrow widget-panel layout: each control takes the full row. */
   compact?: boolean
-  /** Extra control at the end of a row, e.g. moving a graph condition up to its dataset. */
-  rowAction?: (filter: RowFilter) => ReactNode
   addLabel?: string
 }
 
 /** Row conditions; list operators take comma-separated values and the empty checks take none. */
-export function FiltersEditor({ filters, columns, onChange, compact = false, rowAction, addLabel = 'Add filter' }: FiltersEditorProps) {
+export function FiltersEditor({ filters, columns, onChange, compact = false, addLabel = 'Add filter' }: FiltersEditorProps) {
   const typeOf = (key: string) => columns.find((column) => column.key === key)?.type
   const update = (index: number, patch: Partial<RowFilter>) =>
     onChange(
@@ -66,7 +63,6 @@ export function FiltersEditor({ filters, columns, onChange, compact = false, row
               />
             )}
             {!compact && <RemoveButton label={`Remove filter ${index + 1}`} onClick={() => onChange(filters.filter((_, at) => at !== index))} />}
-            {rowAction?.(filter)}
           </TransformRow>
         )
       })}

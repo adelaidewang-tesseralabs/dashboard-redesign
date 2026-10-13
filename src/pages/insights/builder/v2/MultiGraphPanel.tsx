@@ -4,7 +4,6 @@ import { columnTypes, type RowFilter } from '../../../../data/transforms'
 import type { CanvasItem, GraphItem } from '../../../../data/widgets'
 import { displayTitle, itemLabel } from '../canvasItems'
 import { EditorSection, IconAction } from '../EditorFields'
-import { FilterGroup } from './DataFiltersSection'
 import { datasetResult, itemDatasetKey, type Dataset } from './datasets'
 import type { TransformColumn } from './transforms/controls'
 import { FiltersEditor } from './transforms/FiltersEditor'
@@ -60,11 +59,10 @@ export function MultiGraphPanel({ graphs, datasets, dashboard, onChange, onDesel
           </ul>
           <p className="text-[11px] text-white/40">Shift-click graphs on the canvas to add or remove them.</p>
         </EditorSection>
-        <EditorSection title="Data filters">
-          <FilterGroup title={`These ${graphs.length} graphs`} detail="Each keeps its own filters too">
-            <FiltersEditor compact filters={shared} columns={columns} addLabel="Add filter to all" onChange={setShared} />
-            {columns.length === 0 && <p className="text-[11px] text-white/45">These graphs have no column in common to filter on.</p>}
-          </FilterGroup>
+        <EditorSection title="Filters">
+          <p className="-mt-1 text-xs text-white/45">Added to each selected graph. Their own filters stay as they are.</p>
+          <FiltersEditor compact filters={shared} columns={columns} addLabel="Add filter to all" onChange={setShared} />
+          {columns.length === 0 && <p className="text-[11px] text-white/45">These graphs have no column in common to filter on.</p>}
         </EditorSection>
       </div>
     </div>

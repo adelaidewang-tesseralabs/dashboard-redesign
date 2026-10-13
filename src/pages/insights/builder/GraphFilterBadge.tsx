@@ -14,6 +14,7 @@ type GraphFilterBadgeProps = {
 }
 
 const SCOPE_TITLES: Record<AppliedFilter['scope'], string> = {
+  fixed: 'Fixed filters',
   page: 'Page filters',
   dataset: 'Dataset filters',
   graph: 'Graph filters',

@@ -19,7 +19,7 @@ export const LINEAGE_KIND_LABELS: Record<LineageKind, string> = {
   dashboard: 'Dashboard',
 }
 
-export type ColumnRole = 'Grouped by' | 'Value' | 'Graph filter' | 'Dashboard filter'
+export type ColumnRole = 'Grouped by' | 'Value' | 'Graph filter' | 'Dashboard filter' | 'Fixed filter'
 
 export type LineageNode = {
   id: string

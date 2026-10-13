@@ -45,6 +45,14 @@ export function linkedFields(dashboard: Pick<Dashboard, 'fieldLinks'>, field: Fi
   return found
 }
 
+/** The values a viewer filter may offer: fixed filters on the same or a linked field cap them. Undefined when none does. */
+export function fixedValuesFor(dashboard: Pick<Dashboard, 'filters' | 'fieldLinks'>, filter: DashboardFilter): string[] | undefined {
+  const fields = linkedFields(dashboard, filter)
+  const caps = (dashboard.filters ?? []).filter((entry) => entry.fixed && entry.values.length > 0 && fields.some((field) => sameField(field, entry)))
+  if (caps.length === 0) return undefined
+  return caps.map((cap) => cap.values).reduce((kept, values) => kept.filter((value) => values.includes(value)))
+}
+
 /** The column a filter narrows in `datasetKey`: its own column, a linked one, or none when the dataset can't be reached. */
 export function filterColumnIn(dashboard: Pick<Dashboard, 'fieldLinks'>, filter: FieldRef, datasetKey: string): string | undefined {
   return linkedFields(dashboard, filter).find((field) => field.datasetKey === datasetKey)?.column
@@ -60,7 +68,7 @@ export function dashboardRowFilters(dashboard: Pick<Dashboard, 'filters' | 'fiel
 }
 
 /** A filter narrowing one graph. `via` names the linked column a page filter reaches this graph through. */
-export type AppliedFilter = { id: string; scope: 'page' | 'dataset' | 'graph'; label: string; detail: string; via?: string }
+export type AppliedFilter = { id: string; scope: 'fixed' | 'page' | 'dataset' | 'graph'; label: string; detail: string; via?: string }
 
 function describeRowFilter(filter: RowFilter): string {
   const list = filter.value.split(',').map((value) => value.trim()).join(', ')
@@ -98,7 +106,7 @@ export function graphFilters(dashboard: Dashboard, item: GraphItem): AppliedFilt
         const column = filterColumnIn(dashboard, filter, datasetKey)
         if (!column || filter.values.length === 0) return []
         const via = datasetKey === filter.datasetKey ? undefined : column
-        return [{ id: filter.id, scope: 'page', label: filter.label, detail: filter.values.join(', '), via }]
+        return [{ id: filter.id, scope: filter.fixed ? 'fixed' : 'page', label: filter.label, detail: filter.values.join(', '), via }]
       })
     : []
   const transforms = datasetKey ? dashboard.datasetTransforms?.[datasetKey] : undefined
