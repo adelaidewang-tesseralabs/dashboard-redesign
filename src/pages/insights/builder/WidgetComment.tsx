@@ -5,11 +5,21 @@ import { graphToolButtonClass } from './GraphActionsMenu'
 type WidgetCommentProps = {
   label: string
   onSubmit: (text: string) => void
+  /** Controlled by the toolbar when its buttons fold into the "…" menu, which then opens the box. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
 }
 
 /** "Ask AI" in a graph's toolbar: opens a message box; sending it hands the request to Tessera AI. */
-export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
-  const [open, setOpen] = useState(false)
+export function WidgetComment({ label, onSubmit, open: controlledOpen, onOpenChange, showTrigger = true }: WidgetCommentProps) {
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (next: boolean | ((current: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(open) : next
+    setLocalOpen(value)
+    onOpenChange?.(value)
+  }
   const [text, setText] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -34,17 +44,19 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
   }
 
   return (
-    <div ref={rootRef} data-comment-open={open || undefined} className="relative">
-      <button
-        type="button"
-        aria-label={`Ask AI about ${label}`}
-        title="Ask AI"
-        data-popover-open={open || undefined}
-        onClick={() => setOpen((current) => !current)}
-        className={graphToolButtonClass}
-      >
-        <Sparkles className="size-3.5" />
-      </button>
+    <div ref={rootRef} data-comment-open={open || undefined}>
+      {showTrigger && (
+        <button
+          type="button"
+          aria-label={`Ask AI about ${label}`}
+          title="Ask AI"
+          data-popover-open={open || undefined}
+          onClick={() => setOpen((current) => !current)}
+          className={graphToolButtonClass}
+        >
+          <Sparkles className="size-3.5" />
+        </button>
+      )}
       {open && (
         <form
           aria-label={`Ask AI about ${label}`}
@@ -52,7 +64,7 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
             event.preventDefault()
             submit()
           }}
-          className="absolute top-8 right-0 z-30 flex w-72 items-end gap-2 rounded-lg border border-white/10 bg-tlai-4 p-2 shadow-xl"
+          className="absolute top-8 right-0 z-30 flex w-72 max-w-[var(--ask-box-max,18rem)] items-end gap-2 rounded-lg border border-white/10 bg-tlai-4 p-2 shadow-xl"
         >
           <textarea
             autoFocus

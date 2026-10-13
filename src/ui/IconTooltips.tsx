@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 const SHOW_DELAY_MS = 400
 const GAP = 6
 const EDGE = 8
-const CONTROL = 'button, a[href], [role="button"]'
+const CONTROL = 'button, a[href], [role="button"], [data-tip]'
 
 type Tip = { label: string; anchor: DOMRect }
 
@@ -113,7 +113,7 @@ export function IconTooltips() {
       ref={tipRef}
       role="tooltip"
       style={position ?? { left: 0, top: 0, visibility: 'hidden' }}
-      className="pointer-events-none fixed z-[100] max-w-64 rounded-md border border-white/10 bg-tlai-4 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg"
+      className="pointer-events-none fixed z-[100] w-max max-w-64 rounded-md border border-white/10 bg-tlai-4 px-2 py-1 text-xs text-white shadow-lg"
     >
       {tip.label}
     </div>,

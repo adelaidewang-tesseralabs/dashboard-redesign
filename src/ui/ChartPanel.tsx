@@ -21,13 +21,9 @@ export function ChartPanel({ title, description, subtitle, badge, actions, child
     <div className={cn('group relative flex flex-col rounded-lg bg-[var(--dash-card)] shadow-[var(--dash-shadow)]', className)}>
       <div className="flex min-h-10 w-full justify-between gap-1 px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
+          <div data-card-heading className="flex items-center gap-2">
             <h4 className="text-sm font-semibold text-[var(--dash-fg)]">{title}</h4>
-            {description && (
-              <span title={description}>
-                <Info className="size-3.5 text-[var(--dash-faint)]" />
-              </span>
-            )}
+            {description && <InfoTip description={description} />}
             {badge}
           </div>
           {subtitle && <p className="truncate text-xs text-[var(--dash-muted)]">{subtitle}</p>}
@@ -36,6 +32,15 @@ export function ChartPanel({ title, description, subtitle, badge, actions, child
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden px-3 pb-3">{children}</div>
     </div>
+  )
+}
+
+/** The info icon after a card's title; `IconTooltips` shows the description on hover or keyboard focus. */
+export function InfoTip({ description }: { description: string }) {
+  return (
+    <span role="img" tabIndex={0} aria-label={description} data-tip className="shrink-0 cursor-help rounded-full outline-none focus-visible:ring-1 focus-visible:ring-white/40">
+      <Info className="size-3.5 text-[var(--dash-faint)]" />
+    </span>
   )
 }
 

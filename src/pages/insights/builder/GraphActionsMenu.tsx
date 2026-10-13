@@ -1,4 +1,4 @@
-import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Rows3, Trash2, Waypoints } from 'lucide-react'
+import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Rows3, Sparkles, Trash2, Waypoints } from 'lucide-react'
 import { Menu, type MenuEntry } from '../../../ui/Menu'
 
 export type WidgetActions = {
@@ -34,6 +34,8 @@ type GraphActionsMenuProps = {
   view?: GraphViewActions
   /** Narrow cards drop the full screen, copy link and download buttons, so the menu carries them instead. */
   viewInMenu?: boolean
+  /** Set when the Ask AI button is folded into the menu too. */
+  onAskAi?: () => void
 }
 
 /** Icon buttons in a canvas item's top-right toolbar. */
@@ -41,8 +43,9 @@ export const graphToolButtonClass =
   'flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-faint)] hover:bg-[var(--dash-canvas)] hover:text-[var(--dash-fg)] data-popover-open:bg-[var(--dash-canvas)] data-popover-open:text-[var(--dash-fg)]'
 
 /** The "…" on a canvas item. Editing actions also have shortcuts: ⌘C / ⌘V duplicates, ⌘ Delete removes. */
-export function GraphActionsMenu({ label, actions, view, viewInMenu = false }: GraphActionsMenuProps) {
-  const items = menuItems(actions, view, viewInMenu)
+export function GraphActionsMenu({ label, actions, view, viewInMenu = false, onAskAi }: GraphActionsMenuProps) {
+  const askAi: MenuEntry[] = onAskAi ? [{ label: 'Ask AI', Icon: Sparkles, onSelect: onAskAi }] : []
+  const items = joinGroups([askAi, menuItems(actions, view, viewInMenu)])
   if (items.length === 0) return null
   return (
     <Menu

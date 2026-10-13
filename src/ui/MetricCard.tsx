@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { ArrowDownRight, ArrowUpRight, Info, Minus } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { InfoTip } from './ChartPanel'
 
 export type MetricCardDelta = {
   value: string
@@ -41,13 +42,9 @@ export function MetricCard({ value, label, description, subtitle, note, badge, a
     <div className={cn('flex min-w-0 flex-col rounded-lg border border-[var(--dash-border)] bg-[var(--dash-metric)]', fill && 'h-full [container-type:size]')}>
       <div className="flex min-h-10 w-full justify-between gap-1 px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex min-w-0 items-center gap-2">
+          <div data-card-heading className="flex min-w-0 items-center gap-2">
             <h4 className="truncate text-sm font-semibold text-[var(--dash-fg)]">{label}</h4>
-            {description && (
-              <span title={description} className="shrink-0">
-                <Info className="size-3.5 text-[var(--dash-faint)]" />
-              </span>
-            )}
+            {description && <InfoTip description={description} />}
             {badge}
           </div>
           {subtitle && <p className="truncate text-xs text-[var(--dash-muted)]">{subtitle}</p>}
