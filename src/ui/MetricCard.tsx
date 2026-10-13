@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { InfoTip } from './ChartPanel'
+import { CardTitle, InfoTip } from './ChartPanel'
 
 export type MetricCardDelta = {
   value: string
@@ -24,6 +24,8 @@ type MetricCardProps = {
   badge?: ReactNode
   /** Top-right controls, e.g. a graph's actions menu. */
   actions?: ReactNode
+  /** Ends the title row early so a "…" button floating over the corner never covers the info icon. */
+  reserveActionSpace?: boolean
   /** Fills its parent's height, with the value sized to the card. */
   fill?: boolean
   delta?: MetricCardDelta
@@ -35,15 +37,15 @@ const DELTA_TEXT = { positive: 'text-status-success', negative: 'text-destructiv
 const COMPARISON_BAND = 'flex shrink-0 items-center justify-between gap-2 border-t border-white/5 px-3 py-2 text-xs'
 
 /** Port of the DH `MetricCard`: the `ChartPanel` header, a centered KPI, and an optional comparison footer band. */
-export function MetricCard({ value, label, description, subtitle, note, badge, actions, fill = false, delta, reserveComparisonSpace = false }: MetricCardProps) {
+export function MetricCard({ value, label, description, subtitle, note, badge, actions, reserveActionSpace = false, fill = false, delta, reserveComparisonSpace = false }: MetricCardProps) {
   const DeltaIcon = delta ? DELTA_ICONS[delta.direction] : null
 
   return (
     <div className={cn('flex min-w-0 flex-col rounded-lg border border-[var(--dash-border)] bg-[var(--dash-metric)]', fill && 'h-full [container-type:size]')}>
       <div className="flex min-h-10 w-full justify-between gap-1 px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div data-card-heading className="flex min-w-0 items-center gap-2">
-            <h4 className="truncate text-sm font-semibold text-[var(--dash-fg)]">{label}</h4>
+          <div data-card-heading className={cn('flex min-w-0 items-center gap-2', reserveActionSpace && 'pr-6')}>
+            <CardTitle title={label} />
             {description && <InfoTip description={description} />}
             {badge}
           </div>

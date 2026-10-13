@@ -11,18 +11,20 @@ type ChartPanelProps = {
   badge?: ReactNode
   /** Top-right controls, e.g. a graph's actions menu. */
   actions?: ReactNode
+  /** Ends the title row early so a "…" button floating over the corner never covers the info icon. */
+  reserveActionSpace?: boolean
   children: ReactNode
   className?: string
 }
 
 /** Port of the DH `ChartPanel` card. */
-export function ChartPanel({ title, description, subtitle, badge, actions, children, className }: ChartPanelProps) {
+export function ChartPanel({ title, description, subtitle, badge, actions, reserveActionSpace = false, children, className }: ChartPanelProps) {
   return (
     <div className={cn('group relative flex flex-col rounded-lg bg-[var(--dash-card)] shadow-[var(--dash-shadow)]', className)}>
       <div className="flex min-h-10 w-full justify-between gap-1 px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div data-card-heading className="flex items-center gap-2">
-            <h4 className="text-sm font-semibold text-[var(--dash-fg)]">{title}</h4>
+          <div data-card-heading className={cn('flex min-w-0 items-center gap-2', reserveActionSpace && 'pr-6')}>
+            <CardTitle title={title} />
             {description && <InfoTip description={description} />}
             {badge}
           </div>
@@ -32,6 +34,15 @@ export function ChartPanel({ title, description, subtitle, badge, actions, child
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden px-3 pb-3">{children}</div>
     </div>
+  )
+}
+
+/** A card's one-line title; `IconTooltips` shows the full title on hover once it's cut off. */
+export function CardTitle({ title }: { title: string }) {
+  return (
+    <h4 data-overflow-tip className="truncate text-sm font-semibold text-[var(--dash-fg)]">
+      {title}
+    </h4>
   )
 }
 

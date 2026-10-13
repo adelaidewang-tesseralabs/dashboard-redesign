@@ -20,6 +20,17 @@ const GAP_PX = 2
 const CLEARANCE_PX = 8
 
 /**
+ * Where the title row would end if the title weren't truncated. Measuring the truncated row instead would
+ * loop: folding frees room, the title grows back under the buttons, and they fold again.
+ */
+function untruncatedEnd(heading: Element) {
+  const children = [...heading.children]
+  const gap = parseFloat(getComputedStyle(heading).columnGap) || 0
+  const width = children.reduce((sum, child) => sum + Math.max(child.getBoundingClientRect().width, child.scrollWidth), 0)
+  return heading.getBoundingClientRect().left + width + gap * Math.max(0, children.length - 1)
+}
+
+/**
  * Whether every button, laid out in full, would cover the end of the card's title row (title, info icon, badge).
  * Measured against the full width rather than the toolbar's current one, so folding never unfolds itself.
  */
@@ -39,8 +50,7 @@ function useFoldedToolbar(ref: RefObject<HTMLElement | null>, buttonCount: numbe
         setFolded(width < NARROW_CARD_PX)
         return
       }
-      const headingEnd = Math.max(...[...heading.children].map((child) => child.getBoundingClientRect().right))
-      setFolded(toolbar.getBoundingClientRect().right - fullWidth < headingEnd + CLEARANCE_PX)
+      setFolded(toolbar.getBoundingClientRect().right - fullWidth < untruncatedEnd(heading) + CLEARANCE_PX)
     }
     const observer = new ResizeObserver(measure)
     observer.observe(card)

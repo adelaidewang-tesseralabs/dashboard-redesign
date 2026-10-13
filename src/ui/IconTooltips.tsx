@@ -15,8 +15,17 @@ function iconControl(target: EventTarget | null): HTMLElement | null {
   return control.title || control.dataset.tooltip || control.getAttribute('aria-label') ? control : null
 }
 
+/** Text marked `data-overflow-tip` that is currently cut off by its ellipsis. */
+function truncatedText(target: EventTarget | null): HTMLElement | null {
+  const text = target instanceof Element ? target.closest<HTMLElement>('[data-overflow-tip]') : null
+  return text && text.scrollWidth > text.clientWidth ? text : null
+}
+
+const tipTarget = (target: EventTarget | null) => iconControl(target) ?? truncatedText(target)
+
 /**
- * One tooltip for every icon-only button in the app, named from its `title` (the short name) or `aria-label`.
+ * One tooltip for every icon-only button in the app, named from its `title` (the short name) or `aria-label`,
+ * and for truncated `data-overflow-tip` text, showing it in full.
  * The `title` is lifted off while hovered so the browser's own tooltip doesn't show on top.
  */
 export function IconTooltips() {
@@ -50,7 +59,7 @@ export function IconTooltips() {
         control.dataset.tooltip = control.title
         control.removeAttribute('title')
       }
-      const label = control.dataset.tooltip || control.getAttribute('aria-label')
+      const label = control.dataset.tooltip || control.getAttribute('aria-label') || (control.hasAttribute('data-overflow-tip') ? control.textContent : null)
       if (!label) return
       timer = window.setTimeout(() => setTip({ label, anchor: control.getBoundingClientRect() }), SHOW_DELAY_MS)
       // A button can disappear without the pointer moving, e.g. a keyboard shortcut switching views.
@@ -59,7 +68,7 @@ export function IconTooltips() {
       }, 250)
     }
     const onOver = (event: Event) => {
-      const control = iconControl(event.target)
+      const control = tipTarget(event.target)
       if (control !== clicked) clicked = null
       if (control && control !== clicked) show(control)
       else if (current && !current.contains(event.target as Node)) hide()
@@ -70,7 +79,7 @@ export function IconTooltips() {
     }
     // Clicking usually opens a menu or changes the view, which the tooltip would cover.
     const onPointerDown = (event: Event) => {
-      clicked = iconControl(event.target)
+      clicked = tipTarget(event.target)
       hide()
     }
     const onKeyDown = (event: KeyboardEvent) => {

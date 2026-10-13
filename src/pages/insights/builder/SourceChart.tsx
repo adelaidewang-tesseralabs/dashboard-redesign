@@ -56,6 +56,7 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
           subtitle={subtitle}
           description={source}
           badge={badge}
+          reserveActionSpace={!!actions}
           value={formatNumber(matched ?? total)}
           note={matched === undefined ? undefined : `of ${formatNumber(total)}`}
         />
@@ -77,7 +78,7 @@ export function SourceChart({ title, subtitle, source, chart, columns, rows, col
   }
   return (
     <div className={cn('relative h-full transition-opacity', dimmed && 'opacity-40')}>
-      <ChartPanel className="h-full" title={title} subtitle={subtitle} description={source} badge={badge}>
+      <ChartPanel className="h-full" title={title} subtitle={subtitle} description={source} badge={badge} reserveActionSpace={!!actions}>
         <div className={cn('h-full min-h-0 w-full', onSelectLabel && '[&_.recharts-layer]:cursor-pointer')}>
           <ChartBody
             chart={chart}

@@ -28,7 +28,7 @@ export function GraphFilterBadge({ dashboard, item, highlight = null }: GraphFil
 
   return (
     // Opening the list mustn't select or start dragging the graph underneath.
-    <div onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
+    <div className="shrink-0" onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}>
       <Popover
         trigger={({ open, toggle }) => (
           <button
