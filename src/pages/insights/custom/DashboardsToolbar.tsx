@@ -1,4 +1,4 @@
-import { Archive, LayoutGrid, List, ListFilter, Plus, Settings, X } from 'lucide-react'
+import { Archive, LayoutGrid, List, ListFilter, Plus, X } from 'lucide-react'
 import { FilterBuilder, type FilterField, type FilterValues } from '../../../ui/FilterBuilder'
 import { Popover } from '../../../ui/Popover'
 import { ToolbarButton } from '../../../ui/ToolbarButton'
@@ -25,7 +25,6 @@ type DashboardsToolbarProps = {
   onArchivedChange: (archived: boolean) => void
   onSearchChange: (value: string) => void
   onViewChange: (view: DashboardsView) => void
-  onOpenSettings: () => void
   onCreate: () => void
 }
 
@@ -55,15 +54,6 @@ export function DashboardsToolbar(props: DashboardsToolbarProps) {
 
         <div className="flex shrink-0 items-center gap-2">
           <ViewToggle ariaLabel="Dashboard layout" options={VIEW_OPTIONS} value={props.view} onChange={props.onViewChange} />
-          <button
-            type="button"
-            aria-label="Dashboard settings"
-            title="Dashboard settings"
-            onClick={props.onOpenSettings}
-            className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-          >
-            <Settings className="size-3.5" />
-          </button>
           <button
             type="button"
             onClick={props.onCreate}

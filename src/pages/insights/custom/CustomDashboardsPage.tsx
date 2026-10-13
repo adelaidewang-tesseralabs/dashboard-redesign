@@ -20,7 +20,6 @@ import { PAGE_SIZES, useDashboardListState } from './useDashboardListState'
 type DialogState =
   | { kind: 'edit'; dashboard: Dashboard }
   | { kind: 'delete'; dashboard: Dashboard }
-  | { kind: 'credentials' }
   | null
 
 const pad = (value: number) => String(value).padStart(2, '0')
@@ -91,7 +90,6 @@ export function CustomDashboardsPage() {
             onArchivedChange={list.setArchived}
             onSearchChange={list.setSearch}
             onViewChange={list.setView}
-            onOpenSettings={() => setDialog({ kind: 'credentials' })}
             onCreate={createDashboard}
           />
 
@@ -158,11 +156,6 @@ export function CustomDashboardsPage() {
         }
       >
         <p className="text-sm text-white/60">Data checks stay in their library.</p>
-      </Dialog>
-
-      <Dialog open={dialog?.kind === 'credentials'} onClose={() => setDialog(null)} title="Credentials">
-        <p className="text-sm text-white/60">Source-system credentials used when dashboards execute data checks.</p>
-      </Dialog>
-    </PageLayout>
+      </Dialog>    </PageLayout>
   )
 }
