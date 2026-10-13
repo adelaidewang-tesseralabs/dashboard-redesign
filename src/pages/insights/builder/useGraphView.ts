@@ -58,7 +58,7 @@ export function useGraphView({ dashboard, item, label, readOnly }: UseGraphViewA
     // Viewers, and editors previewing as one, don't get the editor-only Data tab or lineage.
     ...(!readOnly && {
       onViewLineage: onViewLineage && leaving(() => onViewLineage(item.id)),
-      dataset: dataset && onOpenDataset ? { label: dataset.label, onOpen: leaving(() => onOpenDataset(dataset.key)) } : undefined,
+      dataset: dataset && onOpenDataset ? { label: dataset.label, onOpen: leaving(() => onOpenDataset(dataset.key, item.id)) } : undefined,
     }),
   })
 

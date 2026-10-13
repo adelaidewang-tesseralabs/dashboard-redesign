@@ -32,6 +32,7 @@ import { DashboardActions } from './DashboardActions'
 import { DatasetDataSection } from './DatasetDataSection'
 import { EditModeSwitch, type EditMode } from './EditModeSwitch'
 import { graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
+import { BackToDashboardPill } from './BackToDashboardPill'
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
 import { LayerSwitchButton } from './LayerSwitchButton'
@@ -87,6 +88,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { selected, setSelectedId } = useWidgetSelection(widgets)
   const { sources } = useAttachTables(dashboard)
   const [view, setView] = useState<BuilderView>('canvas')
+  /** The graph "View dataset" came from, so the Data tab can offer a way back to it. */
+  const [returnToId, setReturnToId] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [dataPanel, setDataPanel] = useState<DataPanel>('datasets')
   /** Who the preview shows the dashboard as; null when editing. */
@@ -152,6 +155,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   }, [multiActive])
 
   const add = (item: CanvasItem) => addWidgets(dashboard.id, [item])
+  const changeView = (next: BuilderView) => {
+    if (next === 'canvas') setReturnToId(null)
+    setView(next)
+  }
   const openDataset = (key: string | null) => {
     setActiveKey(key)
     setView('data')
@@ -175,7 +182,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     v3Panel.showEditor()
   }
   const openWidget = (itemId: string) => {
-    setView('canvas')
+    changeView('canvas')
     selectWidget(itemId)
   }
   const changeEditMode = (mode: EditMode) => {
@@ -205,7 +212,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     openWidget(item.id)
   }
   const askAiFromData = () => {
-    setView('canvas')
+    changeView('canvas')
     setSelectedId(null)
     v3Panel.showChat()
   }
@@ -289,9 +296,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       />
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage
-  const viewDataset = (key: string) => {
+  const viewDataset = (key: string, fromItemId: string) => {
     setDataPanel('datasets')
     openDataset(key)
+    if (governed) setReturnToId(fromItemId)
   }
   const navigation: WidgetNavigation = {
     onViewLineage: readOnly || !onLineageChange ? undefined : (itemId) => onLineageChange({ kind: 'graph', itemId }),
@@ -326,7 +334,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             />
           }
         />
-        {!asViewer && <BuilderViewSwitch view={view} dataCount={datasets.length} unapplied={unappliedDatasets.length > 0} onChange={setView} />}
+        {!asViewer && <BuilderViewSwitch view={view} dataCount={datasets.length} unapplied={unappliedDatasets.length > 0} onChange={changeView} />}
         {previewAs && !readOnly && (
           <PreviewBanner
             dashboard={dashboard}
@@ -402,6 +410,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             transformDrafts={transformDrafts}
           />
         )}
+        {view === 'data' && returnToId && !asViewer && <BackToDashboardPill onBack={() => openWidget(returnToId)} />}
         {bottomSettings && showSettings && selected && (
           <BottomSettingsPanel resize={bottomPanel} itemId={selected.id}>
             <WidgetEditor
