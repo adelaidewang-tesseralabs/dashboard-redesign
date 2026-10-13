@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/400.css';
+
+/* Mirrors the tokens in the main app's src/styles.css */
+@theme {
+  --font-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --color-tlai-mint: #afffde;
+  --color-tlai-0: #1a1a1a;
+  --color-tlai-1: #121212;
+  --color-tlai-2: #191919;
+  --color-tlai-3: #1f1f1f;
+  --color-tlai-4: #303030;
+  --color-tlai-card: #161616;
+  --color-tessera-primary-0: #0a0a0a;
+  --color-tessera-sidebar-accent: #262626;
+  --color-tessera-foreground-0: #171717;
+  --color-status-success: #4ade80;
+  --color-destructive: #f87171;
+
+  /* Form and menu tokens from the main app's dark theme. */
+  --color-input: oklch(1 0 0 / 15%);
+  --color-border: oklch(1 0 0 / 10%);
+  --color-ring: oklch(0.556 0 0);
+  --color-popover: oklch(0.269 0 0);
+  --color-muted-foreground: oklch(0.708 0 0);
+}
+
+/*
+ * Dashboard canvas theme — dark defaults, flipped by `[data-dashboard-theme='light']`.
+ * Text tokens (fg, muted, faint, axis, tooltip-fg) keep ≥4.5:1 on canvas, card and metric (WCAG 1.4.3).
+ */
+:root {
+  --dash-canvas: #121212;
+  --dash-card: #1f1f1f;
+  --dash-metric: #191919;
+  --dash-fg: rgba(255, 255, 255, 0.92);
+  --dash-muted: rgba(255, 255, 255, 0.6);
+  --dash-faint: rgba(255, 255, 255, 0.5);
+  --dash-border: rgba(255, 255, 255, 0.08);
+  /* Canvas widget edges and the selected-widget outline; the outline keeps ≥3:1 contrast against canvas and card (WCAG 1.4.11). */
+  --dash-card-edge: rgba(255, 255, 255, 0.16);
+  --dash-selected: #afffde;
+  --dash-dot: rgba(255, 255, 255, 0.07);
+  --dash-axis: rgba(255, 255, 255, 0.6);
+  --dash-grid: rgba(255, 255, 255, 0.08);
+  --dash-tooltip-bg: #1c1c1c;
+  --dash-tooltip-fg: #fff;
+  --dash-tooltip-border: rgba(255, 255, 255, 0.12);
+  --dash-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+[data-dashboard-theme='light'] {
+  --dash-canvas: #f3f3f3;
+  --dash-card: #ffffff;
+  --dash-metric: #ffffff;
+  --dash-fg: #171717;
+  --dash-muted: rgba(23, 23, 23, 0.7);
+  --dash-faint: rgba(23, 23, 23, 0.62);
+  --dash-border: rgba(23, 23, 23, 0.1);
+  --dash-card-edge: rgba(23, 23, 23, 0.2);
+  --dash-selected: #0f766e;
+  --dash-dot: rgba(23, 23, 23, 0.1);
+  --dash-axis: rgba(23, 23, 23, 0.62);
+  --dash-grid: rgba(23, 23, 23, 0.08);
+  --dash-tooltip-bg: #ffffff;
+  --dash-tooltip-fg: #171717;
+  --dash-tooltip-border: rgba(23, 23, 23, 0.12);
+  --dash-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-tessera-primary-0);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recharts-wrapper *:focus {
+  outline: none;
+}
+
+/* react-grid-layout ships light-theme defaults (red drop preview, black resize corner). */
+.canvas-grid .react-grid-item.react-grid-placeholder {
+  background: color-mix(in srgb, var(--dash-fg) 8%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--dash-fg) 30%, transparent);
+  border-radius: 8px;
+  opacity: 1;
+}
+.react-draggable-transparent-selection {
+  user-select: none;
+}
+.canvas-grid .react-grid-item > .react-resizable-handle {
+  z-index: 2;
+}
+.canvas-grid .react-grid-item > .react-resizable-handle::after {
+  right: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-color: var(--dash-axis);
+}
+
+/* Main app's elevated menu surface (Select options and dropdown menus). */
+.menu-surface {
+  background-color: color-mix(in srgb, var(--color-popover), white 4%);
+  border: 1px solid color-mix(in srgb, var(--color-popover), white 16%);
+  animation: menu-enter 100ms ease-out both;
+}
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
