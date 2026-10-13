@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Pin, TriangleAlert } from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
 import type { Dashboard } from '../../../data/dashboards'
 import { problemMessage, widgetProblem } from '../../../data/dataIssues'
 import { runSql, type Cell as DataCell } from '../../../data/dataSources'
@@ -16,7 +16,7 @@ import { labelsOf, objectGraphQuery, type GraphColors } from './graphColors'
 import { MediaWidget } from './MediaWidget'
 import { usePreviewPerson } from './previewPerson'
 import { SourceChart } from './SourceChart'
-import { SummaryText } from './SummaryText'
+import { PinnedMark, SummaryText } from './SummaryText'
 import { TextWidget } from './TextWidget'
 import { useGraphView } from './useGraphView'
 import { sqlKey, tableKey } from './v2/datasets'
@@ -89,7 +89,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       return withCornerMenu(<MediaWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} />)
     case 'text': {
       const { summary } = item
-      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && <PinnedMark />)
+      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && <PinnedMark />)
       return withCornerMenu(<TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} />)
     }
     case 'object': {
@@ -161,15 +161,6 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
 
 function withDashboardFilters(query: GraphQuery, dashboard: Dashboard, datasetKey: string): GraphQuery {
   return { ...query, filters: [...(query.filters ?? []), ...dashboardRowFilters(dashboard, datasetKey)] }
-}
-
-/** Editors can drag everything else, so the summary says why it won't move. */
-function PinnedMark() {
-  return (
-    <span title="Pinned to the top of the page" aria-label="Pinned to the top of the page" className="flex size-6 items-center justify-center text-[var(--dash-faint)]">
-      <Pin className="size-3.5" />
-    </span>
-  )
 }
 
 /** The graph's data is out of reach: the viewer lost access, or the dataset is gone. */

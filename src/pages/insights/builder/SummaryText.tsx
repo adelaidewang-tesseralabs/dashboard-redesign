@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react'
+import { Pin, Sparkles } from 'lucide-react'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
 import type { SummaryItem } from '../../../data/widgets'
@@ -23,7 +23,7 @@ export function SummaryText({ dashboard, item, title, readOnly, selected }: Summ
   const saveText = (markdown: string) => updateWidget(dashboard.id, { ...item, markdown, summary: { basis, edited: true } })
   const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: true }
 
-  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel />} />
+  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={!readOnly} />} />
   const outdated = !readOnly && item.summary.basis !== basis
   return (
     <TextWidget
@@ -41,11 +41,21 @@ export function SummaryText({ dashboard, item, title, readOnly, selected }: Summ
   )
 }
 
-function AiSummaryLabel() {
+function AiSummaryLabel({ pinned }: { pinned: boolean }) {
   return (
     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--dash-muted)]">
       <Sparkles className="size-3 text-[var(--dash-selected)]" aria-hidden />
       AI summary
+      {pinned && <PinnedMark />}
+    </span>
+  )
+}
+
+/** Editors can drag everything else, so the summary says why it won't move. */
+export function PinnedMark() {
+  return (
+    <span title="Pinned to the top of the page" aria-label="Pinned to the top of the page" className="flex size-5 items-center justify-center text-[var(--dash-faint)]">
+      <Pin className="size-3" />
     </span>
   )
 }
