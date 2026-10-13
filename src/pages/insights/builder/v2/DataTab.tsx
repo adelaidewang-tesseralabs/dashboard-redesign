@@ -3,10 +3,7 @@ import { Library, List, Plus, type LucideIcon } from "lucide-react";
 import type { Dashboard, SqlDataset } from "../../../../data/dashboards";
 import { useDashboards } from "../../../../data/DashboardsStore";
 import type { DataObject } from "../../../../data/dataSources";
-import {
-  transformCount,
-  type DatasetTransforms,
-} from "../../../../data/transforms";
+import type { DatasetTransforms } from "../../../../data/transforms";
 import { cn } from "../../../../lib/cn";
 import { downloadCsv, toCsv } from "../../../../lib/csv";
 import { Button } from "../../../../ui/Button";
@@ -28,6 +25,7 @@ import {
 import { DatasetWorkspace } from "./DatasetWorkspace";
 import type { ConsoleTab, ConsoleTabs } from "./useConsoleTabs";
 import type { TransformDrafts } from "./transforms/transformDrafts";
+import { useApplyTransforms } from "./transforms/useApplyTransforms";
 
 export type DataPanel = "datasets" | "catalog";
 
@@ -124,20 +122,9 @@ export function DataTab(props: DataTabProps) {
     }
     downloadCsv(dataset.label, toCsv(result.columns, result.rows));
   };
-  const applyTransforms = (dataset: Dataset, transforms: DatasetTransforms) => {
-    setDatasetTransforms(
-      dashboard.id,
-      dataset.key,
-      transformCount(transforms) > 0 ? transforms : undefined,
-    );
-    transformDrafts.setDraft(dataset.key, null);
-    const graphs = datasetUsage(widgets, dataset.key).length;
-    toast(
-      graphs === 0
-        ? `Transforms saved to ${dataset.label}`
-        : `Applied to ${graphs === 1 ? "1 graph" : `${graphs} graphs`}`,
-    );
-  };
+  const apply = useApplyTransforms(dashboard, transformDrafts);
+  const applyTransforms = (dataset: Dataset, transforms: DatasetTransforms) =>
+    apply(dataset.key, dataset.label, transforms);
   const confirmRemove = () => {
     if (!removing) return;
     removeDataset(dashboard.id, datasetRef(removing));

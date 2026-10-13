@@ -28,6 +28,8 @@ type BuilderCanvasProps = {
   chat: ReturnType<typeof useBuilderChat>
   selectedId: string | null
   onSelect: (itemId: string | null) => void
+  multiSelectedIds?: ReadonlySet<string>
+  onToggleSelect?: (itemId: string) => void
   sources: { object: DataObject; label: string }[]
   /** Builder V2's saved SQL datasets, offered in the Add graph menu. */
   queries?: SqlDataset[]
@@ -63,7 +65,7 @@ type BuilderCanvasProps = {
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, the floating toolbar, and the Tessera AI launcher. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -140,6 +142,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 onRemove={(itemId) => removeWidget(dashboard.id, itemId)}
                 selectedId={selectedId}
                 onSelect={onSelect}
+                multiSelectedIds={multiSelectedIds}
+                onToggleSelect={onToggleSelect}
                 readOnly={readOnly}
                 refreshing={refreshing}
                 onComment={onComment}

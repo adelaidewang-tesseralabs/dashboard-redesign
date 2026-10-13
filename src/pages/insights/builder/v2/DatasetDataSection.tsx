@@ -7,9 +7,9 @@ import { filterColumns } from '../dashboardFilters'
 import { EditorSection } from '../EditorFields'
 import { datasetIcon, datasetResult, graphFor, itemDatasetKey, type Dataset } from './datasets'
 import type { TransformColumn } from './transforms/controls'
-import { FilterCards, isCardFilter } from './FilterCards'
+import { DataFiltersSection, type ApplyTransforms } from './DataFiltersSection'
 import { TopNField } from './TopNField'
-import { FiltersEditor } from './transforms/FiltersEditor'
+import type { TransformDrafts } from './transforms/transformDrafts'
 
 type DatasetDataSectionProps = {
   item: GraphItem
@@ -17,6 +17,8 @@ type DatasetDataSectionProps = {
   dashboard: Dashboard
   onChange: (item: CanvasItem) => void
   onOpenDataset: (key: string) => void
+  transformDrafts: TransformDrafts
+  onApplyTransforms: ApplyTransforms
 }
 
 const DEFAULT_OPTION = 'default'
@@ -40,7 +42,7 @@ function parseValue(id: string): Aggregate | undefined {
 }
 
 /** Widget panel for builder V2: pick the dataset and what to group by, then the graph's own value, filters, sort and Top N. */
-export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset }: DatasetDataSectionProps) {
+export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset, transformDrafts, onApplyTransforms }: DatasetDataSectionProps) {
   const key = itemDatasetKey(item)
   const dataset = datasets.find((candidate) => candidate.key === key)
   const result = dataset ? datasetResult(dataset, dashboard) : undefined
@@ -49,7 +51,6 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
   const query = item.query ?? {}
   const groupKey = item.source === 'object' ? item.fieldKey : columns[0]?.key
   const setQuery = (patch: Partial<GraphQuery>) => onChange({ ...item, query: { ...query, ...patch } })
-  const graphFilters = query.filters ?? []
   const setFilters = (filters: RowFilter[]) => setQuery({ filters: filters.length ? filters : undefined })
   const cardColumns = key ? filterColumns(dashboard).filter((column) => column.datasetKey === key) : []
 
@@ -122,17 +123,17 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
         {item.source === 'sql' && query.value && <p className="text-xs text-white/45">Grouped by {groupKey}, the query's first column.</p>}
       </EditorSection>
 
-      <EditorSection title="Filters">
-        <p className="-mt-1 text-xs text-white/45">Only this graph. Page filters and dataset filters also apply.</p>
-        <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
-        <span className="mt-1 text-xs text-white/50">Conditions</span>
-        <FiltersEditor
-          compact
-          filters={graphFilters.filter((filter) => !isCardFilter(filter))}
-          columns={columns}
-          onChange={(conditions) => setFilters([...graphFilters.filter(isCardFilter), ...conditions])}
-        />
-      </EditorSection>
+      <DataFiltersSection
+        item={item}
+        dataset={dataset}
+        dashboard={dashboard}
+        columns={columns}
+        cardColumns={cardColumns}
+        groupKey={groupKey}
+        onGraphFiltersChange={setFilters}
+        transformDrafts={transformDrafts}
+        onApplyTransforms={onApplyTransforms}
+      />
 
       <EditorSection title="Sort and limit">
         <span className="text-xs text-white/50">Sort</span>

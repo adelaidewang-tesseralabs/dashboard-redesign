@@ -42,6 +42,8 @@ type DashboardsStore = {
   insertWidget: (id: string, item: CanvasItem, layout: WidgetRect[]) => void
   removeWidget: (id: string, itemId: string) => void
   updateWidget: (id: string, item: CanvasItem) => void
+  /** One edit, so a change made to several selected graphs undoes in one step. */
+  updateWidgets: (id: string, items: CanvasItem[]) => void
   /** Saves these rects and keeps every other one, so a page's grid never drops another page's placements. */
   setLayout: (id: string, layout: WidgetRect[]) => void
   /** The page widgets and filters added from anywhere (toolbar, chat) land on. Not saved. */
@@ -350,6 +352,18 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
               ? {
                   ...dashboard,
                   widgets: dashboard.widgets?.map((widget) => (widget.id === item.id ? item : widget)),
+                  updatedAt: nowIso,
+                }
+              : dashboard,
+          ),
+        ),
+      updateWidgets: (id, items) =>
+        setContent((current) =>
+          current.map((dashboard) =>
+            dashboard.id === id
+              ? {
+                  ...dashboard,
+                  widgets: dashboard.widgets?.map((widget) => items.find((item) => item.id === widget.id) ?? widget),
                   updatedAt: nowIso,
                 }
               : dashboard,

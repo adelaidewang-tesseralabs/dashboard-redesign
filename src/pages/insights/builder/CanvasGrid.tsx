@@ -3,7 +3,7 @@ import GridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'rea
 import 'react-grid-layout/css/styles.css'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import { GRID_COLS, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
+import { GRID_COLS, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
 import { CanvasWidget } from './CanvasWidget'
 import type { CrossHighlight } from './crossHighlight'
@@ -23,6 +23,9 @@ type CanvasGridProps = {
   onRemove: (itemId: string) => void
   selectedId: string | null
   onSelect: (itemId: string | null) => void
+  /** Builder V6: graphs picked with Shift-click, edited together. */
+  multiSelectedIds?: ReadonlySet<string>
+  onToggleSelect?: (itemId: string) => void
   /** Preview: no dragging, resizing, selecting or removing. */
   readOnly?: boolean
   refreshing?: boolean
@@ -45,7 +48,7 @@ const ID_PREFIX: Record<CanvasItem['source'], string> = { object: 'obj', sql: 's
 const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }))
 
 /** Drag a widget by its body to move it, or by the bottom-right corner to resize it. Section rows drag their graphs along. */
-export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false }: CanvasGridProps) {
+export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false }: CanvasGridProps) {
   const { addGroup, updateGroup, removeGroup, insertWidget } = useDashboards()
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
@@ -138,10 +141,10 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
 
   const renderWidget = (item: CanvasItem, actions: WidgetActions, className?: string) => (
     <SelectableWidget
-      selected={selectedId === item.id}
+      selected={selectedId === item.id || !!multiSelectedIds?.has(item.id)}
       readOnly={readOnly}
       busy={refreshing || editingId === item.id}
-      onSelect={() => onSelect(item.id)}
+      onSelect={(additive) => (additive && onToggleSelect && isGraph(item) ? onToggleSelect(item.id) : onSelect(item.id))}
       className={className}
     >
       <CanvasWidget

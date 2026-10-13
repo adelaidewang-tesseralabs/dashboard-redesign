@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView } from '../../../../data/pages'
-import type { CanvasItem } from '../../../../data/widgets'
+import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
 import { useToast } from '../../../../ui/Toast'
@@ -34,10 +34,12 @@ import { graphFor, listDatasets, sqlKey, tableKey, type Dataset } from './datase
 import { DataTab, type DataPanel } from './DataTab'
 import { planFromCatalog } from './planFromCatalog'
 import { LayerSwitchButton } from './LayerSwitchButton'
+import { MultiGraphPanel } from './MultiGraphPanel'
 import { StackedEditorPanel } from './StackedEditorPanel'
 import { useBottomPanelHeight } from './useBottomPanelHeight'
 import { useConsoleTabs, type ConsoleTab } from './useConsoleTabs'
 import { useTransformDrafts } from './transforms/transformDrafts'
+import { useApplyTransforms } from './transforms/useApplyTransforms'
 import { useLeaveGuard } from './useLeaveGuard'
 import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
@@ -78,7 +80,7 @@ type DashboardBuilderV2Props = {
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare } = props
-  const { addWidgets, updateWidget, addSources, addSqlDataset } = useDashboards()
+  const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
   const widgets = dashboard.widgets ?? []
@@ -98,6 +100,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const consoleTabs = useConsoleTabs()
   const datasets = listDatasets(dashboard)
   const transformDrafts = useTransformDrafts()
+  const applyTransforms = useApplyTransforms(dashboard, transformDrafts)
+  const [multiIds, setMultiIds] = useState<string[]>([])
+  const multiGraphs = widgets.filter(isGraph).filter((item) => multiIds.includes(item.id))
+  const multiActive = multiGraphs.length >= 2
   const unappliedDatasets = datasets.filter((dataset) => transformDrafts.drafts[dataset.key])
   const leaveGuard = useLeaveGuard(unappliedDatasets.length > 0)
   const leaveDialog = (
@@ -133,7 +139,17 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const pages = useDashboardPages(dashboard, asViewer, () => setSelectedId(null))
   const page = pageView(dashboard, pages.activeId)
   const showPageTabs = asViewer ? pages.pages.length > 1 : governed || pages.pages.length > 1
-  const v3Panel = useV3SidePanel({ enabled: productionFlow, chat, hasWidgets: widgets.length > 0, editorCoversChat: !!selected && layeredSettings, setSelectedId })
+  const v3Panel = useV3SidePanel({ enabled: productionFlow, chat, hasWidgets: widgets.length > 0, editorCoversChat: (!!selected || multiActive) && layeredSettings, setSelectedId })
+  const multiSelect = governed && !bottomSettings && !asViewer
+
+  useEffect(() => {
+    if (!multiActive) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMultiIds([])
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [multiActive])
 
   const add = (item: CanvasItem) => addWidgets(dashboard.id, [item])
   const openDataset = (key: string | null) => {
@@ -141,12 +157,22 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     setView('data')
   }
   const selectWidget = (itemId: string | null) => {
+    setMultiIds([])
     if (productionFlow) {
       v3Panel.select(itemId)
       return
     }
     setSelectedId(itemId)
     if (itemId && editMode === 'ai') chat.setChatOpen(true)
+  }
+  /** Shift-click: the open graph becomes the first of the selection; dropping back to one graph opens it as usual. */
+  const toggleSelect = (itemId: string) => {
+    const base = multiActive ? multiGraphs.map((item) => item.id) : selected && isGraph(selected) ? [selected.id] : []
+    const next = base.includes(itemId) ? base.filter((id) => id !== itemId) : [...base, itemId]
+    if (next.length < 2) return selectWidget(next[0] ?? null)
+    setSelectedId(null)
+    setMultiIds(next)
+    v3Panel.showEditor()
   }
   const openWidget = (itemId: string) => {
     setView('canvas')
@@ -249,7 +275,15 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   }
   const selectedDataSection =
     selected && (selected.source === 'object' || (selected.source === 'sql' && selected.datasetId)) ? (
-      <DatasetDataSection item={selected} datasets={datasets} dashboard={dashboard} onChange={(item) => updateWidget(dashboard.id, item)} onOpenDataset={openDataset} />
+      <DatasetDataSection
+        item={selected}
+        datasets={datasets}
+        dashboard={dashboard}
+        onChange={(item) => updateWidget(dashboard.id, item)}
+        onOpenDataset={openDataset}
+        transformDrafts={transformDrafts}
+        onApplyTransforms={applyTransforms}
+      />
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage
   const viewDataset = (key: string) => {
@@ -318,6 +352,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}
                 onSelect={selectWidget}
+                multiSelectedIds={multiActive ? new Set(multiGraphs.map((item) => item.id)) : undefined}
+                onToggleSelect={multiSelect ? toggleSelect : undefined}
                 onComment={commentOn}
                 sources={datasets.flatMap((dataset) =>
                   dataset.kind === 'table' && (productionFlow || dataset.origin !== 'mosaic') ? [{ object: dataset.object, label: dataset.label }] : [],
@@ -414,7 +450,16 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
               ) : undefined
             }
             editor={
-              selected && !bottomSettings ? (
+              multiActive ? (
+                <MultiGraphPanel
+                  graphs={multiGraphs}
+                  datasets={datasets}
+                  dashboard={dashboard}
+                  onChange={(items) => updateWidgets(dashboard.id, items)}
+                  onDeselect={toggleSelect}
+                  onClose={() => setMultiIds([])}
+                />
+              ) : selected && !bottomSettings ? (
                 <WidgetEditor
                   embedded
                   item={selected}

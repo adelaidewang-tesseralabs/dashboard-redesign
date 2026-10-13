@@ -6,7 +6,8 @@ type SelectableWidgetProps = {
   readOnly: boolean
   /** Refreshing, or being changed by Tessera AI. */
   busy: boolean
-  onSelect: () => void
+  /** `additive` when Shift or Cmd/Ctrl was held, to add the widget to a multi-selection. */
+  onSelect: (additive: boolean) => void
   className?: string
   children: ReactNode
 }
@@ -26,7 +27,7 @@ export function SelectableWidget({ selected, readOnly, busy, onSelect, className
       }}
       onClick={(event) => {
         const press = pressRef.current
-        if (!readOnly && press && Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CLICK_SLOP) onSelect()
+        if (!readOnly && press && Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CLICK_SLOP) onSelect(event.shiftKey || event.metaKey || event.ctrlKey)
       }}
       className={cn(
         // Scroll margin keeps a widget scrolled into view (V4's settings panel) clear of the floating toolbar.
