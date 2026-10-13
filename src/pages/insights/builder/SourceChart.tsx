@@ -8,6 +8,7 @@ import { formatNumber, formatPercent } from '../../../lib/format'
 import { ChartPanel, chartAxisProps, chartGridStroke, chartTooltipItemStyle, chartTooltipStyle } from '../../../ui/ChartPanel'
 import { MetricCard } from '../../../ui/MetricCard'
 import type { ChartHighlight } from './crossHighlight'
+import { useCategoryAxis } from './useCategoryAxis'
 
 type SourceChartProps = {
   title: string
@@ -122,13 +123,18 @@ function ChartBody({ chart, counts, split, highlighting, columns, rows, colorOf,
   const fillOf = (row: HighlightRow, index: number) => (row.lit ? colorOf(row.label, index) : fade(colorOf(row.label, index)))
   // Recharts replays its grow-in on every data change, so a highlight click would make bars and slices visibly move.
   const animate = !onSelectLabel
+  const points = chart === 'line' || chart === 'area'
+  const { onResize, axis } = useCategoryAxis(
+    counts.map((row) => row.label),
+    { insetPx: points ? 12 + 24 + 24 : 8, points },
+  )
   switch (chart) {
     case 'bar':
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" onResize={onResize}>
           <BarChart data={counts} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} vertical={false} />
-            <XAxis dataKey="label" {...chartAxisProps} interval={0} />
+            <XAxis dataKey="label" {...chartAxisProps} {...axis} />
             <YAxis {...chartAxisProps} width={44} tickFormatter={(value) => formatNumber(Number(value))} />
             <Tooltip
               cursor={{ fill: 'var(--dash-grid)' }}
@@ -162,10 +168,10 @@ function ChartBody({ chart, counts, split, highlighting, columns, rows, colorOf,
       const Chart = chart === 'line' ? LineChart : AreaChart
       const base = highlighting ? fade(accent) : accent
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" onResize={onResize}>
           <Chart data={counts} margin={{ top: 8, right: 12, left: 0, bottom: 0 }} onClick={(state) => state?.activeLabel !== undefined && select(String(state.activeLabel))}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} vertical={false} />
-            <XAxis dataKey="label" {...chartAxisProps} interval={0} padding={{ left: 24, right: 24 }} />
+            <XAxis dataKey="label" {...chartAxisProps} {...axis} padding={{ left: 24, right: 24 }} />
             <YAxis {...chartAxisProps} width={44} tickFormatter={(value) => formatNumber(Number(value))} />
             <Tooltip contentStyle={chartTooltipStyle} itemStyle={chartTooltipItemStyle} formatter={(value, name) => [formatNumber(Number(value)), name === 'matched' ? 'Highlighted' : 'Count']} />
             {chart === 'line' ? (
