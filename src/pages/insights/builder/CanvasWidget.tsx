@@ -1,24 +1,26 @@
 import type { ReactNode } from 'react'
-import { TriangleAlert } from 'lucide-react'
+import { Pin, TriangleAlert } from 'lucide-react'
 import type { Dashboard } from '../../../data/dashboards'
 import { problemMessage, widgetProblem } from '../../../data/dataIssues'
 import { runSql, type Cell as DataCell } from '../../../data/dataSources'
-import { downloadCsv, toCsv } from '../../../lib/csv'
 import { aggregateLabel, applyTransforms, defaultGraphValue, graphResult, type GraphQuery } from '../../../data/transforms'
 import { usesSingleColor, type CanvasItem } from '../../../data/widgets'
 import { formatNumber } from '../../../lib/format'
 import { chartHighlight, type CrossHighlight } from './crossHighlight'
 import { dashboardRowFilters } from './dashboardFilters'
-import { GraphActionsMenu, type WidgetActions } from './GraphActionsMenu'
+import { GraphActionsMenu, type GraphViewActions, type WidgetActions } from './GraphActionsMenu'
 import { GraphFilterBadge } from './GraphFilterBadge'
 import { displaySubtitle, displayTitle, itemLabel, resolveObjectItem } from './canvasItems'
 import { labelsOf, objectGraphQuery, type GraphColors } from './graphColors'
 import { MediaWidget } from './MediaWidget'
+import { usePreviewPerson } from './previewPerson'
 import { SourceChart } from './SourceChart'
 import { SummaryText } from './SummaryText'
 import { TextWidget } from './TextWidget'
+import { useGraphView } from './useGraphView'
 import { sqlKey, tableKey } from './v2/datasets'
 import { WidgetComment } from './WidgetComment'
+import { WidgetFullScreen } from './WidgetFullScreen'
 
 type CanvasWidgetProps = {
   dashboard: Dashboard
@@ -40,43 +42,56 @@ type CanvasWidgetProps = {
 }
 
 export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = false, selected = false, highlight = null, onHighlight, colors }: CanvasWidgetProps) {
+  const label = displayTitle(item) || itemLabel(item)
+  const graphView = useGraphView({ dashboard, item, label, readOnly })
+  const body = { dashboard, item, readOnly, selected, highlight, onHighlight, colors }
   return (
-    <div className="group/widget relative h-full">
-      <WidgetBody dashboard={dashboard} item={item} actions={actions} readOnly={readOnly} selected={selected} highlight={highlight} onHighlight={onHighlight} colors={colors} />
+    <div ref={graphView.cardRef} data-widget-id={item.id} className="group/widget relative h-full">
+      <WidgetBody {...body} actions={actions} viewFor={graphView.viewFor} />
       {onComment && <WidgetComment label={itemLabel(item)} onSubmit={onComment} />}
+      {graphView.fullScreenHost && (
+        <WidgetFullScreen
+          label={label}
+          host={graphView.fullScreenHost}
+          contentRef={graphView.fullScreenRef}
+          onClose={graphView.closeFullScreen}
+          onSelect={readOnly ? undefined : graphView.selectFullScreen}
+        >
+          <WidgetBody {...body} selected={false} viewFor={graphView.viewFor} />
+        </WidgetFullScreen>
+      )}
     </div>
   )
 }
 
-type WidgetBodyProps = Required<Pick<CanvasWidgetProps, 'dashboard' | 'item' | 'readOnly' | 'selected' | 'highlight'>> & Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors'>
+type WidgetBodyProps = Required<Pick<CanvasWidgetProps, 'dashboard' | 'item' | 'readOnly' | 'selected' | 'highlight'>> &
+  Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors'> & { viewFor: (columns: string[], rows: DataCell[][]) => GraphViewActions }
 
-function WidgetBody({ dashboard, item, actions, readOnly, selected, highlight, onHighlight, colors }: WidgetBodyProps) {
+function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors }: WidgetBodyProps) {
+  const previewPerson = usePreviewPerson()
   const title = displayTitle(item)
   const subtitle = displaySubtitle(item)
   const label = title || itemLabel(item)
-  const menu = (onDownload?: () => void) => <GraphActionsMenu label={label} actions={actions} onDownload={onDownload} />
-  const download = (columns: string[], rows: DataCell[][]) => () => downloadCsv(label, toCsv(columns, rows))
+  const menu = (view?: GraphViewActions) => <GraphActionsMenu label={label} actions={actions} view={view} />
   // Items without a chart header carry the menu in their top-right corner.
-  const withCornerMenu = (body: ReactNode) => (
+  const withCornerMenu = (body: ReactNode, leading?: ReactNode) => (
     <>
       {body}
-      <div className="absolute top-2 right-2 z-10">{menu()}</div>
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {leading}
+        {menu()}
+      </div>
     </>
   )
-  const problem = widgetProblem(item, dashboard)
-  if (problem) return withCornerMenu(<DataError title={label} message={problemMessage(problem)} />)
+  const problem = widgetProblem(item, dashboard, previewPerson)
+  if (problem) return withCornerMenu(<DataError title={label} message={problemMessage(problem, previewPerson)} />)
   switch (item.source) {
     case 'media':
       return withCornerMenu(<MediaWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} />)
     case 'text': {
       const { summary } = item
-      return withCornerMenu(
-        summary ? (
-          <SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />
-        ) : (
-          <TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} />
-        ),
-      )
+      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && <PinnedMark />)
+      return withCornerMenu(<TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} />)
     }
     case 'object': {
       const resolved = resolveObjectItem(item)
@@ -96,7 +111,7 @@ function WidgetBody({ dashboard, item, actions, readOnly, selected, highlight, o
           chart={item.chart}
           columns={columns}
           rows={result.rows}
-          actions={menu(download(columns, result.rows))}
+          actions={menu(viewFor(columns, result.rows))}
           colorKeys={colors?.colorKeys ?? [...new Set([...field.values, ...labelsOf(graphResult(rows, field.key, objectGraphQuery(item)))])]}
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}
@@ -127,7 +142,7 @@ function WidgetBody({ dashboard, item, actions, readOnly, selected, highlight, o
           chart={item.chart}
           columns={result.columns}
           rows={result.rows}
-          actions={menu(download(result.columns, result.rows))}
+          actions={menu(viewFor(result.columns, result.rows))}
           colorKeys={colors?.colorKeys ?? labelsOf(graphResult(rows, undefined, item.query))}
           colorOffset={colors?.offset}
           color={usesSingleColor(item.chart) ? item.color : undefined}
@@ -147,6 +162,15 @@ function WidgetBody({ dashboard, item, actions, readOnly, selected, highlight, o
 
 function withDashboardFilters(query: GraphQuery, dashboard: Dashboard, datasetKey: string): GraphQuery {
   return { ...query, filters: [...(query.filters ?? []), ...dashboardRowFilters(dashboard, datasetKey)] }
+}
+
+/** Editors can drag everything else, so the summary says why it won't move. */
+function PinnedMark() {
+  return (
+    <span title="Pinned to the top of the page" aria-label="Pinned to the top of the page" className="flex size-6 items-center justify-center text-[var(--dash-faint)]">
+      <Pin className="size-3.5" />
+    </span>
+  )
 }
 
 /** The graph's data is out of reach: the viewer lost access, or the dataset is gone. */

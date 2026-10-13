@@ -1,4 +1,4 @@
-import { Ellipsis, FileOutput, History, Send, Settings, Star } from 'lucide-react'
+import { Ellipsis, FileOutput, History, Send, Settings, Star, Waypoints } from 'lucide-react'
 import { can, type Access } from '../../../data/access'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
@@ -14,6 +14,8 @@ type DetailHeaderActionsProps = {
   onShare: () => void
   onPreferences: () => void
   onHistory: () => void
+  /** Builder V2+, owners and editors. */
+  onLineage?: () => void
 }
 
 /** Top-bar actions from the dashboard route's `PageHeaderContent`. */
@@ -37,7 +39,7 @@ export function DetailHeaderActions(props: DetailHeaderActionsProps) {
 }
 
 /** Favorite, share and the more menu (export, history, preferences). Appearance lives on the canvas toolbar. */
-export function DashboardIconActions({ dashboard, role, onShare, onPreferences, onHistory }: DetailHeaderActionsProps) {
+export function DashboardIconActions({ dashboard, role, onShare, onPreferences, onHistory, onLineage }: DetailHeaderActionsProps) {
   const toast = useToast()
   const { isFavorite, toggleFavorite } = useDashboards()
   const favorite = isFavorite(dashboard.id)
@@ -53,6 +55,7 @@ export function DashboardIconActions({ dashboard, role, onShare, onPreferences, 
       Icon: FileOutput,
       onSelect: () => toast('Export is out of scope for this prototype'),
     },
+    ...(onLineage ? [{ label: 'View lineage', Icon: Waypoints, onSelect: onLineage }] : []),
     ...(can(role, 'editDetails') ? editorItems : []),
   ]
 

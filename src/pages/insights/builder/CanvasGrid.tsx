@@ -15,6 +15,7 @@ import { SectionRow } from './SectionRow'
 import { SelectableWidget } from './SelectableWidget'
 import { SECTION_ROWS, canvasRects, insertableBreaks, newSection, sectionMembers, sectionRowAbove } from './sections'
 import { useGraphShortcuts } from './useGraphShortcuts'
+import { useLinkedWidget } from './useLinkedWidget'
 
 type CanvasGridProps = {
   dashboard: Dashboard
@@ -47,6 +48,7 @@ const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }
 export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false }: CanvasGridProps) {
   const { addGroup, updateGroup, removeGroup, insertWidget } = useDashboards()
   const { width, containerRef, mounted } = useContainerWidth()
+  useLinkedWidget(mounted)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const [rendered, setRendered] = useState<Layout>([])
   const [interacting, setInteracting] = useState(false)

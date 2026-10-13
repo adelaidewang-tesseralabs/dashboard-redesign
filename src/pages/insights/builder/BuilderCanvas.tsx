@@ -15,6 +15,7 @@ import { CanvasHero } from './CanvasHero'
 import { CanvasToolbar } from './CanvasToolbar'
 import { DataIssuesBanner } from './DataIssuesBanner'
 import { FilterBar } from './FilterBar'
+import { FullScreenContext, type CanvasFullScreen } from './fullScreen'
 import { summarizePage, summaryBasis } from './pageSummary'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
 import { personalOverrides, usePersonalFilters, withPersonalValues } from './usePersonalView'
@@ -44,6 +45,8 @@ type BuilderCanvasProps = {
   drawer?: ReactNode | null
   /** Builder V2 preview: the canvas as viewers see it, without any editing chrome. */
   readOnly?: boolean
+  /** An editor previewing: filters open at the dashboard's defaults, and picks aren't saved as their own view. */
+  previewing?: boolean
   refreshing?: boolean
   onComment?: (itemId: string, text: string) => void
   /** Builder V3: open chat without clearing the selected graph, so it stacks on the settings. */
@@ -60,15 +63,19 @@ type BuilderCanvasProps = {
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, the floating toolbar, and the Tessera AI launcher. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false } = props
+  const { dashboard, chat, selectedId, onSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenChatLauncher, onOpenHistory, crossHighlight = false, sections = false, summaries = false } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
-  const personal = usePersonalFilters(dashboard.id)
+  const personal = usePersonalFilters(dashboard.id, !previewing)
   useUndoShortcuts(readOnly ? undefined : dashboard.id)
   const [addingFilter, setAddingFilter] = useState(false)
   const highlighting = readOnly && crossHighlight
   const [highlight, setHighlight] = useState<CrossHighlight | null>(null)
   if (!highlighting && highlight) setHighlight(null)
+  const [fullScreenId, setFullScreenId] = useState<string | null>(null)
+  const [fullScreenHost, setFullScreenHost] = useState<HTMLDivElement | null>(null)
+  if (fullScreenId && !dashboard.widgets?.some((widget) => widget.id === fullScreenId)) setFullScreenId(null)
+  const fullScreen: CanvasFullScreen = { itemId: fullScreenId, setItemId: setFullScreenId, host: fullScreenHost, onSelect: readOnly ? undefined : onSelect }
   const toggleHighlight = (next: CrossHighlight) => setHighlight((current) => (sameHighlight(current, next) ? null : next))
 
   useEffect(() => {
@@ -101,111 +108,119 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const theme = useResolvedAppearance(dashboard.appearance)
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <DataIssuesBanner dashboard={dashboard} onOpenHistory={readOnly ? undefined : onOpenHistory} />
-      <div
-        data-dashboard-theme={theme}
-        onClick={(event) => {
-          if ((event.target as HTMLElement).closest('.react-grid-item, [data-widget]')) return
-          onSelect(null)
-          setHighlight(null)
-        }}
-        className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
-      >
-        <FilterBar
-          dashboard={shown}
-          canEdit={!readOnly}
-          adding={addingFilter}
-          onAddingChange={setAddingFilter}
-          onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
-          onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
-        />
-        {empty && readOnly ? (
-          <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
-        ) : empty ? (
-          <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
-        ) : (
-          <div className={cn('flex flex-col gap-3 p-5', drawer ? 'pb-[380px]' : 'pb-24')}>
-            <CanvasGrid
-              dashboard={shown}
-              onLayoutChange={(layout) => setLayout(dashboard.id, layout)}
-              onRemove={(itemId) => removeWidget(dashboard.id, itemId)}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              readOnly={readOnly}
-              refreshing={refreshing}
-              onComment={onComment}
-              editingId={chat.editingId}
-              highlight={highlight}
-              onHighlight={highlighting ? toggleHighlight : undefined}
-              sections={sections}
-            />
-            {chat.thinking && !chat.editingId && <div className="h-80 animate-pulse rounded-lg bg-[var(--dash-card)]" />}
-          </div>
-        )}
-      </div>
-
-      {readOnly ? (
-        highlight && (
-          // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-            <div className="pointer-events-auto shadow-lg">
-              <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
-            </div>
-          </div>
-        )
-      ) : drawer ?? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
-          {empty && (
-            // Sits over the canvas but outside its themed element, so it takes the theme itself.
-            <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
-              <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
-              <ArrowDown className="size-3.5" />
+    <FullScreenContext value={fullScreen}>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <DataIssuesBanner dashboard={dashboard} onOpenHistory={readOnly ? undefined : onOpenHistory} />
+        <div
+          data-dashboard-theme={theme}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest('.react-grid-item, [data-widget]')) return
+            onSelect(null)
+            setHighlight(null)
+          }}
+          className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
+        >
+          <FilterBar
+            dashboard={shown}
+            canEdit={!readOnly}
+            adding={addingFilter}
+            onAddingChange={setAddingFilter}
+            onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
+            onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+          />
+          {empty && readOnly ? (
+            <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
+          ) : empty ? (
+            <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
+          ) : (
+            <div className={cn('flex flex-col gap-3 p-5', drawer ? 'pb-[380px]' : 'pb-24')}>
+              <CanvasGrid
+                dashboard={shown}
+                onLayoutChange={(layout) => setLayout(dashboard.id, layout)}
+                onRemove={(itemId) => removeWidget(dashboard.id, itemId)}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                readOnly={readOnly}
+                refreshing={refreshing}
+                onComment={onComment}
+                editingId={chat.editingId}
+                highlight={highlight}
+                onHighlight={highlighting ? toggleHighlight : undefined}
+                sections={sections}
+              />
+              {chat.thinking && !chat.editingId && <div className="h-80 animate-pulse rounded-lg bg-[var(--dash-card)]" />}
             </div>
           )}
-          <div className="pointer-events-auto">
-            <CanvasToolbar
-              chatOpen={chat.chatOpen}
-              widgets={widgets}
-              sources={sources}
-              queries={queries}
-              sourcesLabel={sourcesLabel}
-              datasetsFirst={datasetsFirst}
-              datasetsOnly={datasetsOnly}
-              onToggleChat={() => chat.setChatOpen((current) => !current)}
-              onOpenChat={() => chat.setChatOpen(true)}
-              onAddSource={onAddSource}
-              onOpenAddSource={onOpenAddSource}
-              onAddWidget={onAdd}
-              onAddText={() => {
-                const item = textItem()
-                onAdd(item)
-                onSelect(item.id)
-              }}
-              onAddSummary={summaries ? addSummary : undefined}
-              onAddFilter={() => setAddingFilter(true)}
-              onAddMedia={() => onAdd(mediaItem())}
-              onAddSection={sections ? addSection : undefined}
-              onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
-              onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
-              appearance={dashboard.appearance ?? 'dark'}
-              onAppearanceChange={(appearance) => setAppearance(dashboard.id, appearance)}
-            />
-          </div>
         </div>
-      )}
 
-      <ChatLauncher
-        visible={!chat.chatOpen && !drawer && !readOnly}
-        onOpen={
-          onOpenChatLauncher ??
-          (() => {
-            onSelect(null)
-            chat.setChatOpen(true)
-          })
-        }
-      />
-    </div>
+        <div
+          ref={setFullScreenHost}
+          data-dashboard-theme={theme}
+          className={cn('absolute inset-0 z-30 bg-[var(--dash-canvas)]', !fullScreenId && 'hidden')}
+        />
+
+        {fullScreenId ? null : readOnly ? (
+          highlight && (
+            // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+              <div className="pointer-events-auto shadow-lg">
+                <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
+              </div>
+            </div>
+          )
+        ) : drawer ?? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
+            {empty && (
+              // Sits over the canvas but outside its themed element, so it takes the theme itself.
+              <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
+                <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
+                <ArrowDown className="size-3.5" />
+              </div>
+            )}
+            <div className="pointer-events-auto">
+              <CanvasToolbar
+                chatOpen={chat.chatOpen}
+                widgets={widgets}
+                sources={sources}
+                queries={queries}
+                sourcesLabel={sourcesLabel}
+                datasetsFirst={datasetsFirst}
+                datasetsOnly={datasetsOnly}
+                onToggleChat={() => chat.setChatOpen((current) => !current)}
+                onOpenChat={() => chat.setChatOpen(true)}
+                onAddSource={onAddSource}
+                onOpenAddSource={onOpenAddSource}
+                onAddWidget={onAdd}
+                onAddText={() => {
+                  const item = textItem()
+                  onAdd(item)
+                  onSelect(item.id)
+                }}
+                onAddSummary={summaries ? addSummary : undefined}
+                onAddFilter={() => setAddingFilter(true)}
+                onAddMedia={() => onAdd(mediaItem())}
+                onAddSection={sections ? addSection : undefined}
+                onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
+                onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
+                appearance={dashboard.appearance ?? 'dark'}
+                onAppearanceChange={(appearance) => setAppearance(dashboard.id, appearance)}
+              />
+            </div>
+          </div>
+        )}
+
+        <ChatLauncher
+          visible={!chat.chatOpen && !drawer && !readOnly && !fullScreenId}
+          onOpen={
+            onOpenChatLauncher ??
+            (() => {
+              onSelect(null)
+              chat.setChatOpen(true)
+            })
+          }
+        />
+      </div>
+    </FullScreenContext>
   )
 }
 

@@ -8,6 +8,7 @@ type SearchInputProps = {
   className?: string
   /** `underline` is the production table-toolbar `SearchBox` (loom, KB lists). */
   variant?: 'outlined' | 'underline'
+  autoFocus?: boolean
 }
 
 const VARIANTS = {
@@ -15,12 +16,13 @@ const VARIANTS = {
   underline: 'h-9 border-b border-white/20 px-1 transition-colors hover:border-white/50 focus-within:border-white/50',
 } as const
 
-export function SearchInput({ value, onChange, placeholder = 'Search...', className, variant = 'outlined' }: SearchInputProps) {
+export function SearchInput({ value, onChange, placeholder = 'Search...', className, variant = 'outlined', autoFocus }: SearchInputProps) {
   return (
     <label className={cn('flex min-w-0 items-center gap-2 text-sm', VARIANTS[variant], className)}>
       <Search className="size-4 shrink-0 text-white/40" />
       <input
         value={value}
+        autoFocus={autoFocus}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/40"

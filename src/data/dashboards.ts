@@ -137,6 +137,17 @@ export const TEAMMATES = [
   'priya@tesseralabs.ai',
 ]
 
+/** Everyone at the company, for people search; most have no dashboards shared with them. */
+export const ORG_PEOPLE = [
+  ...TEAMMATES,
+  'david@tesseralabs.ai',
+  'carmen@tesseralabs.ai',
+  'harry@tesseralabs.ai',
+  'tracy@tesseralabs.ai',
+  'michael@tesseralabs.ai',
+  'jane@tesseralabs.ai',
+]
+
 /** The current user's role on dashboards owned by someone else. */
 const CURRENT_USER_ROLES: Record<string, MemberRole> = {
   'vendor-master-data': 'editor',

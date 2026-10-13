@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, Sparkles } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 
@@ -11,6 +11,17 @@ type WidgetCommentProps = {
 export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // Keeps the draft, so a stray click doesn't throw away what was typed.
+  useEffect(() => {
+    if (!open) return
+    const onMouseDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
 
   const close = () => {
     setOpen(false)
@@ -24,7 +35,7 @@ export function WidgetComment({ label, onSubmit }: WidgetCommentProps) {
 
   return (
     // Clicks stay here so commenting doesn't also count as selecting the graph underneath.
-    <div data-comment-open={open || undefined} onClick={(event) => event.stopPropagation()} className="absolute -top-3 right-5 z-10">
+    <div ref={rootRef} data-comment-open={open || undefined} data-capture-ignore onClick={(event) => event.stopPropagation()} className="absolute -top-3 right-5 z-10">
       <button
         type="button"
         aria-label={`Ask AI about ${label}`}

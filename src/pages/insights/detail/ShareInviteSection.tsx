@@ -12,16 +12,17 @@ type ShareInviteSectionProps = {
   accessPicker: ReactNode
   onShare: (emails: string[]) => void
   onPasteResult: (message: string) => void
+  initialRecipients?: string[]
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DUPLICATE = 'This user already has a permission entry.'
 
 /** Mirrors production's `ShareDialog.InviteSection`: recipients stage as chips, then one Share commits them all. */
-export function ShareInviteSection({ dashboardId, existing, suggestions, accessPicker, onShare, onPasteResult }: ShareInviteSectionProps) {
+export function ShareInviteSection({ dashboardId, existing, suggestions, accessPicker, onShare, onPasteResult, initialRecipients = [] }: ShareInviteSectionProps) {
   const recent = useRecentInvitees()
   const removed = useRemovedMembers(dashboardId)
-  const [recipients, setRecipients] = useState<string[]>([])
+  const [recipients, setRecipients] = useState(initialRecipients)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const taken = new Set([...existing, ...recipients])

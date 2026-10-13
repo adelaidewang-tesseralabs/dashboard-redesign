@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Check } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { menuGroupLabelClass, menuItemClass, menuSurfaceClass } from './menuStyles'
 
@@ -13,7 +13,10 @@ export type MenuItem = {
   active?: boolean
 }
 
-export type MenuEntry = MenuItem | { type: 'separator' } | { type: 'label'; label: string }
+/** Opens a nested list beside the menu on hover or click. */
+export type MenuSubmenu = { type: 'submenu'; label: string; Icon?: LucideIcon; items: MenuItem[] }
+
+export type MenuEntry = MenuItem | MenuSubmenu | { type: 'separator' } | { type: 'label'; label: string }
 
 type MenuProps = {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode
@@ -23,8 +26,21 @@ type MenuProps = {
   className?: string
 }
 
+/** Rough submenu width, to decide whether it still fits to the right of the menu. */
+const SUBMENU_WIDTH = 200
+
+/** The right edge past which `element` gets cut off: the window, or the nearest scrolling or clipping ancestor (e.g. a canvas beside a side panel). */
+function visibleRight(element: HTMLElement) {
+  let right = window.innerWidth
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (getComputedStyle(parent).overflowX !== 'visible') right = Math.min(right, parent.getBoundingClientRect().right)
+  }
+  return right
+}
+
 export function Menu({ trigger, items, align = 'end', side = 'bottom', className }: MenuProps) {
   const [open, setOpen] = useState(false)
+  const [submenu, setSubmenu] = useState<{ label: string; flip: boolean } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,9 +52,37 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
+  const toggle = () => {
+    setOpen((current) => !current)
+    setSubmenu(null)
+  }
+  const select = (item: MenuItem) => {
+    setOpen(false)
+    setSubmenu(null)
+    item.onSelect()
+  }
+  const openSubmenu = (label: string, anchor: HTMLElement) => setSubmenu({ label, flip: anchor.getBoundingClientRect().right + SUBMENU_WIDTH > visibleRight(anchor) })
+
+  const renderItem = (item: MenuItem) => (
+    <button
+      key={item.label}
+      type="button"
+      role="menuitem"
+      onClick={(event) => {
+        event.stopPropagation()
+        select(item)
+      }}
+      className={cn(menuItemClass, 'relative pr-10', item.danger && 'text-red-300 hover:bg-red-500/10')}
+    >
+      {item.Icon && <item.Icon className="size-4 stroke-[1.5]" />}
+      <span className="truncate">{item.label}</span>
+      {item.active && <Check aria-hidden className="absolute right-2 size-4" />}
+    </button>
+  )
+
   return (
     <div ref={rootRef} className={cn('relative', className)}>
-      {trigger({ open, toggle: () => setOpen((current) => !current) })}
+      {trigger({ open, toggle })}
       {open && (
         <div
           role="menu"
@@ -60,22 +104,41 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
                 </div>
               )
             }
+            if (item.type === 'submenu') {
+              const shown = submenu?.label === item.label ? submenu : null
+              return (
+                <div key={item.label} className="relative" onMouseEnter={(event) => openSubmenu(item.label, event.currentTarget)} onMouseLeave={() => setSubmenu(null)}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-haspopup="menu"
+                    aria-expanded={!!shown}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      if (shown) setSubmenu(null)
+                      else openSubmenu(item.label, event.currentTarget)
+                    }}
+                    className={cn(menuItemClass, 'pr-2', shown && 'bg-white/10')}
+                  >
+                    {item.Icon && <item.Icon className="size-4 stroke-[1.5]" />}
+                    <span className="flex-1 truncate">{item.label}</span>
+                    <ChevronRight aria-hidden className="size-4 text-white/50" />
+                  </button>
+                  {shown && (
+                    // Padding instead of margin, so the pointer never leaves the item on its way into the submenu.
+                    <div className={cn('absolute -top-2 z-50', shown.flip ? 'right-full pr-1' : 'left-full pl-1')}>
+                      <div role="menu" className={cn(menuSurfaceClass, 'min-w-44')}>
+                        {item.items.map(renderItem)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
             return (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setOpen(false)
-                  item.onSelect()
-                }}
-                className={cn(menuItemClass, 'relative pr-10', item.danger && 'text-red-300 hover:bg-red-500/10')}
-              >
-                {item.Icon && <item.Icon className="size-4 stroke-[1.5]" />}
-                <span className="truncate">{item.label}</span>
-                {item.active && <Check aria-hidden className="absolute right-2 size-4" />}
-              </button>
+              <div key={item.label} onMouseEnter={() => setSubmenu(null)}>
+                {renderItem(item)}
+              </div>
             )
           })}
         </div>

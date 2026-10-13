@@ -26,13 +26,16 @@ function write(key: string, value: unknown) {
 
 export type PersonalFilterValues = Record<string, string[]>
 
-/** Values a person picked on unlocked filters while viewing. Entries for deleted filters are simply never read. */
-export function usePersonalFilters(dashboardId: string) {
+/**
+ * Values a person picked on unlocked filters while viewing. Entries for deleted filters are simply never read.
+ * Without `persist` (an editor previewing), picks start from the dashboard's defaults and are dropped on leaving.
+ */
+export function usePersonalFilters(dashboardId: string, persist = true) {
   const key = storageKey(dashboardId, 'filters')
-  const [values, setValues] = useState<PersonalFilterValues>(() => read(key, {}))
+  const [values, setValues] = useState<PersonalFilterValues>(() => (persist ? read(key, {}) : {}))
   const save = (next: PersonalFilterValues) => {
     setValues(next)
-    write(key, next)
+    if (persist) write(key, next)
   }
   return {
     values,

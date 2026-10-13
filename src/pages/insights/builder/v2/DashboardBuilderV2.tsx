@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Eye } from 'lucide-react'
-import type { Dashboard } from '../../../../data/dashboards'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView } from '../../../../data/pages'
@@ -18,6 +18,10 @@ import { useSidePanelWidth } from '../useSidePanelWidth'
 import type { AddSourceKind } from '../sourceKinds'
 import { useWidgetSelection } from '../useWidgetSelection'
 import { WidgetEditor } from '../WidgetEditor'
+import { LineageView } from '../lineage/LineageView'
+import type { LineageTarget } from '../lineage/lineageGraph'
+import { PreviewPersonContext } from '../previewPerson'
+import { WidgetNavigationContext, type WidgetNavigation } from '../widgetNavigation'
 import { AddDatasetDialogs, type AddDatasetRequest } from './AddDatasetDialogs'
 import { BottomSettingsPanel } from './BottomSettingsPanel'
 import { BuilderViewSwitch, type BuilderView } from './BuilderViewSwitch'
@@ -34,6 +38,7 @@ import { useConsoleTabs, type ConsoleTab } from './useConsoleTabs'
 import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
 import { PageTabs } from './PageTabs'
+import { PreviewBanner } from './PreviewBanner'
 
 /**
  * Production flow only — where a selected widget's settings go: `side` layers them over the chat (V3),
@@ -60,9 +65,15 @@ type DashboardBuilderV2Props = {
   /** Viewers get the canvas only: no Data tab, toolbar, chat, widget panels or comments. */
   readOnly?: boolean
   onOpenHistory?: () => void
+  /** Owners and editors: the lineage page shown in place of the canvas, opened from a graph or the dashboard's more menu. */
+  lineage?: LineageTarget | null
+  onLineageChange?: (target: LineageTarget | null) => void
+  /** Opens the share dialog with this person staged, from the preview's person picker. */
+  onShare?: (invitee: string) => void
 }
 
-export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory }: DashboardBuilderV2Props) {
+export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
+  const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare } = props
   const { addWidgets, updateWidget, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
@@ -72,7 +83,9 @@ export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 
   const [view, setView] = useState<BuilderView>('canvas')
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [dataPanel, setDataPanel] = useState<DataPanel>('datasets')
-  const [previewing, setPreviewing] = useState(false)
+  /** Who the preview shows the dashboard as; null when editing. */
+  const [previewAs, setPreviewAs] = useState<string | null>(null)
+  const previewing = previewAs !== null
   const [refreshing, setRefreshing] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('ai')
   const [addRequest, setAddRequest] = useState<AddDatasetRequest | null>(null)
@@ -196,7 +209,7 @@ export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 
     toast(`Added ${table.label}`)
   }
   const togglePreview = (next: boolean) => {
-    setPreviewing(next)
+    setPreviewAs(next ? CURRENT_USER : null)
     if (next) setSelectedId(null)
   }
   const openCatalog = () => {
@@ -207,7 +220,24 @@ export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 
     selected && (selected.source === 'object' || (selected.source === 'sql' && selected.datasetId)) ? (
       <DatasetDataSection item={selected} datasets={datasets} dashboard={dashboard} onChange={(item) => updateWidget(dashboard.id, item)} onOpenDataset={openDataset} />
     ) : undefined
-  const showSettings = view === 'canvas' && !asViewer
+  const showSettings = view === 'canvas' && !asViewer && !lineage
+  const viewDataset = (key: string) => {
+    setDataPanel('datasets')
+    openDataset(key)
+  }
+  const navigation: WidgetNavigation = {
+    onViewLineage: readOnly || !onLineageChange ? undefined : (itemId) => onLineageChange({ kind: 'graph', itemId }),
+    onOpenDataset: readOnly ? undefined : viewDataset,
+  }
+
+  if (lineage && onLineageChange) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />
+        <LineageView key={JSON.stringify(lineage)} dashboard={dashboard} target={lineage} onBack={() => onLineageChange(null)} />
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -228,14 +258,14 @@ export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 
           }
         />
         {!asViewer && <BuilderViewSwitch view={view} dataCount={datasets.length} onChange={setView} />}
-        {previewing && !readOnly && (
-          <div className="flex shrink-0 items-center gap-2 border-b border-sky-300/20 bg-sky-400/10 px-5 py-2 text-xs text-sky-100">
-            <Eye className="size-3.5" />
-            Viewing as a viewer
-            <button type="button" onClick={() => togglePreview(false)} className="ml-auto cursor-pointer font-medium text-sky-100 underline-offset-2 hover:underline">
-              Back to editing
-            </button>
-          </div>
+        {previewAs && !readOnly && (
+          <PreviewBanner
+            dashboard={dashboard}
+            person={previewAs}
+            onPersonChange={setPreviewAs}
+            onGrantAccess={onShare}
+            onExit={() => togglePreview(false)}
+          />
         )}
         {(asViewer || view === 'canvas') && showPageTabs && (
           <PageTabs
@@ -246,32 +276,37 @@ export function DashboardBuilderV2({ dashboard, headerActions, addDatasetFlow = 
           />
         )}
         {asViewer || view === 'canvas' ? (
-          <BuilderCanvas
-            key={pages.activeId}
-            dashboard={page}
-            sections={governed}
-            summaries={governed}
-            chat={productionFlow ? v3Panel.chat : chat}
-            selectedId={selected?.id ?? null}
-            onSelect={selectWidget}
-            onComment={commentOn}
-            sources={datasets.flatMap((dataset) =>
-              dataset.kind === 'table' && (productionFlow || dataset.origin !== 'mosaic') ? [{ object: dataset.object, label: dataset.label }] : [],
-            )}
-            queries={dashboard.sqlDatasets}
-            sourcesLabel="Datasets"
-            datasetsFirst
-            datasetsOnly={productionFlow}
-            onAdd={add}
-            onAddSource={productionFlow ? requestSource : openCatalog}
-            onOpenAddSource={sourceDialogs ? undefined : openCatalog}
-            onOpenData={openCatalog}
-            readOnly={asViewer}
-            onOpenHistory={onOpenHistory}
-            refreshing={refreshing}
-            onOpenChatLauncher={productionFlow ? v3Panel.showChat : undefined}
-            crossHighlight
-          />
+          <WidgetNavigationContext value={navigation}>
+            <PreviewPersonContext value={previewAs && previewAs !== CURRENT_USER ? previewAs : undefined}>
+              <BuilderCanvas
+                key={`${pages.activeId}:${previewing}`}
+                dashboard={page}
+                sections={governed}
+                summaries={governed}
+                chat={productionFlow ? v3Panel.chat : chat}
+                selectedId={selected?.id ?? null}
+                onSelect={selectWidget}
+                onComment={commentOn}
+                sources={datasets.flatMap((dataset) =>
+                  dataset.kind === 'table' && (productionFlow || dataset.origin !== 'mosaic') ? [{ object: dataset.object, label: dataset.label }] : [],
+                )}
+                queries={dashboard.sqlDatasets}
+                sourcesLabel="Datasets"
+                datasetsFirst
+                datasetsOnly={productionFlow}
+                onAdd={add}
+                onAddSource={productionFlow ? requestSource : openCatalog}
+                onOpenAddSource={sourceDialogs ? undefined : openCatalog}
+                onOpenData={openCatalog}
+                readOnly={asViewer}
+                previewing={previewing && !readOnly}
+                onOpenHistory={onOpenHistory}
+                refreshing={refreshing}
+                onOpenChatLauncher={productionFlow ? v3Panel.showChat : undefined}
+                crossHighlight
+              />
+            </PreviewPersonContext>
+          </WidgetNavigationContext>
         ) : (
           <DataTab
             dashboard={dashboard}

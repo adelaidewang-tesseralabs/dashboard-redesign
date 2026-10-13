@@ -84,13 +84,26 @@ const RESTRICTED_TABLES: Record<string, string> = { payroll_costs: 'Payroll Cost
 /** Tables older dashboard versions used that have since been dropped. */
 const RETIRED_TABLES: Record<string, string> = { legacy_vendor_extract: 'Legacy vendor extract' }
 
+/** Mock per-person table permissions, so previewing a dashboard as someone shows what theirs hide. */
+const PERSON_DENIED_TABLES: Record<string, string[]> = {
+  'olivier@tesseralabs.ai': ['work_items'],
+  'sophia@tesseralabs.ai': ['data_checks'],
+  'arihant@tesseralabs.ai': ['field_mappings'],
+  'tracy@tesseralabs.ai': ['work_items', 'data_checks'],
+}
+
 export type TableAccess = { ok: true } | { ok: false; reason: 'denied' | 'missing'; label: string }
 
-/** Whether the current user can query `name`; queries always run with the viewer's own permissions. */
-export function tableAccess(name: string): TableAccess {
+/**
+ * Whether `user` can query `name`; queries always run with the viewer's own permissions. Unset `user` is the current
+ * user, who builds dashboards and so can query everything but `RESTRICTED_TABLES`.
+ */
+export function tableAccess(name: string, user?: string): TableAccess {
   if (RESTRICTED_TABLES[name]) return { ok: false, reason: 'denied', label: RESTRICTED_TABLES[name] }
-  if (findObject(name)) return { ok: true }
-  return { ok: false, reason: 'missing', label: RETIRED_TABLES[name] ?? name }
+  const object = findObject(name)
+  if (!object) return { ok: false, reason: 'missing', label: RETIRED_TABLES[name] ?? name }
+  if (user && PERSON_DENIED_TABLES[user]?.includes(name)) return { ok: false, reason: 'denied', label: object.label }
+  return { ok: true }
 }
 
 export function sqlTable(sql: string) {

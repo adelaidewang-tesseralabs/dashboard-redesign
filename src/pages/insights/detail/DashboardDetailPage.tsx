@@ -11,6 +11,7 @@ import { PageLayout } from '../../../ui/PageLayout'
 import { useToast } from '../../../ui/Toast'
 import { DashboardBuilder } from '../builder/DashboardBuilder'
 import { DashboardBuilderV2, type AddDatasetFlow, type SettingsPlacement } from '../builder/v2/DashboardBuilderV2'
+import type { LineageTarget } from '../builder/lineage/lineageGraph'
 import { DashboardFormDialog } from '../custom/DashboardFormDialog'
 import { AccessChip } from './AccessChip'
 import { DashboardIconActions, DetailHeaderActions } from './DetailHeaderActions'
@@ -47,14 +48,30 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
   const toast = useToast()
   const { updateDashboard } = useDashboards()
   const [dialog, setDialog] = useState<'share' | 'preferences' | 'history' | null>(null)
+  const [lineage, setLineage] = useState<LineageTarget | null>(null)
   const [builderVersion] = useBuilderVersion()
   const role = useEffectiveRole(dashboard)
   const listTo = builderPath('/insights/dashboards', builderVersion)
   const inBuilderV2 = builderVersion !== 'v1'
   const readOnly = !can(role, 'edit')
-  const share = () => setDialog('share')
+  const [invitee, setInvitee] = useState<string>()
+  const share = () => {
+    setInvitee(undefined)
+    setDialog('share')
+  }
+  const shareWith = (user: string) => {
+    setInvitee(user)
+    setDialog('share')
+  }
   const openHistory = () => setDialog('history')
-  const actionProps = { dashboard, role, onShare: share, onPreferences: () => setDialog('preferences'), onHistory: openHistory }
+  const actionProps = {
+    dashboard,
+    role,
+    onShare: share,
+    onPreferences: () => setDialog('preferences'),
+    onHistory: openHistory,
+    onLineage: inBuilderV2 && !readOnly ? () => setLineage({ kind: 'dashboard' }) : undefined,
+  }
   const badge = <AccessChip dashboard={dashboard} onClick={share} />
 
   if (role === null) return <NoAccess dashboard={dashboard} listTo={listTo} />
@@ -75,6 +92,9 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           badge={badge}
           readOnly={readOnly}
           onOpenHistory={openHistory}
+          lineage={readOnly ? null : lineage}
+          onLineageChange={setLineage}
+          onShare={shareWith}
         />
       ) : (
         <DashboardBuilder dashboard={dashboard} badge={badge} readOnly={readOnly} onOpenHistory={openHistory} />
@@ -82,7 +102,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
 
       <VersionHistoryDialog open={dialog === 'history'} onClose={() => setDialog(null)} dashboard={dashboard} />
 
-      <ShareDialog open={dialog === 'share'} onClose={() => setDialog(null)} dashboard={dashboard} role={role} />
+      <ShareDialog open={dialog === 'share'} onClose={() => setDialog(null)} dashboard={dashboard} role={role} invitee={invitee} />
 
       <DashboardFormDialog
         open={dialog === 'preferences'}

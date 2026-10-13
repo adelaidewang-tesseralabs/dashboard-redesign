@@ -17,6 +17,8 @@ type ShareDialogProps = {
   onClose: () => void
   dashboard: Dashboard
   role: Access
+  /** Staged in the invite field on open, e.g. someone picked in the preview who has no access yet. */
+  invitee?: string
 }
 
 /** Production's share dialog names roles as nouns, unlike the "Can edit" labels elsewhere in the prototype. */
@@ -44,7 +46,7 @@ function isGeneralAccess(value: string): value is GeneralAccess {
 }
 
 /** Laid out like production's `ShareDialog` parts, on top of the prototype's owner / general-access model. Every edit is live. */
-export function ShareDialog({ open, onClose, dashboard, role }: ShareDialogProps) {
+export function ShareDialog({ open, onClose, dashboard, role, invitee }: ShareDialogProps) {
   const { addMember, setMemberRole, removeMember, setGeneralAccess, transferOwnership } = useDashboards()
   const toast = useToast()
   const [inviteRole, setInviteRole] = useState<MemberRole>('viewer')
@@ -111,6 +113,7 @@ export function ShareDialog({ open, onClose, dashboard, role }: ShareDialogProps
               dashboardId={dashboard.id}
               existing={[dashboard.owner, ...dashboard.members.map((member) => member.user)]}
               suggestions={TEAMMATES}
+              initialRecipients={invitee ? [invitee] : undefined}
               onShare={share}
               onPasteResult={toast}
               accessPicker={
