@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import { builderPath, useBuilderVersion } from '../../../lib/builderVersion'
+import { builderPath, EDIT_MODE_PARAM, useBuilderVersion } from '../../../lib/builderVersion'
 import { Button } from '../../../ui/Button'
 import { Dialog } from '../../../ui/Dialog'
 import { PageLayout } from '../../../ui/PageLayout'
@@ -52,7 +52,7 @@ export function CustomDashboardsPage() {
       description: '',
       tags: [],
     })
-    navigate(builderPath(`/insights/dashboards/${created.id}`, builderVersion))
+    navigate(builderPath(`/insights/dashboards/${created.id}?${EDIT_MODE_PARAM}=edit`, builderVersion))
   }
 
   const rowProps = {

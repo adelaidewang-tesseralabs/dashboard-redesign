@@ -7,7 +7,7 @@ import { dataIssues } from '../../../../data/dataIssues'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView, resolvePageId } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
-import { useIsFinalBuilder } from '../../../../lib/builderVersion'
+import { EDIT_MODE_PARAM, useIsFinalBuilder } from '../../../../lib/builderVersion'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
 import type { PanelLayout } from '../../../../lib/panelLayout'
 import { useCollapseNavWhile } from '../../../../nav/navSuppression'
@@ -123,7 +123,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   /** The dataset a graph was just created from, so the canvas can offer a way back to it. */
   const [backToDatasetKey, setBackToDatasetKey] = useState<string | null>(null)
   const transformsPanel = useTransformsOpen(dashboard.id)
-  const [, setSearchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   /** The user opened the dataset list again while the chat had it collapsed. */
   const [listReopened, setListReopened] = useState(false)
   const [listCollapsedByUser, setListCollapsedByUser] = useState(false)
@@ -131,8 +131,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [contextClearedKey, setContextClearedKey] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [dataPanel, setDataPanel] = useState<DataPanel>('datasets')
-  /** Who the preview shows the dashboard as; null when editing. */
-  const [previewAs, setPreviewAs] = useState<string | null>(null)
+  const final = useIsFinalBuilder()
+  /** Who the preview shows the dashboard as; null when editing. Final derives preview from the URL, so this only picks the person. */
+  const [previewPerson, setPreviewAs] = useState<string | null>(null)
+  const finalPreview = final && !readOnly && searchParams.get(EDIT_MODE_PARAM) !== 'edit'
+  const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
   const previewing = previewAs !== null
   const [refreshing, setRefreshing] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('ai')
@@ -184,7 +187,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const layeredSettings = settingsPlacement === 'side' && !docked
   const asViewer = readOnly || previewing
   const pages = useDashboardPages(dashboard, asViewer, () => setSelectedId(null))
-  const final = useIsFinalBuilder()
   const historyShown = final && historyOpen && !readOnly
   const [versionId, setVersionId] = useState<string | null>(null)
   const previewedVersion = historyShown ? dashboard.versions.find((version, index) => index > 0 && version.id === versionId) : undefined
@@ -373,8 +375,17 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     toast(`Added ${table.label}`)
   }
   const togglePreview = (next: boolean) => {
-    setPreviewAs(next ? CURRENT_USER : null)
     if (next) setSelectedId(null)
+    if (!final) return setPreviewAs(next ? CURRENT_USER : null)
+    setPreviewAs(null)
+    setSearchParams(
+      (current) => {
+        if (next) current.delete(EDIT_MODE_PARAM)
+        else current.set(EDIT_MODE_PARAM, 'edit')
+        return current
+      },
+      { replace: true },
+    )
   }
   const openCatalog = () => {
     setDataPanel(sourceDialogs ? 'datasets' : 'catalog')
@@ -491,6 +502,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
               dashboard={dashboard}
               previewing={previewing}
               onPreviewChange={readOnly ? undefined : togglePreview}
+              labeledModeSwitch={final}
               refreshing={refreshing}
               onRefreshingChange={setRefreshing}
               iconActions={headerActions}
@@ -504,7 +516,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             person={previewAs}
             onPersonChange={setPreviewAs}
             onGrantAccess={onShare}
-            onExit={() => togglePreview(false)}
+            onExit={final ? undefined : () => togglePreview(false)}
           />
         )}
         {previewedVersion && view === 'canvas' && (

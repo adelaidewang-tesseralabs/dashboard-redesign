@@ -46,6 +46,9 @@ export function useBuilderVersion() {
   return [version, setVersion] as const
 }
 
+/** Final builder: `?mode=edit` opens a dashboard for editing; without it, editors land on the preview. */
+export const EDIT_MODE_PARAM = 'mode'
+
 /** Final: V6 reworked with the team's review feedback. Components deep in the builder branch on this instead of taking a prop. */
 export function useIsFinalBuilder() {
   return useBuilderVersion()[0] === 'final'

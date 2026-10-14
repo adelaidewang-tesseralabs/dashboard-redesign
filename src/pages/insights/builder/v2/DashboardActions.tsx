@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { Check, Eye, EyeOff, Pencil, RefreshCw } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { cn } from '../../../../lib/cn'
@@ -19,10 +19,12 @@ type DashboardActionsProps = {
   onRefreshingChange: (refreshing: boolean) => void
   /** Favorite, share and more — placed between refresh and preview. */
   iconActions?: ReactNode
+  /** Final builder: preview is the default, so the switch reads "Edit" / "Done" instead of an eye icon. */
+  labeledModeSwitch?: boolean
 }
 
 /** Builder header actions: refresh, page icon actions and "View as viewer". Every edit is live, so there's nothing to publish. */
-export function DashboardActions({ dashboard, previewing, onPreviewChange, refreshing, onRefreshingChange, iconActions }: DashboardActionsProps) {
+export function DashboardActions({ dashboard, previewing, onPreviewChange, refreshing, onRefreshingChange, iconActions, labeledModeSwitch = false }: DashboardActionsProps) {
   const { refresh } = useDashboards()
   const toast = useToast()
   const refreshedLabel = useRefreshedLabel(dashboard)
@@ -51,7 +53,16 @@ export function DashboardActions({ dashboard, previewing, onPreviewChange, refre
         <RefreshCw className={cn('size-4', refreshing && 'animate-spin')} />
       </Button>
       {iconActions}
-      {onPreviewChange && (
+      {onPreviewChange && labeledModeSwitch && (
+        <>
+          <span className="mx-1 h-5 w-px bg-white/10" />
+          <Button variant={previewing ? 'default' : 'outline'} size="sm" onClick={() => onPreviewChange(!previewing)}>
+            {previewing ? <Pencil className="size-3.5" /> : <Check className="size-3.5" />}
+            {previewing ? 'Edit' : 'Done'}
+          </Button>
+        </>
+      )}
+      {onPreviewChange && !labeledModeSwitch && (
         <>
           <span className="mx-1 h-5 w-px bg-white/10" />
           <Button
