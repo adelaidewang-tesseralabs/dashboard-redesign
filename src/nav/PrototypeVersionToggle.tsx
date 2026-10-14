@@ -9,6 +9,7 @@ const VERSION_LABELS: Record<BuilderVersion, string> = {
   v1: 'V1 · Inline sources',
   v2: 'V2 · Data tab',
   v3: 'V3 · Production source dialogs',
+  'v3-1': 'V3.1 · Tools on the left',
   v4: 'V4 · Settings panel at the bottom',
   v5: 'V5 · Settings above chat',
   v6: 'V6 · Catalog only, no SQL',
@@ -75,7 +76,7 @@ function VersionMenu({ version, setVersion }: { version: BuilderVersion; setVers
           className="flex h-6 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-white/70 hover:text-white"
         >
           <FlaskConical className="size-3.5 text-tlai-mint" />
-          <span className="font-medium text-white uppercase">{version}</span>
+          <span className="font-medium text-white uppercase">{version.replace('-', '.')}</span>
           <ChevronDown className="size-3" />
         </button>
       )}

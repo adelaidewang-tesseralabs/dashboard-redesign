@@ -18,8 +18,8 @@ import { DashboardIconActions, DetailHeaderActions } from './DetailHeaderActions
 import { ShareDialog } from './ShareDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
 
-const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', v4: 'bottom', v5: 'split', v6: 'split' }
-const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', v4: 'production', v5: 'production', v6: 'governed' }
+const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', 'v3-1': 'side', v4: 'bottom', v5: 'split', v6: 'split' }
+const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', 'v3-1': 'production', v4: 'production', v5: 'production', v6: 'governed' }
 
 export function DashboardDetailPage() {
   const { dashboardId } = useParams()
@@ -89,6 +89,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           headerActions={<DashboardIconActions {...actionProps} />}
           addDatasetFlow={ADD_DATASET_FLOW[builderVersion]}
           settingsPlacement={SETTINGS_PLACEMENT[builderVersion]}
+          toolbarPlacement={builderVersion === 'v3-1' ? 'left' : 'bottom'}
           badge={badge}
           readOnly={readOnly}
           onOpenHistory={openHistory}

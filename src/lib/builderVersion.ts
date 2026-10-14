@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-export const BUILDER_VERSIONS = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'] as const
+export const BUILDER_VERSIONS = ['v1', 'v2', 'v3', 'v3-1', 'v4', 'v5', 'v6'] as const
 export type BuilderVersion = (typeof BUILDER_VERSIONS)[number]
 
 const STORAGE_KEY = 'insights-prototype.builder-version'

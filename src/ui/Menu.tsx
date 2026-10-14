@@ -22,8 +22,10 @@ export type MenuEntry = MenuItem | MenuSubmenu | { type: 'separator' } | { type:
 type MenuProps = {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode
   items: MenuEntry[]
+  /** With `side="right"`, `start` lines the menu up with the trigger's top and `end` with its bottom. */
   align?: 'start' | 'end'
-  side?: 'top' | 'bottom'
+  /** `right`: beside the trigger, for controls in a vertical rail. */
+  side?: 'top' | 'bottom' | 'right'
   className?: string
 }
 
@@ -95,8 +97,10 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
           className={cn(
             menuSurfaceClass,
             'absolute z-40 min-w-44',
-            side === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-2',
-            align === 'end' ? 'right-0' : 'left-0',
+            side === 'right' && cn('left-full ml-2', align === 'end' ? 'bottom-0' : 'top-0'),
+            side === 'bottom' && 'top-full mt-1',
+            side === 'top' && 'bottom-full mb-2',
+            side !== 'right' && (align === 'end' ? 'right-0' : 'left-0'),
           )}
         >
           {items.map((item, index) => {

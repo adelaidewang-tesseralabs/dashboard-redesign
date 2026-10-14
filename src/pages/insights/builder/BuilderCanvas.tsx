@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, ArrowLeft } from 'lucide-react'
 import type { Dashboard, SqlDataset } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
 import type { DataObject } from '../../../data/dataSources'
@@ -66,11 +66,13 @@ type BuilderCanvasProps = {
   fullScreenToolbar?: boolean
   /** Floats just above the toolbar, e.g. a way back to the Data tab. */
   aboveToolbar?: ReactNode
+  /** Builder V3.1: the tools dock as a rail on the canvas's left edge instead of floating at the bottom. */
+  toolbarPlacement?: 'bottom' | 'left'
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom' } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -117,6 +119,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   /** `expandedId`: the graph filling the canvas, which opening Tessera AI aims the chat at. */
   const toolbar = (expandedId: string | null) => (
     <CanvasToolbar
+      orientation={toolbarPlacement === 'left' ? 'vertical' : 'horizontal'}
       fullScreen={expandedId !== null}
       chatOpen={chat.chatOpen}
       widgets={widgets}
@@ -150,91 +153,111 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     />
   )
 
+  const railed = toolbarPlacement === 'left'
+  const showRail = railed && !readOnly && !drawer && (!fullScreenId || fullScreenTools)
+
   return (
     <FullScreenContext value={fullScreen}>
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <DataIssuesBanner dashboard={dashboard} onOpenHistory={readOnly ? undefined : onOpenHistory} />
-        <div
-          data-dashboard-theme={theme}
-          onClick={(event) => {
-            if ((event.target as HTMLElement).closest('.react-grid-item, [data-widget]')) return
-            onSelect(null)
-            setHighlight(null)
-          }}
-          className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
-        >
-          {widgets.some(isGraph) && (
-            <FilterBar
-              dashboard={shown}
-              canEdit={!readOnly}
-              adding={addingFilter}
-              onAddingChange={setAddingFilter}
-              onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
-              onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
-              fixedStyle={fixedFilterStyle}
-            />
-          )}
-          {empty && readOnly ? (
-            <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
-          ) : empty ? (
-            <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
-          ) : (
-            <div className={cn('flex flex-col gap-3 p-5', drawer ? 'pb-[380px]' : 'pb-24')}>
-              <CanvasGrid
+      <div className="flex min-h-0 flex-1">
+        {showRail && toolbar(fullScreenId)}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <DataIssuesBanner dashboard={dashboard} onOpenHistory={readOnly ? undefined : onOpenHistory} />
+          <div
+            data-dashboard-theme={theme}
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest('.react-grid-item, [data-widget]')) return
+              onSelect(null)
+              setHighlight(null)
+            }}
+            className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
+          >
+            {widgets.some(isGraph) && (
+              <FilterBar
                 dashboard={shown}
-                onLayoutChange={(layout) => setLayout(dashboard.id, layout)}
-                onRemove={(itemId) => removeWidget(dashboard.id, itemId)}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                multiSelectedIds={multiSelectedIds}
-                onToggleSelect={onToggleSelect}
-                readOnly={readOnly}
-                refreshing={refreshing}
-                onComment={onComment}
-                editingId={chat.editingId}
-                highlight={highlight}
-                onHighlight={highlighting ? toggleHighlight : undefined}
-                sections={sections}
+                canEdit={!readOnly}
+                adding={addingFilter}
+                onAddingChange={setAddingFilter}
+                onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
+                onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+                fixedStyle={fixedFilterStyle}
               />
-              {chat.thinking && !chat.editingId && <div className="h-80 animate-pulse rounded-lg bg-[var(--dash-card)]" />}
-            </div>
-          )}
-        </div>
-
-        <div
-          ref={setFullScreenHost}
-          data-dashboard-theme={theme}
-          className={cn('absolute inset-0 z-30 bg-[var(--dash-canvas)]', !fullScreenId && 'hidden', fullScreenTools && 'pb-12')}
-        />
-
-        {fullScreenId ? (
-          fullScreenTools && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center">
-              <div className="pointer-events-auto">{toolbar(fullScreenId)}</div>
-            </div>
-          )
-        ) : readOnly ? (
-          highlight && (
-            // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
-            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-              <div className="pointer-events-auto shadow-lg">
-                <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
-              </div>
-            </div>
-          )
-        ) : drawer ?? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
-            {empty && (
-              // Sits over the canvas but outside its themed element, so it takes the theme itself.
-              <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
-                <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
-                <ArrowDown className="size-3.5" />
+            )}
+            {empty && readOnly ? (
+              <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
+            ) : empty ? (
+              <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
+            ) : (
+              <div className={cn('flex flex-col gap-3 p-5', drawer ? 'pb-[380px]' : !railed && 'pb-24')}>
+                <CanvasGrid
+                  dashboard={shown}
+                  onLayoutChange={(layout) => setLayout(dashboard.id, layout)}
+                  onRemove={(itemId) => removeWidget(dashboard.id, itemId)}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  multiSelectedIds={multiSelectedIds}
+                  onToggleSelect={onToggleSelect}
+                  readOnly={readOnly}
+                  refreshing={refreshing}
+                  onComment={onComment}
+                  editingId={chat.editingId}
+                  highlight={highlight}
+                  onHighlight={highlighting ? toggleHighlight : undefined}
+                  sections={sections}
+                />
+                {chat.thinking && !chat.editingId && <div className="h-80 animate-pulse rounded-lg bg-[var(--dash-card)]" />}
               </div>
             )}
-            {aboveToolbar && <div className="mb-1">{aboveToolbar}</div>}
-            <div className="pointer-events-auto">{toolbar(null)}</div>
           </div>
-        )}
+
+          <div
+            ref={setFullScreenHost}
+            data-dashboard-theme={theme}
+            className={cn('absolute inset-0 z-30 bg-[var(--dash-canvas)]', !fullScreenId && 'hidden', fullScreenTools && !railed && 'pb-12')}
+          />
+
+          {fullScreenId ? (
+            fullScreenTools && !railed && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center">
+                <div className="pointer-events-auto">{toolbar(fullScreenId)}</div>
+              </div>
+            )
+          ) : readOnly ? (
+            highlight && (
+              // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                <div className="pointer-events-auto shadow-lg">
+                  <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
+                </div>
+              </div>
+            )
+          ) : drawer ?? (railed ? (
+            <>
+              {empty && (
+                <div data-dashboard-theme={theme} className="pointer-events-none absolute top-4 left-4 flex items-center gap-1.5 text-[var(--dash-muted)]">
+                  <ArrowLeft className="size-3.5" />
+                  <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
+                </div>
+              )}
+              {aboveToolbar && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                  <div className="pointer-events-auto">{aboveToolbar}</div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
+              {empty && (
+                // Sits over the canvas but outside its themed element, so it takes the theme itself.
+                <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
+                  <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
+                  <ArrowDown className="size-3.5" />
+                </div>
+              )}
+              {aboveToolbar && <div className="mb-1">{aboveToolbar}</div>}
+              <div className="pointer-events-auto">{toolbar(null)}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </FullScreenContext>
   )

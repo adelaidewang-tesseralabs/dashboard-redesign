@@ -6,7 +6,8 @@ const GAP = 6
 const EDGE = 8
 const CONTROL = 'button, a[href], [role="button"], [data-tip]'
 
-type Tip = { label: string; anchor: DOMRect }
+/** `right`: set by `data-tip-side="right"`, for controls stacked in a vertical rail. */
+type Tip = { label: string; anchor: DOMRect; side: 'above' | 'right' }
 
 /** Buttons that show only an icon, so their name lives in `title` or `aria-label`. */
 function iconControl(target: EventTarget | null): HTMLElement | null {
@@ -61,7 +62,8 @@ export function IconTooltips() {
       }
       const label = control.dataset.tooltip || control.getAttribute('aria-label') || (control.hasAttribute('data-overflow-tip') ? control.textContent : null)
       if (!label) return
-      timer = window.setTimeout(() => setTip({ label, anchor: control.getBoundingClientRect() }), SHOW_DELAY_MS)
+      const side = control.dataset.tipSide === 'right' ? 'right' : 'above'
+      timer = window.setTimeout(() => setTip({ label, anchor: control.getBoundingClientRect(), side }), SHOW_DELAY_MS)
       // A button can disappear without the pointer moving, e.g. a keyboard shortcut switching views.
       watch = window.setInterval(() => {
         if (!control.isConnected) hide()
@@ -111,6 +113,10 @@ export function IconTooltips() {
     }
     const { width, height } = node.getBoundingClientRect()
     const { anchor } = tip
+    if (tip.side === 'right') {
+      setPosition({ left: anchor.right + GAP, top: anchor.top + anchor.height / 2 - height / 2 })
+      return
+    }
     const above = anchor.top - GAP - height >= EDGE
     const left = Math.min(Math.max(EDGE, anchor.left + anchor.width / 2 - width / 2), window.innerWidth - EDGE - width)
     setPosition({ left, top: above ? anchor.top - GAP - height : anchor.bottom + GAP })

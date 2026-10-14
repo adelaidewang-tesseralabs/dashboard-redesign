@@ -82,10 +82,12 @@ type DashboardBuilderV2Props = {
   onLineageChange?: (target: LineageTarget | null) => void
   /** Opens the share dialog with this person staged, from the preview's person picker. */
   onShare?: (invitee: string) => void
+  /** Where the canvas tools sit: a floating bar at the bottom, or a rail docked on the left. */
+  toolbarPlacement?: 'bottom' | 'left'
 }
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
-  const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare } = props
+  const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare, toolbarPlacement = 'bottom' } = props
   const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
@@ -412,6 +414,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 summaries={governed}
                 fixedFilterStyle={governed ? fixedFilterStyle : undefined}
                 fullScreenToolbar={governed}
+                toolbarPlacement={toolbarPlacement}
                 aboveToolbar={backToDatasetShown && <BackPill label="Back to dataset" onBack={backToDataset} onDismiss={() => setBackToDatasetKey(null)} />}
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}

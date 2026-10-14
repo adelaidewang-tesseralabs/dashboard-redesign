@@ -27,7 +27,8 @@ type AddGraphMenuProps = {
   onOpenAddSource?: () => void
   /** Omit where the chat composer is already on screen. */
   onAskAi?: () => void
-  side?: 'top' | 'bottom'
+  /** `right`: beside the trigger, top-aligned, for a vertical rail. */
+  side?: 'top' | 'bottom' | 'right'
   align?: 'start' | 'center'
 }
 
@@ -99,8 +100,10 @@ export function AddGraphMenu(props: AddGraphMenuProps) {
           className={cn(
             menuSurfaceClass,
             'absolute z-40 w-60',
-            side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
-            align === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2',
+            side === 'right' && 'top-0 left-full ml-2',
+            side === 'top' && 'bottom-full mb-2',
+            side === 'bottom' && 'top-full mt-2',
+            side !== 'right' && (align === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2'),
           )}
         >
           {datasetsOnly ? (
