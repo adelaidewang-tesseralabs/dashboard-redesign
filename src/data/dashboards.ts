@@ -82,6 +82,8 @@ export type SavedFilter = {
   createdBy: string
   /** Only its creator sees it unless they share it with everyone on the dashboard. */
   shared?: boolean
+  /** The page it was saved on. Elsewhere only the filters that page shares with the current one apply. */
+  pageId?: string
 }
 
 export type PresetOperator = 'in' | 'eq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte' | 'between'

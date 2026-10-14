@@ -88,7 +88,7 @@ type DashboardsStore = {
   setFilterAllPages: (id: string, filterId: string, allPages: boolean) => void
   addSavedFilter: (id: string, savedFilter: SavedFilter) => void
   removeSavedFilter: (id: string, savedFilterId: string) => void
-  updateSavedFilter: (id: string, savedFilterId: string, patch: Partial<Pick<SavedFilter, 'name' | 'shared'>>) => void
+  updateSavedFilter: (id: string, savedFilterId: string, patch: Partial<Pick<SavedFilter, 'name' | 'shared' | 'values' | 'operators' | 'pageId'>>) => void
   /** `runId` undefined goes back to the workflow's latest run. */
   pinRun: (id: string, workflowId: string, runId: string | undefined) => void
   restoreVersion: (id: string, versionId: string) => void

@@ -81,11 +81,15 @@ type BuilderCanvasProps = {
   emptyStart?: boolean
   /** Final builder: Add graph lists every source, not just the dashboard's datasets. */
   graphCatalog?: boolean
+  /** The page `dashboard` shows; saved filters remember it. */
+  pageId?: string
+  /** Owners and editors: they can delete or stop sharing anyone's shared saved filter, even while previewing. */
+  canManageSharedFilters?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, canManageSharedFilters = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -239,6 +243,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                     : Object.entries(values).forEach(([filterId, picked]) => setFilterValues(dashboard.id, filterId, picked))
                 }
                 onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+                pageId={pageId}
+                canManageShared={canManageSharedFilters}
               />
             )}
             {widgets.some(isGraph) && !presetFilters && (
