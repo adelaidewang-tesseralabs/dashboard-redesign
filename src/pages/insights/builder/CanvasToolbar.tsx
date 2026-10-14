@@ -38,7 +38,7 @@ type CanvasToolbarProps = {
   fullScreen?: boolean
   /** `vertical`: a rail docked on the canvas's left edge, like the workflow canvas; menus and tooltips open to its right. */
   orientation?: 'horizontal' | 'vertical'
-  /** Final builder: no fixed filters, so the filter tool opens the preset filters directly instead of asking which kind. */
+  /** Final builder: no filter tool — the preset filter row above the canvas already offers every field of each dataset on the page. */
   presetFiltersOnly?: boolean
 }
 
@@ -112,9 +112,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
           />
           <Tool Icon={Type} label="Add text" onClick={onAddText} vertical={vertical} />
           {onAddSummary && <Tool Icon={ScrollText} label="Summarize page" onClick={onAddSummary} vertical={vertical} />}
-          {presetFiltersOnly ? (
-            <Tool Icon={Filter} label="Preset filters for viewers" onClick={() => onAddFilter('viewer')} vertical={vertical} />
-          ) : (
+          {!presetFiltersOnly && (
             <Menu
               side={menuSide}
               align={vertical ? 'start' : 'end'}

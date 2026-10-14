@@ -202,8 +202,6 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
               <PresetFilterBar
                 dashboard={shown}
                 canEdit={!readOnly}
-                opening={addingFilter !== null}
-                onOpened={() => setAddingFilter(null)}
                 onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
                 onApplyValues={(values) =>
                   readOnly

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CURRENT_USER, isPageCopy, type Dashboard, type DashboardFilter, type PresetOperator, type SavedFilter } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { useToast } from '../../../../ui/Toast'
@@ -13,9 +13,6 @@ type PresetFilterBarProps = {
   dashboard: Dashboard
   /** Editors set everyone's defaults and manage saved filters; viewers only pick their own values on preset fields. */
   canEdit: boolean
-  /** The toolbar's filter tool was clicked. */
-  opening: boolean
-  onOpened: () => void
   onValuesChange: (filterId: string, values: string[]) => void
   /** Sets several filters at once (Clear All, a saved filter). */
   onApplyValues: (values: Record<string, string[]>) => void
@@ -23,7 +20,7 @@ type PresetFilterBarProps = {
 }
 
 /** Final builder's filter row: one Olivier-style filter button per dataset, then saved filters. Replaces fixed and viewer filters. */
-export function PresetFilterBar({ dashboard, canEdit, opening, onOpened, onValuesChange, onApplyValues, onResetPersonal }: PresetFilterBarProps) {
+export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyValues, onResetPersonal }: PresetFilterBarProps) {
   const { dashboards, addFilter, updateFilter, setFilterAllPages, undo, addSavedFilter, removeSavedFilter } = useDashboards()
   const toast = useToast()
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -39,12 +36,6 @@ export function PresetFilterBar({ dashboard, canEdit, opening, onOpened, onValue
     canEdit ? onPage.has(dataset.key) && fields.some((field) => field.datasetKey === dataset.key) : presets.some((filter) => filter.datasetKey === dataset.key),
   )
   const savedFilters = full.savedFilters ?? []
-
-  useEffect(() => {
-    if (!opening) return
-    setOpenKey(datasets[0]?.key ?? null)
-    onOpened()
-  }, [opening, datasets, onOpened])
 
   if (datasets.length === 0 && (canEdit || savedFilters.length === 0)) return null
 
