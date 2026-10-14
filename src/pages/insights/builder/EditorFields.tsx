@@ -17,7 +17,7 @@ export function EditorSection({ title, action, children }: EditorSectionProps) {
   )
 }
 
-type EditorCheckboxProps = { label: string; checked: boolean; onChange: (checked: boolean) => void }
+type EditorCheckboxProps = { label: ReactNode; checked: boolean; onChange: (checked: boolean) => void }
 
 export function EditorCheckbox({ label, checked, onChange }: EditorCheckboxProps) {
   return (

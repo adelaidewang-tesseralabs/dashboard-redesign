@@ -55,6 +55,8 @@ export type DashboardFilter = {
   column: string
   label: string
   values: string[]
+  /** How `values` narrow the rows. Unset means `in`; `between` takes `[day]` or an inclusive `[from, to]`. */
+  operator?: PresetOperator
   /** `single` keeps at most one value picked. Unset means multiple. */
   selection?: 'multiple' | 'single'
   /** Unset or unknown means the first page. */
@@ -72,7 +74,9 @@ export const isPageCopy = (candidate: DashboardFilter, filter: DashboardFilter) 
   candidate.id !== filter.id && !candidate.allPages && !candidate.fixed && candidate.datasetKey === filter.datasetKey && candidate.column === filter.column
 
 /** Values per filter id; a filter missing here goes back to all values when the saved filter is applied. */
-export type SavedFilter = { id: string; name: string; values: Record<string, string[]>; createdBy: string }
+export type SavedFilter = { id: string; name: string; values: Record<string, string[]>; operators?: Record<string, PresetOperator>; createdBy: string }
+
+export type PresetOperator = 'in' | 'eq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte' | 'between'
 
 /** A tab of the dashboard; each has its own graphs, layout and filters. */
 export type DashboardPage = { id: string; name: string; hidden?: boolean }

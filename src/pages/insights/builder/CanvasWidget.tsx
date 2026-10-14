@@ -3,6 +3,7 @@ import { TriangleAlert } from 'lucide-react'
 import type { Dashboard } from '../../../data/dashboards'
 import { problemMessage, widgetProblem } from '../../../data/dataIssues'
 import { runSql, type Cell as DataCell } from '../../../data/dataSources'
+import { withFilterFields } from '../../../data/filterFields'
 import { aggregateLabel, applyTransforms, defaultGraphValue, graphResult, type GraphQuery } from '../../../data/transforms'
 import { showsLegend, usesSingleColor, type CanvasItem } from '../../../data/widgets'
 import { formatNumber } from '../../../lib/format'
@@ -97,7 +98,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       if (!resolved) return withCornerMenu(<Unavailable message="This data source is no longer available." />)
       const { object, field } = resolved
       const datasetKey = tableKey(object.name)
-      const rows = applyTransforms(runSql(`SELECT * FROM ${object.name}`), dashboard.datasetTransforms?.[datasetKey])
+      const rows = applyTransforms(filterableRows(`SELECT * FROM ${object.name}`, dashboard, datasetKey), dashboard.datasetTransforms?.[datasetKey])
       const query = withDashboardFilters(objectGraphQuery(item), dashboard, datasetKey)
       const result = graphResult(rows, field.key, query, field.values)
       if (!result.ok) return withCornerMenu(<Unavailable message={result.error} />)
@@ -127,7 +128,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       if (item.datasetId && !dataset) return withCornerMenu(<Unavailable message="This dataset was removed." />)
       const sql = dataset?.sql ?? item.sql
       const transforms = item.datasetId ? dashboard.datasetTransforms?.[sqlKey(item.datasetId)] : undefined
-      const rows = applyTransforms(runSql(sql), transforms)
+      const rows = applyTransforms(item.datasetId ? filterableRows(sql, dashboard, sqlKey(item.datasetId)) : runSql(sql), transforms)
       const query = item.datasetId ? withDashboardFilters(item.query ?? {}, dashboard, sqlKey(item.datasetId)) : item.query
       const result = graphResult(rows, undefined, query)
       if (!result.ok) return withCornerMenu(<Unavailable message={result.error} />)
@@ -159,6 +160,11 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       return unhandled
     }
   }
+}
+
+/** The dataset's rows, plus any filter-only columns its page filters narrow on. */
+function filterableRows(sql: string, dashboard: Dashboard, datasetKey: string) {
+  return withFilterFields(runSql(sql), sql, dashboardRowFilters(dashboard, datasetKey).map((filter) => filter.key))
 }
 
 function withDashboardFilters(query: GraphQuery, dashboard: Dashboard, datasetKey: string): GraphQuery {

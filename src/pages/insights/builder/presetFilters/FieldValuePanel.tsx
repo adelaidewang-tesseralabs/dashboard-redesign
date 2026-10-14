@@ -1,83 +1,92 @@
-import { useState } from 'react'
-import { Lock, Search, Trash2 } from 'lucide-react'
-import type { DashboardFilter } from '../../../../data/dashboards'
+import { Lock } from 'lucide-react'
+import type { PresetOperator } from '../../../../data/dashboards'
 import { EditorCheckbox } from '../EditorFields'
-import type { FilterColumn } from '../dashboardFilters'
+import { PRESET_OPERATOR_LABELS } from '../dashboardFilters'
+import { operatorsFor, type PresetField } from './presetFields'
+import { BooleanEditor, DateEditor, OptionsEditor, SegmentedChoice, ValueInput } from './PresetValueEditors'
 
 type FieldValuePanelProps = {
-  filter: DashboardFilter
-  column: FilterColumn | undefined
+  field: PresetField
+  values: string[]
+  operator: PresetOperator
   /** Viewers can't change a locked filter. */
   readOnly: boolean
   onValuesChange: (values: string[]) => void
-  /** Editors only. */
-  onRemove?: () => void
-  /** Editors only: show the filter on every page, or only the open one. */
+  /** Editors only: the operator is part of the preset. */
+  onOperatorChange?: (operator: PresetOperator) => void
+  allPages: boolean
+  /** Editors only, once the field has a value: show the filter on every page, or only the open one. */
   onAllPagesChange?: (allPages: boolean) => void
   datasetLabel: string
 }
 
-/** Right side of the filter builder: search and tick the values one field keeps. */
-export function FieldValuePanel({ filter, column, readOnly, onValuesChange, onRemove, onAllPagesChange, datasetLabel }: FieldValuePanelProps) {
-  const [query, setQuery] = useState('')
-  const values = column?.values ?? []
-  const shown = values.filter((value) => value.toLowerCase().includes(query.trim().toLowerCase()))
-  const toggle = (value: string, checked: boolean) => {
-    if (filter.selection === 'single') return onValuesChange(checked ? [value] : [])
-    onValuesChange(checked ? [...filter.values, value] : filter.values.filter((entry) => entry !== value))
-  }
+/** Right side of the filter builder: the editor for the selected field's type, as in the main app's FilterValuePanel. */
+export function FieldValuePanel({ field, values, operator, readOnly, onValuesChange, onOperatorChange, allPages, onAllPagesChange, datasetLabel }: FieldValuePanelProps) {
+  const operators = operatorsFor(field.type)
+  const editor = { label: field.label, values, readOnly, onChange: onValuesChange }
 
   return (
-    <div className="flex min-h-0 w-full flex-col gap-3 text-left">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{filter.label}</span>
-        {onRemove && (
-          <button type="button" aria-label={`Remove ${filter.label}`} title="Remove field" onClick={onRemove} className="flex size-6 cursor-pointer items-center justify-center rounded text-white/50 hover:bg-white/10 hover:text-white">
-            <Trash2 className="size-3.5" />
+    <div className="flex h-full min-h-0 w-full flex-col gap-3 text-left">
+      <span className="truncate text-sm font-medium text-white">{field.label}</span>
+      {operators.length > 1 &&
+        (onOperatorChange ? (
+          <SegmentedChoice
+            label={`${field.label} operator`}
+            options={operators.map((value) => ({ value, label: PRESET_OPERATOR_LABELS[value] }))}
+            value={operator}
+            onChange={onOperatorChange}
+          />
+        ) : (
+          <p className="text-xs text-white/55">{PRESET_OPERATOR_LABELS[operator]}</p>
+        ))}
+      {readOnly && (
+        <p className="flex items-center gap-1.5 text-xs text-white/50">
+          <Lock className="size-3" aria-hidden />
+          Set by the dashboard's editors
+        </p>
+      )}
+      <FieldEditor field={field} editor={editor} />
+      <div className="mt-auto flex flex-col gap-3">
+        {!readOnly && (
+          <button
+            type="button"
+            disabled={values.length === 0}
+            onClick={() => onValuesChange([])}
+            className="h-7 cursor-pointer self-start rounded-md px-2 text-xs text-white/80 hover:bg-white/10 hover:text-white disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            Clear
           </button>
         )}
-      </div>
-      {!column ? (
-        <p className="text-xs text-white/50">This field is no longer in the dataset.</p>
-      ) : (
-        <>
-          <label className="flex h-8 items-center gap-2 rounded-md border border-white/15 bg-white/[0.03] px-2.5 text-xs focus-within:border-white/30">
-            <Search className="size-3.5 shrink-0 text-white/45" aria-hidden />
-            <input
-              aria-label={`Search ${filter.label}`}
-              value={query}
-              placeholder={`Search ${filter.label}`}
-              onChange={(event) => setQuery(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/40"
-            />
-          </label>
-          {readOnly && (
-            <p className="flex items-center gap-1.5 text-xs text-white/50">
-              <Lock className="size-3" aria-hidden />
-              Set by the dashboard's editors
-            </p>
-          )}
-          <div className="flex max-h-48 flex-col gap-2 overflow-y-auto pb-2">
-            {shown.length === 0 && <p className="text-xs text-white/45">No values match.</p>}
-            {shown.map((value) =>
-              readOnly ? (
-                <span key={value} className="text-sm text-white/60">
-                  {filter.values.includes(value) ? '✓ ' : ''}
-                  {value}
-                </span>
-              ) : (
-                <EditorCheckbox key={value} label={value} checked={filter.values.includes(value)} onChange={(checked) => toggle(value, checked)} />
-              ),
-            )}
+        {onAllPagesChange && (
+          <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
+            <EditorCheckbox label="Apply to all pages" checked={allPages} onChange={onAllPagesChange} />
+            {allPages && <p className="pl-6 text-[11px] text-white/45">Applies to {datasetLabel} graphs on every page.</p>}
           </div>
-        </>
-      )}
-      {onAllPagesChange && (
-        <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
-          <EditorCheckbox label="Apply to all pages" checked={!!filter.allPages} onChange={onAllPagesChange} />
-          {filter.allPages && <p className="pl-6 text-[11px] text-white/45">Applies to {datasetLabel} graphs on every page.</p>}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
+}
+
+type FieldEditorProps = { field: PresetField; editor: { label: string; values: string[]; readOnly: boolean; onChange: (values: string[]) => void } }
+
+function FieldEditor({ field, editor }: FieldEditorProps) {
+  switch (field.type) {
+    case 'select':
+      return <OptionsEditor {...editor} options={field.options} />
+    case 'user':
+      return <OptionsEditor {...editor} options={field.options} users />
+    case 'text':
+      return <ValueInput {...editor} />
+    case 'number':
+      return <ValueInput {...editor} numeric />
+    case 'date':
+      return <DateEditor {...editor} />
+    case 'boolean':
+      return <BooleanEditor {...editor} />
+    default: {
+      const unhandled: never = field.type
+      return unhandled
+    }
+  }
 }

@@ -134,7 +134,7 @@ export function objectColumns(object: DataObject) {
   return ['id', ...object.fields.map((field) => field.key), ...NUMERIC_COLUMNS]
 }
 
-function seededRandom(seed: string) {
+export function seededRandom(seed: string) {
   let state = 7
   for (const char of seed) state = (state * 31 + char.charCodeAt(0)) % 2147483647
   return () => {

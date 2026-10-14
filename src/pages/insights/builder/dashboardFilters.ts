@@ -1,4 +1,4 @@
-import type { Dashboard, DashboardFilter, FieldRef } from '../../../data/dashboards'
+import type { Dashboard, DashboardFilter, FieldRef, PresetOperator } from '../../../data/dashboards'
 import { columnTypes, FILTER_OPERATOR_LABELS, isNullOperator, type GraphSort, type RowFilter } from '../../../data/transforms'
 import { isGraph, type GraphItem } from '../../../data/widgets'
 import { objectGraphQuery } from './graphColors'
@@ -63,8 +63,54 @@ export function dashboardRowFilters(dashboard: Pick<Dashboard, 'filters' | 'fiel
   return (dashboard.filters ?? []).flatMap((filter): RowFilter[] => {
     if (filter.values.length === 0) return []
     const column = filterColumnIn(dashboard, filter, datasetKey)
-    return column ? [{ id: filter.id, key: column, operator: 'in', value: filter.values.join(',') }] : []
+    return column ? presetRowFilters(filter, column) : []
   })
+}
+
+function presetRowFilters(filter: DashboardFilter, key: string): RowFilter[] {
+  const [first, second = first] = filter.values
+  const operator = filter.operator ?? 'in'
+  switch (operator) {
+    case 'in':
+      return [{ id: filter.id, key, operator: 'in', value: filter.values.join(',') }]
+    case 'contains':
+      return [{ id: filter.id, key, operator: 'like', value: first }]
+    case 'between':
+      return [
+        { id: filter.id, key, operator: 'gte', value: first },
+        { id: `${filter.id}:to`, key, operator: 'lte', value: second },
+      ]
+    case 'eq':
+    case 'gt':
+    case 'gte':
+    case 'lt':
+    case 'lte':
+      return [{ id: filter.id, key, operator, value: first }]
+    default: {
+      const unhandled: never = operator
+      return unhandled
+    }
+  }
+}
+
+export const PRESET_OPERATOR_LABELS: Record<PresetOperator, string> = {
+  in: 'is any of',
+  eq: 'is',
+  contains: 'contains',
+  gt: '>',
+  gte: '≥',
+  lt: '<',
+  lte: '≤',
+  between: 'between',
+}
+
+/** A page filter's picks as one line, e.g. "≥ 40" or "2026-01-01 – 2026-03-31". */
+export function describePresetValues(filter: Pick<DashboardFilter, 'values' | 'operator'>): string {
+  const operator = filter.operator ?? 'in'
+  if (operator === 'in') return filter.values.join(', ')
+  const [first, second = first] = filter.values
+  if (operator === 'between') return first === second ? first : `${first} – ${second}`
+  return `${PRESET_OPERATOR_LABELS[operator]} ${first}`
 }
 
 /** A filter narrowing one graph. `via` names the linked column a page filter reaches this graph through. */
@@ -106,7 +152,7 @@ export function graphFilters(dashboard: Dashboard, item: GraphItem): AppliedFilt
         const column = filterColumnIn(dashboard, filter, datasetKey)
         if (!column || filter.values.length === 0) return []
         const via = datasetKey === filter.datasetKey ? undefined : column
-        return [{ id: filter.id, scope: filter.fixed ? 'fixed' : 'page', label: filter.label, detail: filter.values.join(', '), via }]
+        return [{ id: filter.id, scope: filter.fixed ? 'fixed' : 'page', label: filter.label, detail: describePresetValues(filter), via }]
       })
     : []
   const transforms = datasetKey ? dashboard.datasetTransforms?.[datasetKey] : undefined
