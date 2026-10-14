@@ -262,7 +262,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
               )}
             </>
           ) : (
-            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex flex-col items-center gap-1.5">
               {empty && (
                 // Sits over the canvas but outside its themed element, so it takes the theme itself.
                 <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
