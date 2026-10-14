@@ -11,6 +11,8 @@ type BuilderHeaderProps = {
   trailing?: ReactNode;
   /** Viewers see the name without the rename field. */
   readOnly?: boolean;
+  /** Makes the tags a button, e.g. to edit the dashboard's details. */
+  onTagsClick?: () => void;
 };
 
 /** Builder header: editable name, access badge and tags with an optional right-hand slot, and the description below. */
@@ -19,6 +21,7 @@ export function BuilderHeader({
   badge,
   trailing,
   readOnly = false,
+  onTagsClick,
 }: BuilderHeaderProps) {
   const { updateDashboard } = useDashboards();
   return (
@@ -41,7 +44,18 @@ export function BuilderHeader({
           />
         )}
         {badge}
-        {dashboard.tags?.length ? <TagChips tags={dashboard.tags} max={2} /> : null}
+        {dashboard.tags?.length && onTagsClick ? (
+          <button
+            type="button"
+            title="Edit details"
+            onClick={onTagsClick}
+            className="flex min-w-0 cursor-pointer rounded-md opacity-90 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+          >
+            <TagChips tags={dashboard.tags} max={2} />
+          </button>
+        ) : dashboard.tags?.length ? (
+          <TagChips tags={dashboard.tags} max={2} />
+        ) : null}
         {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
       </div>
       {dashboard.description && (

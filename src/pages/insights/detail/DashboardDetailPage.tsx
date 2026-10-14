@@ -73,6 +73,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
     onEditDetails: () => setDialog('details'),
     onHistory: openHistory,
     onLineage: inBuilderV2 && !readOnly ? () => setLineage({ kind: 'dashboard' }) : undefined,
+    final: builderVersion === 'final',
   }
   const badge = <AccessChip dashboard={dashboard} onClick={share} />
 
@@ -98,6 +99,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           lineage={readOnly ? null : lineage}
           onLineageChange={setLineage}
           onShare={shareWith}
+          onEditDetails={builderVersion === 'final' && can(role, 'editDetails') ? () => setDialog('details') : undefined}
           historyOpen={dialog === 'history'}
           onCloseHistory={() => setDialog(null)}
         />

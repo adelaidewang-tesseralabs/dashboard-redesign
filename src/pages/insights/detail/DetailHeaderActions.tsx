@@ -16,6 +16,8 @@ type DetailHeaderActionsProps = {
   onHistory: () => void
   /** Builder V2+, owners and editors. */
   onLineage?: () => void
+  /** Final builder: Export downloads a PDF, and Edit details is a button beside the favorite star instead of a menu item. */
+  final?: boolean
 }
 
 /** Top-bar actions from the dashboard route's `PageHeaderContent`. */
@@ -39,28 +41,34 @@ export function DetailHeaderActions(props: DetailHeaderActionsProps) {
 }
 
 /** Favorite, share and the more menu (export, history, details). Appearance lives on the canvas toolbar. */
-export function DashboardIconActions({ dashboard, role, onShare, onEditDetails, onHistory, onLineage }: DetailHeaderActionsProps) {
+export function DashboardIconActions({ dashboard, role, onShare, onEditDetails, onHistory, onLineage, final = false }: DetailHeaderActionsProps) {
   const toast = useToast()
   const { isFavorite, toggleFavorite } = useDashboards()
   const favorite = isFavorite(dashboard.id)
+  const canEditDetails = can(role, 'editDetails')
 
   const editorItems: MenuEntry[] = [
     { type: 'separator' },
     { label: 'Version history', Icon: History, onSelect: onHistory },
-    { label: 'Edit details', Icon: Pencil, onSelect: onEditDetails },
+    ...(final ? [] : [{ label: 'Edit details', Icon: Pencil, onSelect: onEditDetails }]),
   ]
   const moreItems: MenuEntry[] = [
     {
       label: 'Export',
       Icon: FileOutput,
-      onSelect: () => toast('Export is out of scope for this prototype'),
+      onSelect: () => toast(final ? `Downloading ${dashboard.name} as PDF…` : 'Export is out of scope for this prototype'),
     },
     ...(onLineage ? [{ label: 'View lineage', Icon: Waypoints, onSelect: onLineage }] : []),
-    ...(can(role, 'editDetails') ? editorItems : []),
+    ...(canEditDetails ? editorItems : []),
   ]
 
   return (
     <>
+      {final && canEditDetails && (
+        <button type="button" aria-label="Edit details" title="Edit details" onClick={onEditDetails} className={headerActionClass}>
+          <Pencil className="size-4" />
+        </button>
+      )}
       <button
         type="button"
         aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}

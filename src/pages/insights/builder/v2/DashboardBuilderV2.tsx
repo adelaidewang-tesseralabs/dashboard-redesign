@@ -107,11 +107,13 @@ type DashboardBuilderV2Props = {
   /** Final builder: version history docks as a side panel instead of the caller's dialog. */
   historyOpen?: boolean
   onCloseHistory?: () => void
+  /** Final builder, for people who can edit details: clicking the header's tags opens the details dialog. */
+  onEditDetails?: () => void
 }
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare, panelLayout = 'layered' } = props
-  const { historyOpen = false, onCloseHistory } = props
+  const { historyOpen = false, onCloseHistory, onEditDetails } = props
   const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset, restoreVersion } = useDashboards()
   const toast = useToast()
   const widgets = dashboard.widgets ?? []
@@ -508,7 +510,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   if (lineage && onLineageChange) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        {lineage.kind !== 'graph' && <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />}
+        {lineage.kind !== 'graph' && <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} onTagsClick={onEditDetails} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />}
         <LineageView key={JSON.stringify(lineage)} dashboard={dashboard} target={lineage} onBack={() => onLineageChange(null)} />
         {leaveDialog}
       </div>
@@ -525,6 +527,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
           dashboard={dashboard}
           badge={badge}
           readOnly={readOnly}
+          onTagsClick={onEditDetails}
           trailing={
             <DashboardActions
               dashboard={dashboard}
