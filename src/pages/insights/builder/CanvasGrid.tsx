@@ -31,6 +31,8 @@ type CanvasGridProps = {
   refreshing?: boolean
   /** Builder V2: comment on a graph to ask Tessera AI for a change. */
   onComment?: (itemId: string, text: string) => void
+  /** Final builder: viewers can ask Tessera AI about a graph too, as a question rather than a change. */
+  askWhileViewing?: boolean
   /** The graph Tessera AI is changing right now. */
   editingId?: string | null
   /** Builder V2+ preview: linked highlighting between graphs. */
@@ -57,7 +59,7 @@ const ID_PREFIX: Record<CanvasItem['source'], string> = { object: 'obj', sql: 's
 const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }))
 
 /** Drag a widget by its body to move it, or by the bottom-right corner to resize it. Section rows drag their graphs along. */
-export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false, pageMove }: CanvasGridProps) {
+export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, askWhileViewing = false, editingId = null, highlight = null, onHighlight, sections = false, pageMove }: CanvasGridProps) {
   const { addGroup, updateGroup, removeGroup, insertWidget } = useDashboards()
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
@@ -173,7 +175,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
         readOnly={readOnly}
         selected={!readOnly && selectedId === item.id}
         actions={readOnly ? undefined : actions}
-        onComment={readOnly || !onComment ? undefined : (text) => onComment(item.id, text)}
+        onComment={!onComment || (readOnly && !(askWhileViewing && isGraph(item))) ? undefined : (text) => onComment(item.id, text)}
         highlight={highlight}
         onHighlight={onHighlight}
         colors={graphColors.get(item.id)}

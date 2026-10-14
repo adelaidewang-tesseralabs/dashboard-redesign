@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Check, Pencil, Trash2, TriangleAlert, UserX } from 'lucide-react'
+import { Check, Pencil, Trash2, TriangleAlert, Users, UserX } from 'lucide-react'
 import type { SavedFilter } from '../../../../data/dashboards'
 import { cn } from '../../../../lib/cn'
 import { nameOf } from '../../../../lib/people'
@@ -7,8 +7,9 @@ import { SavedFilterForm } from './SavedFilterForm'
 
 /** Creators get every action; owners and editors managing someone else's shared filter can stop sharing or delete it. */
 export type SavedFilterActions = {
-  onEdit?: (patch: { name: string; shared: boolean }) => void
+  onRename?: (name: string) => void
   onUpdate?: () => void
+  onShare?: () => void
   onStopSharing?: () => void
   onDelete?: () => void
 }
@@ -57,17 +58,16 @@ function subtitle(savedFilter: SavedFilter, state: SavedFilterState) {
 
 export function SavedFilterRow({ savedFilter, state, onApply, actions, nameTaken }: SavedFilterRowProps) {
   const [editing, setEditing] = useState(false)
-  const onEdit = actions?.onEdit
+  const onRename = actions?.onRename
 
-  if (editing && onEdit)
+  if (editing && onRename)
     return (
       <SavedFilterForm
         initialName={savedFilter.name}
-        initialShared={!!savedFilter.shared}
         submitLabel="Save"
         nameTaken={(name) => nameTaken(name, savedFilter.id)}
-        onSubmit={(patch) => {
-          onEdit(patch)
+        onSubmit={({ name }) => {
+          onRename(name)
           setEditing(false)
         }}
         onCancel={() => setEditing(false)}
@@ -103,12 +103,17 @@ export function SavedFilterRow({ savedFilter, state, onApply, actions, nameTaken
               Update
             </button>
           )}
+          {actions.onShare && (
+            <RowAction label="Share with everyone" name={savedFilter.name} onClick={actions.onShare}>
+              <Users className="size-3.5" />
+            </RowAction>
+          )}
           {actions.onStopSharing && (
             <RowAction label="Stop sharing" name={savedFilter.name} onClick={actions.onStopSharing}>
               <UserX className="size-3.5" />
             </RowAction>
           )}
-          {onEdit && (
+          {onRename && (
             <RowAction label="Rename" name={savedFilter.name} onClick={() => setEditing(true)}>
               <Pencil className="size-3.5" />
             </RowAction>

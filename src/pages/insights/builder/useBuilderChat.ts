@@ -36,7 +36,8 @@ export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = plan
       const reply = (message: Omit<ChatMessage, 'id' | 'role'>) => setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', ...message }])
       const target = pending.targetId ? dashboard.widgets?.find((widget) => widget.id === pending.targetId) : undefined
       if (answerOnly) {
-        reply({ text: summarizePage(dashboard) ?? "This dashboard doesn't have any graphs to answer from yet." })
+        const answer = target ? summarizePage({ ...dashboard, widgets: [target] }) : summarizePage(dashboard)
+        reply({ text: answer ?? (target ? "This graph doesn't have a breakdown to read yet." : "This dashboard doesn't have any graphs to answer from yet.") })
       } else if (pending.targetId && !target) {
         reply({ text: 'That graph is no longer on the canvas.' })
       } else if (target) {
@@ -60,5 +61,5 @@ export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = plan
     setChatOpen(true)
   }
 
-  return { messages, thinking: pending !== null, editingId: pending?.targetId ?? null, chatOpen, setChatOpen, send }
+  return { messages, thinking: pending !== null, editingId: answerOnly ? null : (pending?.targetId ?? null), chatOpen, setChatOpen, send }
 }

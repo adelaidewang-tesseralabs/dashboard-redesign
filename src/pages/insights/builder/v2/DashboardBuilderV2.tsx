@@ -280,6 +280,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const commentOn = (itemId: string, text: string) => {
     const item = widgets.find((widget) => widget.id === itemId)
     if (!item) return
+    if (asViewer) return chat.send(text, item)
     setSelectedId(itemId)
     if (productionFlow) v3Panel.showChat()
     else setEditMode('ai')
@@ -429,8 +430,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   }
   const chatHidden = emptyCanvas && chat.messages.length === (emptyStart?.messages ?? chat.messages.length)
   const canvasChatOpen = canvasChatAllowed && chat.chatOpen && !chatHidden && (productionFlow || !(selected && editMode === 'manual'))
-  // The edit canvas opens the chat from the toolbar's Ask AI; previews and the Data tab have no toolbar.
-  const chatRail = final && !chat.chatOpen && !historyShown && !chatHidden && (asViewer || view !== 'canvas')
+  // The canvas opens the chat from its toolbar, in edit and preview alike; only the Data tab has no toolbar.
+  const chatRail = final && !chat.chatOpen && !historyShown && !chatHidden && !asViewer && view !== 'canvas'
   const chatShowing = dataChatOpen || canvasChatOpen
   if (!chatShowing && listReopened) setListReopened(false)
   const activeDataset = datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0]
@@ -609,6 +610,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 canManageSharedFilters={!readOnly}
                 emptyStart={final}
                 graphCatalog={final}
+                viewerToolbar={final && asViewer}
+                chatUnread={v3Panel.unread}
               />
             </PreviewPersonContext>
           </WidgetNavigationContext>

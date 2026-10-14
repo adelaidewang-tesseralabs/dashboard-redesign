@@ -67,10 +67,20 @@ export function ViewerSavedFilters({ dashboard, filters, presets, pageId, viewer
     if (appliedId === savedFilter.id) setAppliedId(null)
     toast(`Deleted "${savedFilter.name}"`, { label: 'Undo', onSelect: () => addSavedFilter(dashboard.id, savedFilter) })
   }
+  const setShared = (savedFilter: SavedFilter, shared: boolean) => {
+    updateSavedFilter(dashboard.id, savedFilter.id, { shared })
+    const message = shared
+      ? `Shared "${savedFilter.name}" with everyone who has access to this dashboard`
+      : savedFilter.createdBy === viewer
+        ? `Stopped sharing "${savedFilter.name}". Only you can see it now.`
+        : `Stopped sharing "${savedFilter.name}". It's private to its creator now.`
+    toast(message, { label: 'Undo', onSelect: () => updateSavedFilter(dashboard.id, savedFilter.id, { shared: !shared }) })
+  }
   const actionsFor = (savedFilter: SavedFilter): SavedFilterActions | undefined => {
     if (savedFilter.createdBy === viewer)
       return {
-        onEdit: ({ name, shared }) => updateSavedFilter(dashboard.id, savedFilter.id, { name, shared }),
+        onRename: (name) => updateSavedFilter(dashboard.id, savedFilter.id, { name }),
+        ...(savedFilter.shared ? { onStopSharing: () => setShared(savedFilter, false) } : { onShare: () => setShared(savedFilter, true) }),
         onUpdate: () => {
           updateSavedFilter(dashboard.id, savedFilter.id, { values: currentValues(), operators: currentOperators(), pageId })
           setAppliedId(savedFilter.id)
@@ -80,13 +90,7 @@ export function ViewerSavedFilters({ dashboard, filters, presets, pageId, viewer
       }
     if (canManageShared && savedFilter.shared)
       return {
-        onStopSharing: () => {
-          updateSavedFilter(dashboard.id, savedFilter.id, { shared: false })
-          toast(`Stopped sharing "${savedFilter.name}". It's private to its creator now.`, {
-            label: 'Undo',
-            onSelect: () => updateSavedFilter(dashboard.id, savedFilter.id, { shared: true }),
-          })
-        },
+        onStopSharing: () => setShared(savedFilter, false),
         onDelete: () => remove(savedFilter),
       }
     return undefined

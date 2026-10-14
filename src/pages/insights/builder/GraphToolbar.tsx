@@ -11,6 +11,7 @@ type GraphToolbarProps = {
   actions?: WidgetActions
   view?: GraphViewActions
   onComment?: (text: string) => void
+  askPlaceholder?: string
 }
 
 /** Cards without a title row (text, media) fold the buttons below this width instead. */
@@ -65,7 +66,7 @@ function useFoldedToolbar(ref: RefObject<HTMLElement | null>, buttonCount: numbe
  * A canvas item's top-right icon buttons: Ask AI, copy link, download, full screen, then "…" for editing.
  * It floats over the card's corner rather than taking width from the title.
  */
-export function GraphToolbar({ label, actions, view, onComment }: GraphToolbarProps) {
+export function GraphToolbar({ label, actions, view, onComment, askPlaceholder }: GraphToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [askOpen, setAskOpen] = useState(false)
   const final = useIsFinalBuilder()
@@ -89,7 +90,7 @@ export function GraphToolbar({ label, actions, view, onComment }: GraphToolbarPr
           : 'opacity-0 group-hover/widget:opacity-100 focus-within:opacity-100 in-data-selected:opacity-100 has-[[data-popover-open]]:opacity-100 has-[[data-comment-open]]:opacity-100',
       )}
     >
-      {onComment && <WidgetComment label={label} onSubmit={onComment} open={askOpen} onOpenChange={setAskOpen} showTrigger={!folded} />}
+      {onComment && <WidgetComment label={label} placeholder={askPlaceholder} onSubmit={onComment} open={askOpen} onOpenChange={setAskOpen} showTrigger={!folded} />}
       {view && !folded && <ViewButtons view={view} downloadOnly={final} />}
       <GraphActionsMenu
         label={label}

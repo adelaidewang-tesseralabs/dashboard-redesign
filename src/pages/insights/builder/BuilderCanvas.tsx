@@ -29,6 +29,7 @@ import { personalOverrides, usePersonalFilters, withPersonalValues } from './use
 import type { AddSourceKind } from './sourceKinds'
 import type { useBuilderChat } from './useBuilderChat'
 import { useUndoShortcuts } from './useUndoShortcuts'
+import { ViewerToolbar } from './ViewerToolbar'
 
 type BuilderCanvasProps = {
   dashboard: Dashboard
@@ -86,11 +87,15 @@ type BuilderCanvasProps = {
   pageId?: string
   /** Owners and editors: they can delete or stop sharing anyone's shared saved filter, even while previewing. */
   canManageSharedFilters?: boolean
+  /** Final builder: viewers and previews keep Ask AI and Summarize page where the edit toolbar sits. */
+  viewerToolbar?: boolean
+  /** A chat reply arrived while the chat was closed. */
+  chatUnread?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, canManageSharedFilters = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, canManageSharedFilters = false, viewerToolbar = false, chatUnread = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const roleStandIn = useFilterViewer(dashboard)
@@ -200,6 +205,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       onAddSummary={summaries ? addSummary : undefined}
       onAddFilter={setAddingFilter}
       presetFiltersOnly={presetFilters}
+      brandedChat={graphCatalog}
+      unread={chatUnread}
       onAddMedia={() => addItem(mediaItem())}
       onAddSection={sections ? addSection : undefined}
       onUndo={undoChange}
@@ -297,13 +304,14 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                   readOnly={readOnly}
                   refreshing={refreshing}
                   onComment={onComment}
+                  askWhileViewing={graphCatalog}
                   editingId={chat.editingId}
                   highlight={highlight}
                   onHighlight={highlighting ? toggleHighlight : undefined}
                   sections={sections}
                   pageMove={pageMove}
                 />
-                {chat.thinking && !chat.editingId && <div className={cn('h-80 animate-pulse rounded-lg bg-[var(--dash-card)]', emptyStart && 'w-1/2')} />}
+                {chat.thinking && !chat.editingId && !readOnly && <div className={cn('h-80 animate-pulse rounded-lg bg-[var(--dash-card)]', emptyStart && 'w-1/2')} />}
               </div>
             )}
           </div>
@@ -321,12 +329,24 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
               </div>
             )
           ) : readOnly ? (
-            highlight && (
+            (highlight || viewerToolbar) && (
               // Floats where the edit toolbar sits, so showing it never pushes the graphs down.
-              <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                <div className="pointer-events-auto shadow-lg">
-                  <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
-                </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex flex-col items-center gap-2">
+                {highlight && (
+                  <div className="pointer-events-auto shadow-lg">
+                    <HighlightChip highlight={highlight} onClear={() => setHighlight(null)} />
+                  </div>
+                )}
+                {viewerToolbar && !empty && (
+                  <div className="pointer-events-auto">
+                    <ViewerToolbar
+                      chatOpen={chat.chatOpen}
+                      unread={chatUnread}
+                      onToggleChat={() => chat.setChatOpen((current) => !current)}
+                      onSummarize={() => chat.send('Summarize this page')}
+                    />
+                  </div>
+                )}
               </div>
             )
           ) : starting ? null : drawer ?? (railed ? (

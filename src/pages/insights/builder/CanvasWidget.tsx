@@ -72,7 +72,9 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
   const title = displayTitle(item)
   const subtitle = displaySubtitle(item)
   const label = title || itemLabel(item)
-  const toolbar = (view?: GraphViewActions) => <GraphToolbar label={label} actions={actions} view={view} onComment={onComment} />
+  const toolbar = (view?: GraphViewActions) => (
+    <GraphToolbar label={label} actions={actions} view={view} onComment={onComment} askPlaceholder={readOnly ? 'Ask about this graph' : undefined} />
+  )
   // Items without a chart header carry the toolbar in their top-right corner.
   const withCornerMenu = (body: ReactNode, leading?: ReactNode) => (
     <>

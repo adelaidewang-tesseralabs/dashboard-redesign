@@ -65,6 +65,7 @@ export function SavedFiltersMenu({ savedFilters, onApply, onSave, nameTaken, act
           <div className="my-1 h-px bg-white/10" />
           {naming ? (
             <SavedFilterForm
+              withShare
               submitLabel="Save"
               nameTaken={nameTaken}
               note={pageName && <p className="text-[11px] text-white/45">Saves the filters on {pageName}.</p>}

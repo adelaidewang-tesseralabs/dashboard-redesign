@@ -9,10 +9,11 @@ type WidgetCommentProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   showTrigger?: boolean
+  placeholder?: string
 }
 
 /** "Ask AI" in a graph's toolbar: opens a message box; sending it hands the request to Tessera AI. */
-export function WidgetComment({ label, onSubmit, open: controlledOpen, onOpenChange, showTrigger = true }: WidgetCommentProps) {
+export function WidgetComment({ label, onSubmit, open: controlledOpen, onOpenChange, showTrigger = true, placeholder = 'What should change?' }: WidgetCommentProps) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const setOpen = (next: boolean | ((current: boolean) => boolean)) => {
@@ -71,7 +72,7 @@ export function WidgetComment({ label, onSubmit, open: controlledOpen, onOpenCha
             rows={2}
             value={text}
             aria-label="Ask AI"
-            placeholder="What should change?"
+            placeholder={placeholder}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') close()

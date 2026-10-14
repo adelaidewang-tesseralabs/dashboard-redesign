@@ -1,9 +1,11 @@
+import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ChartColumn, Eye, Filter, Image, Pin, Monitor, Moon, Redo2, Rows3, ScrollText, Sparkles, Sun, Type, Undo2 } from 'lucide-react'
 import { DASHBOARD_APPEARANCES, type DashboardAppearance, type SqlDataset } from '../../../data/dashboards'
 import type { DataObject } from '../../../data/dataSources'
 import type { CanvasItem } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
+import { Logo } from '../../../ui/Logo'
 import { Menu } from '../../../ui/Menu'
 import { AddGraphMenu } from './AddGraphMenu'
 import type { FilterKind } from './FilterBar'
@@ -42,6 +44,9 @@ type CanvasToolbarProps = {
   orientation?: 'horizontal' | 'vertical'
   /** Final builder: no filter tool — the preset filter row above the canvas already offers every field of each dataset on the page. */
   presetFiltersOnly?: boolean
+  /** Final builder: Ask AI opens the general chat, so it carries the Tessera mark, as product chat does. */
+  brandedChat?: boolean
+  unread?: boolean
 }
 
 const MOD_KEY = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl+'
@@ -79,6 +84,8 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
     fullScreen = false,
     orientation = 'horizontal',
     presetFiltersOnly = false,
+    brandedChat = false,
+    unread = false,
   } = props
   const vertical = orientation === 'vertical'
   const menuSide = vertical ? 'right' : 'top'
@@ -95,7 +102,15 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
           : 'gap-0.5 rounded-lg border border-white/10 bg-tlai-3 p-1 shadow-lg shadow-black/60',
       )}
     >
-      <Tool Icon={Sparkles} label="Ask AI" active={chatOpen} onClick={onToggleChat} className="text-tlai-mint" vertical={vertical} />
+      <Tool
+        Icon={brandedChat ? TesseraIcon : Sparkles}
+        label="Ask AI"
+        active={chatOpen}
+        onClick={onToggleChat}
+        className="text-tlai-mint"
+        vertical={vertical}
+        unread={unread}
+      />
       <Divider vertical={vertical} />
       {!fullScreen && (
         <>
@@ -156,7 +171,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
 }
 
 type ToolProps = {
-  Icon: LucideIcon
+  Icon: ComponentType<{ className?: string }>
   label: string
   shortcut?: string
   active?: boolean
@@ -164,9 +179,16 @@ type ToolProps = {
   onClick?: () => void
   className?: string
   vertical?: boolean
+  /** A reply arrived while the chat was closed. */
+  unread?: boolean
 }
 
-function Tool({ Icon, label, shortcut, active = false, disabled = false, onClick, className, vertical = false }: ToolProps) {
+/** The Tessera mark, for the button that opens the general chat; Sparkles stays on AI actions aimed at one thing. */
+export function TesseraIcon({ className }: { className?: string }) {
+  return <Logo className={className} />
+}
+
+export function Tool({ Icon, label, shortcut, active = false, disabled = false, onClick, className, vertical = false, unread = false }: ToolProps) {
   return (
     <button
       type="button"
@@ -177,17 +199,18 @@ function Tool({ Icon, label, shortcut, active = false, disabled = false, onClick
       onClick={onClick}
       data-tip-side={vertical ? 'right' : undefined}
       className={cn(
-        'flex cursor-pointer items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white disabled:cursor-default disabled:text-white/25 disabled:hover:bg-transparent',
+        'relative flex cursor-pointer items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white disabled:cursor-default disabled:text-white/25 disabled:hover:bg-transparent',
         vertical ? 'size-8' : 'size-7',
         className,
         active && 'bg-white/10 text-white',
       )}
     >
       <Icon className="size-4" />
+      {unread && <span aria-label="New reply" className="absolute top-1 right-1 size-1.5 rounded-full bg-sky-400" />}
     </button>
   )
 }
 
-function Divider({ vertical = false }: { vertical?: boolean }) {
+export function Divider({ vertical = false }: { vertical?: boolean }) {
   return <span className={vertical ? 'my-1 h-px w-5 bg-white/10' : 'mx-1 h-4 w-px bg-white/10'} />
 }
