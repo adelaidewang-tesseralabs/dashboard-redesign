@@ -1,11 +1,37 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Check, Minus } from 'lucide-react'
+import { Check, ChevronDown, Minus } from 'lucide-react'
+import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 
 type EditorSectionProps = { title: string; action?: ReactNode; children?: ReactNode }
 
+/** Collapsible in Final, matching the numbered `TransformSection` steps. */
 export function EditorSection({ title, action, children }: EditorSectionProps) {
+  const collapsible = useIsFinalBuilder()
+  const [open, setOpen] = useState(true)
+  const toggle = () => setOpen((current) => !current)
+
+  if (collapsible) {
+    return (
+      <section aria-label={title} className="flex flex-col gap-2.5 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h3>
+            <button type="button" aria-expanded={open} onClick={toggle} className="cursor-pointer text-left text-sm font-semibold text-white">
+              {title}
+            </button>
+          </h3>
+          <button type="button" tabIndex={-1} aria-hidden onClick={toggle} className="min-w-0 flex-1 cursor-pointer self-stretch outline-none" />
+          {open && action}
+          <button type="button" tabIndex={-1} aria-hidden onClick={toggle} className="-mr-1 flex cursor-pointer items-center outline-none">
+            <ChevronDown className={cn('size-4 shrink-0 text-white/50 transition-transform', open && 'rotate-180')} />
+          </button>
+        </div>
+        {open && children}
+      </section>
+    )
+  }
+
   return (
     <section className="flex flex-col gap-2.5 border-b border-white/10 px-4 py-4">
       <div className="flex items-center justify-between">

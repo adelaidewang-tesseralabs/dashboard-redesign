@@ -29,7 +29,7 @@ export function TransformSection({ step, title, description, summary, accentClas
         <button type="button" aria-label={description} className="flex size-5 cursor-help items-center justify-center rounded text-white/40 hover:text-white/75">
           <Info className="size-3.5" />
         </button>
-        <button type="button" tabIndex={-1} aria-hidden onClick={toggle} className="flex min-w-0 flex-1 cursor-pointer items-center justify-end gap-2 self-stretch">
+        <button type="button" tabIndex={-1} aria-hidden onClick={toggle} className="flex min-w-0 flex-1 cursor-pointer items-center justify-end gap-2 self-stretch outline-none">
           {summary && <span className="truncate text-xs text-white/45">{summary}</span>}
           <ChevronDown className={cn('size-4 shrink-0 text-white/50 transition-transform', open && 'rotate-180')} />
         </button>
