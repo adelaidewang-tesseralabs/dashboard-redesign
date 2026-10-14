@@ -17,12 +17,12 @@ export function EditorSection({ title, action, children }: EditorSectionProps) {
   )
 }
 
-type EditorCheckboxProps = { label: ReactNode; checked: boolean; onChange: (checked: boolean) => void }
+type EditorCheckboxProps = { label: ReactNode; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }
 
-export function EditorCheckbox({ label, checked, onChange }: EditorCheckboxProps) {
+export function EditorCheckbox({ label, checked, disabled, onChange }: EditorCheckboxProps) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-white/85">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
+    <label className={cn('flex cursor-pointer items-center gap-2 text-sm text-white/85', disabled && 'cursor-default opacity-60')}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
       <span
         aria-hidden
         className={cn(

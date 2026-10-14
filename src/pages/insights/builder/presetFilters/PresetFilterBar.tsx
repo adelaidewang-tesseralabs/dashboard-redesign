@@ -11,8 +11,10 @@ import { SavedFiltersMenu } from './SavedFiltersMenu'
 type PresetFilterBarProps = {
   /** One page, with this person's own picks applied for viewers. */
   dashboard: Dashboard
-  /** Editors set everyone's defaults and manage saved filters; viewers only pick their own values on preset fields. */
+  /** Editors set everyone's presets and manage saved filters; viewers can only narrow the presets. */
   canEdit: boolean
+  /** The viewer's own picks, before they're clamped to the presets. */
+  personalValues: Record<string, string[]>
   onValuesChange: (filterId: string, values: string[]) => void
   /** Sets several filters at once (Clear All, a saved filter). */
   onApplyValues: (values: Record<string, string[]>) => void
@@ -20,7 +22,7 @@ type PresetFilterBarProps = {
 }
 
 /** Final builder's filter row: one Olivier-style filter button per dataset, then saved filters. Replaces fixed and viewer filters. */
-export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyValues, onResetPersonal }: PresetFilterBarProps) {
+export function PresetFilterBar({ dashboard, canEdit, personalValues, onValuesChange, onApplyValues, onResetPersonal }: PresetFilterBarProps) {
   const { dashboards, addFilter, updateFilter, setFilterAllPages, undo, addSavedFilter, removeSavedFilter } = useDashboards()
   const toast = useToast()
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -28,13 +30,13 @@ export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyVal
   // All pages' graphs: a filter on every page needs its field even where this page's graphs don't use it.
   const fields = presetFields(full)
   const filters = (dashboard.filters ?? []).filter((filter) => !filter.fixed)
-  // Editors' defaults decide what's preset, so a viewer clearing their own pick keeps the field.
-  const isPreset = (filter: DashboardFilter) => (full.filters?.find((entry) => entry.id === filter.id)?.values.length ?? 0) > 0
-  const presets = filters.filter(isPreset)
+  const presetValues = Object.fromEntries((full.filters ?? []).map((filter) => [filter.id, filter.values]))
+  const presets = filters.filter((filter) => (presetValues[filter.id]?.length ?? 0) > 0)
   const onPage = new Set((dashboard.widgets ?? []).map(itemDatasetKey))
   const datasets = listDatasets(full).filter((dataset) =>
-    canEdit ? onPage.has(dataset.key) && fields.some((field) => field.datasetKey === dataset.key) : presets.some((filter) => filter.datasetKey === dataset.key),
+    canEdit ? onPage.has(dataset.key) && fields.some((field) => field.datasetKey === dataset.key) : filters.some((filter) => filter.datasetKey === dataset.key),
   )
+  const viewerOwns = (filter: DashboardFilter) => canEdit || !filter.locked
   const savedFilters = full.savedFilters ?? []
 
   if (datasets.length === 0 && (canEdit || savedFilters.length === 0)) return null
@@ -72,7 +74,7 @@ export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyVal
         const operator = savedFilter.operators?.[filter.id]
         if (operator && operator !== filter.operator) changeOperator(filter, operator)
       }
-    onApplyValues(Object.fromEntries(filters.filter((filter) => canEdit || (isPreset(filter) && !filter.locked)).map((filter) => [filter.id, savedFilter.values[filter.id] ?? []])))
+    onApplyValues(Object.fromEntries(filters.filter(viewerOwns).map((filter) => [filter.id, savedFilter.values[filter.id] ?? []])))
   }
 
   return (
@@ -81,7 +83,7 @@ export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyVal
       {datasets.map((dataset) => {
         const own = filters.filter((filter) => filter.datasetKey === dataset.key)
         const ownFields = fields.filter(
-          (field) => field.datasetKey === dataset.key && (canEdit || presets.some((filter) => filter.datasetKey === dataset.key && filter.column === field.column)),
+          (field) => field.datasetKey === dataset.key && (canEdit || own.some((filter) => filter.column === field.column)),
         )
         return (
           <DatasetFilterButton
@@ -95,9 +97,10 @@ export function PresetFilterBar({ dashboard, canEdit, onValuesChange, onApplyVal
               fields={ownFields}
               filters={own}
               canEdit={canEdit}
+              viewer={canEdit ? undefined : { presets: presetValues, picks: personalValues }}
               onValuesChange={changeValues}
               onOperatorChange={canEdit ? changeOperator : undefined}
-              onClearAll={() => onApplyValues(Object.fromEntries(own.filter((filter) => canEdit || (isPreset(filter) && !filter.locked)).map((filter) => [filter.id, []])))}
+              onClearAll={() => onApplyValues(Object.fromEntries(own.filter(viewerOwns).map((filter) => [filter.id, []])))}
               onAllPagesChange={canEdit ? changeAllPages : undefined}
               datasetLabel={dataset.label}
             />

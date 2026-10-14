@@ -16,8 +16,10 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase()
 
-/** Select and user fields: search and tick any of the values. */
-export function OptionsEditor({ label, values, readOnly, onChange, options, users }: EditorProps & { options: string[]; users?: boolean }) {
+type Bounds = { min?: string; max?: string }
+
+/** Select and user fields: search and tick any of the values. `keepOne`: the last ticked value can't be unticked. */
+export function OptionsEditor({ label, values, readOnly, onChange, options, users, keepOne }: EditorProps & { options: string[]; users?: boolean; keepOne?: boolean }) {
   const [query, setQuery] = useState('')
   const shown = options.filter((option) => option.toLowerCase().includes(query.trim().toLowerCase()))
   const optionLabel = (option: string) =>
@@ -57,6 +59,7 @@ export function OptionsEditor({ label, values, readOnly, onChange, options, user
               key={option}
               label={optionLabel(option)}
               checked={values.includes(option)}
+              disabled={keepOne && values.length === 1 && values[0] === option}
               onChange={(checked) => onChange(checked ? [...values, option] : values.filter((entry) => entry !== option))}
             />
           ),
@@ -67,12 +70,14 @@ export function OptionsEditor({ label, values, readOnly, onChange, options, user
 }
 
 /** Text and number fields: one value, compared with the field's operator. */
-export function ValueInput({ label, values, readOnly, onChange, numeric }: EditorProps & { numeric?: boolean }) {
+export function ValueInput({ label, values, readOnly, onChange, numeric, min, max }: EditorProps & Bounds & { numeric?: boolean }) {
   return (
     <input
       aria-label={label}
       type={numeric ? 'number' : 'text'}
       value={values[0] ?? ''}
+      min={min}
+      max={max}
       disabled={readOnly}
       placeholder={`Filter by ${label.toLowerCase()}`}
       onChange={(event) => onChange(event.target.value === '' ? [] : [event.target.value])}
@@ -84,7 +89,7 @@ export function ValueInput({ label, values, readOnly, onChange, numeric }: Edito
 type DateMode = 'on' | 'between'
 
 /** Date fields: one day, or an inclusive range. */
-export function DateEditor({ label, values, readOnly, onChange }: EditorProps) {
+export function DateEditor({ label, values, readOnly, onChange, min, max }: EditorProps & Bounds) {
   const [mode, setMode] = useState<DateMode>(values.length === 2 && values[0] !== values[1] ? 'between' : 'on')
   const [from = '', to = from] = values
   const changeMode = (next: DateMode) => {
@@ -107,9 +112,9 @@ export function DateEditor({ label, values, readOnly, onChange }: EditorProps) {
         onChange={changeMode}
       />
       <div className="flex flex-col gap-2">
-        <input aria-label={mode === 'on' ? label : `${label} from`} type="date" value={from} disabled={readOnly} onChange={(event) => changeFrom(event.target.value)} className={INPUT_CLASS} />
+        <input aria-label={mode === 'on' ? label : `${label} from`} type="date" value={from} min={min} max={max} disabled={readOnly} onChange={(event) => changeFrom(event.target.value)} className={INPUT_CLASS} />
         {mode === 'between' && (
-          <input aria-label={`${label} to`} type="date" value={to} min={from} disabled={readOnly || !from} onChange={(event) => changeTo(event.target.value)} className={INPUT_CLASS} />
+          <input aria-label={`${label} to`} type="date" value={to} min={from || min} max={max} disabled={readOnly || !from} onChange={(event) => changeTo(event.target.value)} className={INPUT_CLASS} />
         )}
       </div>
     </>

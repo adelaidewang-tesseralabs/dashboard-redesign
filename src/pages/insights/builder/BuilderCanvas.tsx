@@ -21,6 +21,7 @@ import { PresetFilterBar } from './presetFilters/PresetFilterBar'
 import { summarizePage, summaryBasis } from './pageSummary'
 import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
+import { narrowedPicks } from './presetFilters/narrowPresets'
 import { personalOverrides, usePersonalFilters, withPersonalValues } from './usePersonalView'
 import type { AddSourceKind } from './sourceKinds'
 import type { useBuilderChat } from './useBuilderChat'
@@ -118,8 +119,9 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [highlight])
-  const shown = readOnly ? withPersonalValues(dashboard, personal.values) : dashboard
-  const overrides = readOnly ? personalOverrides(dashboard, personal.values) : []
+  const picks = presetFilters ? narrowedPicks(dashboard, personal.values) : personal.values
+  const shown = readOnly ? withPersonalValues(dashboard, picks) : dashboard
+  const overrides = readOnly ? personalOverrides(dashboard, picks) : []
   const widgets = dashboard.widgets ?? []
   const groups = dashboard.groups ?? []
   const empty = widgets.length === 0 && groups.length === 0 && !chat.thinking
@@ -202,6 +204,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
               <PresetFilterBar
                 dashboard={shown}
                 canEdit={!readOnly}
+                personalValues={personal.values}
                 onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
                 onApplyValues={(values) =>
                   readOnly

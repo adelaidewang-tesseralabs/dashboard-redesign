@@ -6,11 +6,13 @@ import { FieldValuePanel } from './FieldValuePanel'
 import { operatorsFor, type PresetField } from './presetFields'
 
 type DatasetFilterBuilderProps = {
-  /** Every field for editors; for viewers, only the ones editors preset. */
+  /** Every field for editors; for viewers, only the ones editors added a filter on. */
   fields: PresetField[]
   /** This dataset's filters on the page. */
   filters: DashboardFilter[]
   canEdit: boolean
+  /** Viewers only, by filter id: the editors' presets and the viewer's own picks within them. */
+  viewer?: { presets: Record<string, string[]>; picks: Record<string, string[]> }
   /** `filter` is unset until the field first gets a value. */
   onValuesChange: (field: PresetField, filter: DashboardFilter | undefined, values: string[], operator: PresetOperator) => void
   onOperatorChange?: (filter: DashboardFilter, operator: PresetOperator) => void
@@ -22,7 +24,7 @@ type DatasetFilterBuilderProps = {
 const listValued = (field: PresetField) => field.type === 'select' || field.type === 'user'
 
 /** Modeled on the main app's FilterBuilder: every field on the left with its pick count, the selected field's editor on the right. A field is a preset once it has a value. */
-export function DatasetFilterBuilder({ fields, filters, canEdit, onValuesChange, onOperatorChange, onClearAll, onAllPagesChange, datasetLabel }: DatasetFilterBuilderProps) {
+export function DatasetFilterBuilder({ fields, filters, canEdit, viewer, onValuesChange, onOperatorChange, onClearAll, onAllPagesChange, datasetLabel }: DatasetFilterBuilderProps) {
   const filterFor = (field: PresetField) => filters.find((filter) => filter.column === field.column)
   const valuesOf = (field: PresetField) => filterFor(field)?.values ?? []
   const [selectedColumn, setSelectedColumn] = useState<string | null>(() => fields.find((field) => valuesOf(field).length > 0)?.column ?? null)
@@ -32,7 +34,9 @@ export function DatasetFilterBuilder({ fields, filters, canEdit, onValuesChange,
   const selectedFilter = selected && filterFor(selected)
   const operatorOf = (field: PresetField) => filterFor(field)?.operator ?? draftOperators[field.column] ?? operatorsFor(field.type)[0]
   const countOf = (field: PresetField) => (listValued(field) ? valuesOf(field).length : Math.min(valuesOf(field).length, 1))
-  const anyValues = filters.some((filter) => filter.values.length > 0 && (canEdit || !filter.locked))
+  const anyValues = viewer
+    ? filters.some((filter) => !filter.locked && (viewer.picks[filter.id]?.length ?? 0) > 0)
+    : filters.some((filter) => filter.values.length > 0)
 
   return (
     <div data-slot="filter-builder" className="flex max-h-96 min-h-55 w-120 overflow-hidden rounded-lg border border-white/20 bg-tlai-3 text-white/80">
@@ -78,9 +82,10 @@ export function DatasetFilterBuilder({ fields, filters, canEdit, onValuesChange,
           <FieldValuePanel
             key={selected.column}
             field={selected}
-            values={valuesOf(selected)}
+            values={viewer && selectedFilter ? (viewer.picks[selectedFilter.id] ?? []) : valuesOf(selected)}
+            preset={viewer && selectedFilter ? (viewer.presets[selectedFilter.id] ?? []) : undefined}
             operator={operatorOf(selected)}
-            readOnly={!canEdit && !!selectedFilter?.locked}
+            locked={!canEdit && !!selectedFilter?.locked}
             onValuesChange={(values) => onValuesChange(selected, selectedFilter, values, operatorOf(selected))}
             onOperatorChange={
               canEdit
