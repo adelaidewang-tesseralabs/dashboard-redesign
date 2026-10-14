@@ -27,6 +27,8 @@ type MenuProps = {
   /** `right`: beside the trigger, for controls in a vertical rail. */
   side?: 'top' | 'bottom' | 'right'
   className?: string
+  /** Sizes the list itself, e.g. a fixed width so long labels truncate instead of widening it. */
+  surfaceClassName?: string
 }
 
 /** Rough submenu width, to decide whether it still fits to the right of the menu. */
@@ -41,7 +43,7 @@ function visibleRight(element: HTMLElement) {
   return right
 }
 
-export function Menu({ trigger, items, align = 'end', side = 'bottom', className }: MenuProps) {
+export function Menu({ trigger, items, align = 'end', side = 'bottom', className, surfaceClassName }: MenuProps) {
   const [open, setOpen] = useState(false)
   const [submenu, setSubmenu] = useState<{ label: string; flip: boolean } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -101,6 +103,7 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
             side === 'bottom' && 'top-full mt-1',
             side === 'top' && 'bottom-full mb-2',
             side !== 'right' && (align === 'end' ? 'right-0' : 'left-0'),
+            surfaceClassName,
           )}
         >
           {items.map((item, index) => {

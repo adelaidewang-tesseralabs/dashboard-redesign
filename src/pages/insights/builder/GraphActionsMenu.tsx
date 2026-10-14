@@ -59,6 +59,7 @@ export function GraphActionsMenu({ label, actions, view, viewInMenu = false, dow
   return (
     <Menu
       items={items}
+      surfaceClassName="w-64"
       trigger={({ open, toggle }) => (
         <button type="button" aria-label={`Actions for ${label}`} title="More actions" data-popover-open={open || undefined} onClick={toggle} className={graphToolButtonClass}>
           <MoreHorizontal className="size-4" />
