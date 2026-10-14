@@ -26,6 +26,49 @@ const SEED_WIDGETS: Record<string, CanvasItem[]> = {
     checksGraph('dqo-priority', 'priority', 'bar'),
     checksGraph('dqo-dimension', 'dimension', 'bar'),
     { id: 'dqo-work-items', source: 'object', objectName: 'work_items', fieldKey: 'status', chart: 'bar' },
+    { id: 'dqo-wi-priority', source: 'object', objectName: 'work_items', fieldKey: 'priority', chart: 'bar', pageId: 'dqo-work' },
+    { id: 'dqo-wi-assignee', source: 'object', objectName: 'work_items', fieldKey: 'assignee', chart: 'bar', pageId: 'dqo-work' },
+    { id: 'dqo-wi-status', source: 'object', objectName: 'work_items', fieldKey: 'status', chart: 'pie', pageId: 'dqo-work' },
+    { ...checksGraph('dqo-work-dimension', 'dimension', 'bar'), pageId: 'dqo-work' },
+  ],
+}
+
+/**
+ * Data Quality Overview's saved-filter demo: a priority preset on every page, a Work Items status preset on page 2 that
+ * leaves out Done (so a filter saved there for Done is out of date), and saved filters that apply, are shared, or don't.
+ */
+const DQO_FILTER_DEMO: Pick<Dashboard, 'pages' | 'filters' | 'savedFilters'> = {
+  pages: [
+    { id: 'dqo-overview', name: 'Overview' },
+    { id: 'dqo-work', name: 'Work Items' },
+  ],
+  filters: [
+    { id: 'dqo-priority', datasetKey: 'table:data_checks', column: 'priority', label: 'Priority', values: ['Critical', 'High'], operator: 'in', pageId: 'dqo-overview', allPages: true },
+    { id: 'dqo-work-status', datasetKey: 'table:work_items', column: 'status', label: 'Status', values: ['Open', 'In progress', 'Blocked'], operator: 'in', pageId: 'dqo-work' },
+  ],
+  savedFilters: [
+    {
+      id: 'dqo-saved-critical-blocked',
+      name: 'Critical & blocked',
+      createdBy: 'adelaide@tesseralabs.ai',
+      pageId: 'dqo-overview',
+      values: { 'dqo-priority': ['Critical'], 'open:table:work_items:status': ['Blocked'] },
+    },
+    {
+      id: 'dqo-saved-open-work',
+      name: 'Open work',
+      createdBy: 'sophia@tesseralabs.ai',
+      shared: true,
+      pageId: 'dqo-overview',
+      values: { 'open:table:work_items:status': ['Open', 'In progress'] },
+    },
+    {
+      id: 'dqo-saved-done',
+      name: 'Done this sprint',
+      createdBy: 'adelaide@tesseralabs.ai',
+      pageId: 'dqo-work',
+      values: { 'dqo-work-status': ['Done'] },
+    },
   ],
 }
 
@@ -230,6 +273,7 @@ const SEED: Omit<Dashboard, 'owner' | 'members' | 'generalAccess' | 'archived' |
     vignette: 'data-checks',
     rulePrefix: 'DQ',
     table: 'LFA1',
+    ...DQO_FILTER_DEMO,
   },
   {
     id: 'vendor-master-data',
