@@ -400,7 +400,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
         dashboard={dashboard}
         onChange={(item) => updateWidget(dashboard.id, item)}
         onOpenDataset={openDataset}
-        transformDrafts={final ? transformDrafts : undefined}
+        graphCalculations={final}
       />
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage && !historyShown

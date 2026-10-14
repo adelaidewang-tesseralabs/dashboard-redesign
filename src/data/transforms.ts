@@ -33,8 +33,8 @@ export const EMPTY_TRANSFORMS: DatasetTransforms = {
 
 export type GraphSort = { by: 'label' | 'value'; direction: SortDirection }
 /** Per-graph query on top of the dataset result; unset fields keep the default count of rows. */
-/** `groupBy` is for SQL graphs only; object graphs group by their field. */
-export type GraphQuery = { groupBy?: string; value?: Aggregate; filters?: RowFilter[]; sort?: GraphSort; limit?: number }
+/** `groupBy` is for SQL graphs only; object graphs group by their field. `calculations` are this graph's own, unlike the dataset's. */
+export type GraphQuery = { groupBy?: string; value?: Aggregate; calculations?: Calculation[]; filters?: RowFilter[]; sort?: GraphSort; limit?: number }
 
 export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   eq: 'equals',
@@ -344,7 +344,7 @@ export function defaultGraphValue(result: SqlResult, groupKey: string): Aggregat
  */
 export function graphResult(result: SqlResult, groupKey: string | undefined, query: GraphQuery = {}, labelOrder?: string[]): SqlResult {
   if (!result.ok) return result
-  let frame = applyFilters(result, query.filters)
+  let frame = applyFilters(applyCalculations(result, query.calculations ?? []), query.filters)
   const key = groupKey ?? query.groupBy ?? (query.value ? frame.columns[0] : undefined)
   if (key) {
     if (!frame.columns.includes(key)) return { ok: false, error: `Column "${key}" isn't in this dataset's result.` }

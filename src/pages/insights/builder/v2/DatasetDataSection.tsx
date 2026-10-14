@@ -1,4 +1,3 @@
-import { useCallback, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { AGGREGATE_LABELS, aggregateLabel, columnTypes, defaultGraphValue, type Aggregate, type GraphQuery, type GraphSort, type RowFilter } from '../../../../data/transforms'
@@ -10,10 +9,8 @@ import { datasetIcon, datasetResult, graphColumns, graphFor, itemDatasetKey, typ
 import type { TransformColumn } from './transforms/controls'
 import { FilterCards, isCardFilter } from './FilterCards'
 import { TopNField } from './TopNField'
+import { CalculationsEditor } from './transforms/CalculationsEditor'
 import { FiltersEditor } from './transforms/FiltersEditor'
-import type { TransformDrafts } from './transforms/transformDrafts'
-import { DatasetSettingsCard } from './DatasetSettingsCard'
-import { DatasetSettingsPanel } from './DatasetSettingsPanel'
 
 type DatasetDataSectionProps = {
   item: GraphItem
@@ -21,8 +18,8 @@ type DatasetDataSectionProps = {
   dashboard: Dashboard
   onChange: (item: CanvasItem) => void
   onOpenDataset: (key: string) => void
-  /** Final builder: edit the dataset's shared transforms from the graph panel too. */
-  transformDrafts?: TransformDrafts
+  /** Final builder: calculations on this graph only; the dataset's shared ones are edited in the Data tab. */
+  graphCalculations?: boolean
 }
 
 const DEFAULT_OPTION = 'default'
@@ -46,17 +43,16 @@ function parseValue(id: string): Aggregate | undefined {
 }
 
 /** Widget panel for builder V2: pick the dataset and what to group by, then the graph's own value, filters, sort and Top N. */
-export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset, transformDrafts }: DatasetDataSectionProps) {
-  // Keyed by graph so selecting another graph lands on its own settings, not the dataset view.
-  const [datasetSettingsFor, setDatasetSettingsFor] = useState<string | null>(null)
-  const closeDatasetSettings = useCallback(() => setDatasetSettingsFor(null), [])
+export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset, graphCalculations = false }: DatasetDataSectionProps) {
   const key = itemDatasetKey(item)
   const dataset = datasets.find((candidate) => candidate.key === key)
   const result = dataset ? datasetResult(dataset, dashboard) : undefined
   const types = result ? columnTypes(result) : new Map()
-  const columns: TransformColumn[] = result?.ok ? result.columns.map((column) => ({ key: column, type: types.get(column) ?? 'text' })) : []
+  const datasetColumns: TransformColumn[] = result?.ok ? result.columns.map((column) => ({ key: column, type: types.get(column) ?? 'text' })) : []
   const query = item.query ?? {}
-  const groupKey = item.source === 'object' ? item.fieldKey : (query.groupBy ?? columns[0]?.key)
+  const calculations = query.calculations ?? []
+  const columns: TransformColumn[] = [...datasetColumns, ...calculations.map((calculation) => ({ key: calculation.key, type: 'number' as const }))]
+  const groupKey = item.source === 'object' ? item.fieldKey : (query.groupBy ?? datasetColumns[0]?.key)
   const setQuery = (patch: Partial<GraphQuery>) => onChange({ ...item, query: { ...query, ...patch } })
   const graphFilters = query.filters ?? []
   const setFilters = (filters: RowFilter[]) => setQuery({ filters: filters.length ? filters : undefined })
@@ -103,7 +99,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
           })}
           onChange={switchDataset}
         />
-        {transformDrafts && dataset && <DatasetSettingsCard dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} onOpen={() => setDatasetSettingsFor(item.id)} />}
+        {graphCalculations && <p className="text-xs text-white/45">Everything below changes this graph only. Shared dataset settings are in the Data tab.</p>}
         {item.source === 'object' && dataset?.kind === 'table' && (
           <>
             <span className="text-xs text-white/50">Group by</span>
@@ -136,8 +132,14 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
         )}
       </EditorSection>
 
-      {transformDrafts && dataset && datasetSettingsFor === item.id && (
-        <DatasetSettingsPanel dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} onBack={closeDatasetSettings} />
+      {graphCalculations && (
+        <EditorSection title="Calculations">
+          <CalculationsEditor
+            calculations={calculations}
+            columns={datasetColumns}
+            onChange={(next) => setQuery({ calculations: next.length ? next : undefined })}
+          />
+        </EditorSection>
       )}
 
       <EditorSection title="Value">
@@ -151,7 +153,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
       </EditorSection>
 
       <EditorSection title="Filters">
-        <p className="-mt-1 text-xs text-white/45">Only this graph. {transformDrafts ? 'Preset and dataset filters also apply.' : 'Fixed, page and dataset filters also apply.'}</p>
+        <p className="-mt-1 text-xs text-white/45">Only this graph. {graphCalculations ? 'Preset and dataset filters also apply.' : 'Fixed, page and dataset filters also apply.'}</p>
         <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
         <span className="mt-1 text-xs text-white/50">Conditions</span>
         <FiltersEditor
