@@ -7,7 +7,7 @@ import { usePreviewPerson } from '../previewPerson'
  * Who a prototype role switch stands for. Acting as a role you don't hold means being someone else, so it's a member
  * with that role (the owner, for owner), whose own saved filters and picks replace yours.
  */
-function standIn(dashboard: Dashboard, override: RoleOverride): string {
+export function standIn(dashboard: Dashboard, override: RoleOverride): string {
   if (override === 'actual' || override === 'none' || roleOf(dashboard, CURRENT_USER) === override) return CURRENT_USER
   if (override === 'owner') return dashboard.owner
   const member = dashboard.members.find((entry) => entry.role === override && entry.user !== CURRENT_USER)

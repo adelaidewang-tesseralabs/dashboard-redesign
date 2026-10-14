@@ -10,6 +10,7 @@ import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { EDIT_MODE_PARAM, useIsFinalBuilder } from '../../../../lib/builderVersion'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
 import type { PanelLayout } from '../../../../lib/panelLayout'
+import { useRoleOverride } from '../../../../lib/roleOverride'
 import { useCollapseNavWhile } from '../../../../nav/navSuppression'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
@@ -30,6 +31,7 @@ import { WidgetEditor } from '../WidgetEditor'
 import { LineageView } from '../lineage/LineageView'
 import type { LineageTarget } from '../lineage/lineageGraph'
 import { PreviewPersonContext } from '../previewPerson'
+import { standIn } from '../presetFilters/useFilterViewer'
 import { LINKED_WIDGET_PARAM } from '../useGraphView'
 import { WidgetNavigationContext, type WidgetNavigation } from '../widgetNavigation'
 import { AddDatasetDialogs, type AddDatasetRequest } from './AddDatasetDialogs'
@@ -136,8 +138,15 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const final = useIsFinalBuilder()
   /** Who the preview shows the dashboard as; null when editing. Final derives preview from the URL, so this only picks the person. */
   const [previewPerson, setPreviewAs] = useState<string | null>(null)
+  const roleOverride = useRoleOverride()
+  // Switching the prototype role previews as that role's stand-in again, replacing whoever was picked before.
+  const [previewRole, setPreviewRole] = useState(roleOverride)
+  if (previewRole !== roleOverride) {
+    setPreviewRole(roleOverride)
+    setPreviewAs(null)
+  }
   const finalPreview = final && !readOnly && searchParams.get(EDIT_MODE_PARAM) !== 'edit'
-  const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
+  const previewAs = final ? (finalPreview ? (previewPerson ?? standIn(dashboard, roleOverride)) : null) : previewPerson
   const previewing = previewAs !== null
   /** Final's preview shows the dashboard as viewers get it, so the name and description can't be edited there. */
   const headerReadOnly = readOnly || (final && previewing)
