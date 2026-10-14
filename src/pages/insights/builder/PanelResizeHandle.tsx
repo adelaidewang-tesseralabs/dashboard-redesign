@@ -3,8 +3,9 @@ import type { SidePanelResize } from './useSidePanelWidth'
 
 const KEY_STEP = 16
 
-/** Drag strip on a right-hand panel's left edge. */
+/** Drag strip on a side panel's inner edge: the left edge of a right-hand panel, or the right edge of a left-docked one. */
 export function PanelResizeHandle({ resize }: { resize: SidePanelResize }) {
+  const onRight = resize.edge === 'right'
   return (
     <div
       role="separator"
@@ -16,12 +17,12 @@ export function PanelResizeHandle({ resize }: { resize: SidePanelResize }) {
       tabIndex={0}
       onPointerDown={resize.startResize}
       onKeyDown={(event) => {
-        if (event.key === 'ArrowLeft') resize.nudge(KEY_STEP)
-        else if (event.key === 'ArrowRight') resize.nudge(-KEY_STEP)
+        if (event.key === 'ArrowLeft') resize.nudge(onRight ? -KEY_STEP : KEY_STEP)
+        else if (event.key === 'ArrowRight') resize.nudge(onRight ? KEY_STEP : -KEY_STEP)
         else return
         event.preventDefault()
       }}
-      className="group absolute inset-y-0 -left-[3px] z-10 w-1.5 cursor-col-resize outline-none"
+      className={cn('group absolute inset-y-0 z-10 w-1.5 cursor-col-resize outline-none', onRight ? '-right-[3px]' : '-left-[3px]')}
     >
       <span
         className={cn(

@@ -1,15 +1,15 @@
-import { ChevronDown, FlaskConical, Pin, UserRound } from 'lucide-react'
+import { ChevronDown, FlaskConical, PanelsLeftRight, Pin, UserRound } from 'lucide-react'
 import { BUILDER_VERSIONS, useBuilderVersion, type BuilderVersion } from '../lib/builderVersion'
 import { cn } from '../lib/cn'
 import { FIXED_FILTER_STYLE_LABELS, FIXED_FILTER_STYLES, setFixedFilterStyle, useFixedFilterStyle } from '../lib/fixedFilterStyle'
+import { PANEL_LAYOUT_LABELS, PANEL_LAYOUTS, setPanelLayout, usePanelLayout } from '../lib/panelLayout'
 import { ROLE_OVERRIDE_LABELS, ROLE_OVERRIDES, setRoleOverride, useRoleOverride } from '../lib/roleOverride'
 import { Menu } from '../ui/Menu'
 
 const VERSION_LABELS: Record<BuilderVersion, string> = {
   v1: 'V1 · Inline sources',
   v2: 'V2 · Data tab',
-  v3: 'V3 · Production source dialogs',
-  'v3-1': 'V3.1 · Tools on the left',
+  v3: 'V3 · Canvas panel locations',
   v4: 'V4 · Settings panel at the bottom',
   v5: 'V5 · Settings above chat',
   v6: 'V6 · Catalog only, no SQL',
@@ -21,6 +21,12 @@ export function PrototypeVersionToggle() {
   return (
     <div className="fixed top-3.5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/15 bg-tlai-3/95 p-1 text-xs shadow-lg shadow-black/60 backdrop-blur">
       <VersionMenu version={version} setVersion={setVersion} />
+      {version === 'v3' && (
+        <>
+          <span className="mx-0.5 h-4 w-px bg-white/15" />
+          <PanelLayoutMenu />
+        </>
+      )}
       {version === 'v6' && (
         <>
           <span className="mx-0.5 h-4 w-px bg-white/15" />
@@ -30,6 +36,32 @@ export function PrototypeVersionToggle() {
       <span className="mx-0.5 h-4 w-px bg-white/15" />
       <RoleOverrideMenu />
     </div>
+  )
+}
+
+function PanelLayoutMenu() {
+  const layout = usePanelLayout()
+  return (
+    <Menu
+      align="start"
+      items={[
+        { type: 'label', label: 'Canvas panel locations' },
+        ...PANEL_LAYOUTS.map((option) => ({ label: PANEL_LAYOUT_LABELS[option], active: layout === option, onSelect: () => setPanelLayout(option) })),
+      ]}
+      trigger={({ toggle }) => (
+        <button
+          type="button"
+          aria-label="Canvas panel locations"
+          title="Compare where tools, settings and chat sit"
+          onClick={toggle}
+          className="flex h-6 cursor-pointer items-center gap-1 rounded-full px-2.5 text-white/70 hover:text-white"
+        >
+          <PanelsLeftRight className="size-3.5" />
+          Panels · {PANEL_LAYOUT_LABELS[layout].split(' · ')[0]}
+          <ChevronDown className="size-3" />
+        </button>
+      )}
+    />
   )
 }
 
@@ -76,7 +108,7 @@ function VersionMenu({ version, setVersion }: { version: BuilderVersion; setVers
           className="flex h-6 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-white/70 hover:text-white"
         >
           <FlaskConical className="size-3.5 text-tlai-mint" />
-          <span className="font-medium text-white uppercase">{version.replace('-', '.')}</span>
+          <span className="font-medium text-white uppercase">{version}</span>
           <ChevronDown className="size-3" />
         </button>
       )}

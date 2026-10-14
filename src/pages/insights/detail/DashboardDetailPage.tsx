@@ -5,6 +5,7 @@ import { can } from '../../../data/access'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
 import { builderPath, useBuilderVersion, type BuilderVersion } from '../../../lib/builderVersion'
+import { usePanelLayout } from '../../../lib/panelLayout'
 import { useEffectiveRole } from '../../../lib/roleOverride'
 import { Button } from '../../../ui/Button'
 import { PageLayout } from '../../../ui/PageLayout'
@@ -18,8 +19,8 @@ import { DashboardIconActions, DetailHeaderActions } from './DetailHeaderActions
 import { ShareDialog } from './ShareDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
 
-const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', 'v3-1': 'side', v4: 'bottom', v5: 'split', v6: 'split' }
-const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', 'v3-1': 'production', v4: 'production', v5: 'production', v6: 'governed' }
+const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', v4: 'bottom', v5: 'split', v6: 'split' }
+const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', v4: 'production', v5: 'production', v6: 'governed' }
 
 export function DashboardDetailPage() {
   const { dashboardId } = useParams()
@@ -50,6 +51,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
   const [dialog, setDialog] = useState<'share' | 'details' | 'history' | null>(null)
   const [lineage, setLineage] = useState<LineageTarget | null>(null)
   const [builderVersion] = useBuilderVersion()
+  const panelLayout = usePanelLayout()
   const role = useEffectiveRole(dashboard)
   const listTo = builderPath('/insights/dashboards', builderVersion)
   const inBuilderV2 = builderVersion !== 'v1'
@@ -89,7 +91,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           headerActions={<DashboardIconActions {...actionProps} />}
           addDatasetFlow={ADD_DATASET_FLOW[builderVersion]}
           settingsPlacement={SETTINGS_PLACEMENT[builderVersion]}
-          toolbarPlacement={builderVersion === 'v3-1' ? 'left' : 'bottom'}
+          panelLayout={builderVersion === 'v3' ? panelLayout : 'layered'}
           badge={badge}
           readOnly={readOnly}
           onOpenHistory={openHistory}

@@ -7,6 +7,7 @@ import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView, resolvePageId } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
+import type { PanelLayout } from '../../../../lib/panelLayout'
 import { useCollapseNavWhile } from '../../../../nav/navSuppression'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
@@ -33,6 +34,7 @@ import { BottomSettingsPanel } from './BottomSettingsPanel'
 import { BuilderViewSwitch, type BuilderView } from './BuilderViewSwitch'
 import { DashboardActions } from './DashboardActions'
 import { DatasetDataSection } from './DatasetDataSection'
+import { DockedColumn, SettingsEmptyState } from './DockedColumn'
 import { EditModeSwitch, type EditMode } from './EditModeSwitch'
 import { datasetGraphColumns, graphFor, graphForColumn, listDatasets, sqlKey, tableKey, type Dataset, type GraphColumn } from './datasets'
 import { BackPill } from './BackPill'
@@ -82,12 +84,15 @@ type DashboardBuilderV2Props = {
   onLineageChange?: (target: LineageTarget | null) => void
   /** Opens the share dialog with this person staged, from the preview's person picker. */
   onShare?: (invitee: string) => void
-  /** Where the canvas tools sit: a floating bar at the bottom, or a rail docked on the left. */
-  toolbarPlacement?: 'bottom' | 'left'
+  /**
+   * Production flow (V3): where the canvas tools, widget settings and chat sit. `layered` stacks settings over the chat on the right,
+   * `tools-left` also docks the toolbar as a left rail, and `settings-left` / `chat-left` split settings and chat across both sides.
+   */
+  panelLayout?: PanelLayout
 }
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
-  const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare, toolbarPlacement = 'bottom' } = props
+  const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare, panelLayout = 'layered' } = props
   const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
@@ -115,6 +120,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const [editMode, setEditMode] = useState<EditMode>('ai')
   const [addRequest, setAddRequest] = useState<AddDatasetRequest | null>(null)
   const sidePanel = useSidePanelWidth()
+  const leftPanel = useSidePanelWidth({ edge: 'right', storageKey: 'insights.leftPanelWidth' })
   const bottomPanel = useBottomPanelHeight()
   const consoleTabs = useConsoleTabs()
   const datasets = listDatasets(dashboard)
@@ -153,7 +159,9 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const fixedFilterStyle = useFixedFilterStyle()
   const sourceDialogs = productionFlow && !governed
   const bottomSettings = productionFlow && settingsPlacement === 'bottom'
-  const layeredSettings = settingsPlacement === 'side'
+  const docked = productionFlow && (panelLayout === 'settings-left' || panelLayout === 'chat-left')
+  const chatOnLeft = docked && panelLayout === 'chat-left'
+  const layeredSettings = settingsPlacement === 'side' && !docked
   const asViewer = readOnly || previewing
   const pages = useDashboardPages(dashboard, asViewer, () => setSelectedId(null))
   const page = pageView(dashboard, pages.activeId)
@@ -345,7 +353,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       .filter((column) => !column.graphed)
       .slice(0, 3)
       .map((column) => `Graph by ${column.label}`)
-  useCollapseNavWhile(chatShowing)
+  useCollapseNavWhile(chatShowing || (docked && !chatOnLeft && showSettings))
   const backToDatasetShown = backToDatasetKey !== null && view === 'canvas' && !asViewer
   useDismissOnInteraction(backToDatasetShown, () => setBackToDatasetKey(null))
   const viewDataset = (key: string, fromItemId: string) => {
@@ -357,6 +365,56 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     onViewLineage: readOnly || !onLineageChange ? undefined : (itemId) => onLineageChange({ kind: 'graph', itemId }),
     onOpenDataset: readOnly ? undefined : viewDataset,
   }
+  const canvasChat = chat.chatOpen && (
+    <ChatPanel
+      embedded
+      messages={chat.messages}
+      thinking={chat.thinking}
+      onSend={(text) => chat.send(text, selected ?? undefined)}
+      onClose={closeChat}
+      intro="Describe the graphs you want, or select one to change it. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
+      onOpenSource={(table) => openDataset(tableKey(table))}
+      context={selected ? { label: displayTitle(selected) || itemLabel(selected), suggestions: widgetSuggestions(selected), onClear: () => setSelectedId(null) } : undefined}
+      headerExtra={selected && layeredSettings && <LayerSwitchButton to="editor" onClick={v3Panel.showEditor} />}
+    />
+  )
+  const settingsPanel = multiActive ? (
+    <MultiGraphPanel graphs={multiGraphs} datasets={datasets} dashboard={dashboard} onChange={(items) => updateWidgets(dashboard.id, items)} onDeselect={toggleSelect} onClose={() => setMultiIds([])} />
+  ) : selected && !bottomSettings ? (
+    <WidgetEditor
+      embedded
+      item={selected}
+      sources={sources.map(({ object }) => object)}
+      onChange={(item) => updateWidget(dashboard.id, item)}
+      onClose={() => setSelectedId(null)}
+      headerExtra={layeredSettings && <LayerSwitchButton to="chat" onClick={v3Panel.showChat} unread={v3Panel.unread} />}
+      dataSection={selectedDataSection}
+    />
+  ) : undefined
+  const dataChat = dataChatOpen && (
+    <ChatPanel
+      embedded={chatOnLeft}
+      messages={chat.messages}
+      thinking={chat.thinking}
+      onSend={(text) => chat.send(text, undefined, chatDataset?.key)}
+      onClose={closeDataChat}
+      intro="Describe the graphs you want. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
+      onOpenSource={(table) => showDataset(tableKey(table))}
+      resize={chatOnLeft ? undefined : sidePanel}
+      context={chatDataset && { kind: 'dataset', label: chatDataset.label, suggestions: datasetSuggestions(chatDataset), onClear: () => setContextClearedKey(chatDataset.key) }}
+      onViewGraph={viewChatGraph}
+    />
+  )
+  const dockedSettings = docked && showSettings && (
+    <DockedColumn label="Widget settings" resize={chatOnLeft ? sidePanel : leftPanel}>
+      {settingsPanel ?? <SettingsEmptyState />}
+    </DockedColumn>
+  )
+  const dockedChat = docked && canvasChatOpen && (
+    <DockedColumn label="Ask AI" resize={chatOnLeft ? leftPanel : sidePanel}>
+      {canvasChat}
+    </DockedColumn>
+  )
 
   if (lineage && onLineageChange) {
     return (
@@ -370,6 +428,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
 
   return (
     <div className="flex min-h-0 flex-1">
+      {chatOnLeft && (dataChat ? <DockedColumn label="Ask AI" resize={leftPanel}>{dataChat}</DockedColumn> : dockedChat)}
+      {docked && !chatOnLeft && dockedSettings}
       <div className="relative flex min-w-0 flex-1 flex-col">
         <BuilderHeader
           dashboard={dashboard}
@@ -414,7 +474,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 summaries={governed}
                 fixedFilterStyle={governed ? fixedFilterStyle : undefined}
                 fullScreenToolbar={governed}
-                toolbarPlacement={toolbarPlacement}
+                toolbarPlacement={productionFlow && panelLayout === 'tools-left' ? 'left' : 'bottom'}
                 aboveToolbar={backToDatasetShown && <BackPill label="Back to dataset" onBack={backToDataset} onDismiss={() => setBackToDatasetKey(null)} />}
                 chat={productionFlow ? v3Panel.chat : chat}
                 selectedId={selected?.id ?? null}
@@ -498,19 +558,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
         )}
       </div>
 
-      {dataChatOpen && (
-        <ChatPanel
-          messages={chat.messages}
-          thinking={chat.thinking}
-          onSend={(text) => chat.send(text, undefined, chatDataset?.key)}
-          onClose={closeDataChat}
-          intro="Describe the graphs you want. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
-          onOpenSource={(table) => showDataset(tableKey(table))}
-          resize={sidePanel}
-          context={chatDataset && { kind: 'dataset', label: chatDataset.label, suggestions: datasetSuggestions(chatDataset), onClear: () => setContextClearedKey(chatDataset.key) }}
-          onViewGraph={viewChatGraph}
-        />
-      )}
+      {!chatOnLeft && dataChat}
+      {chatOnLeft ? dockedSettings : dockedChat}
 
       {sourceDialogs && (
         <AddDatasetDialogs
@@ -523,49 +572,9 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       )}
 
       {showSettings &&
+        !docked &&
         (productionFlow ? (
-          <StackedEditorPanel
-            resize={sidePanel}
-            front={v3Panel.front}
-            split={settingsPlacement === 'split'}
-            chat={
-              chat.chatOpen ? (
-                <ChatPanel
-                  embedded
-                  messages={chat.messages}
-                  thinking={chat.thinking}
-                  onSend={(text) => chat.send(text, selected ?? undefined)}
-                  onClose={closeChat}
-                  intro="Describe the graphs you want, or select one to change it. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
-                  onOpenSource={(table) => openDataset(tableKey(table))}
-                  context={selected ? { label: displayTitle(selected) || itemLabel(selected), suggestions: widgetSuggestions(selected), onClear: () => setSelectedId(null) } : undefined}
-                  headerExtra={selected && layeredSettings && <LayerSwitchButton to="editor" onClick={v3Panel.showEditor} />}
-                />
-              ) : undefined
-            }
-            editor={
-              multiActive ? (
-                <MultiGraphPanel
-                  graphs={multiGraphs}
-                  datasets={datasets}
-                  dashboard={dashboard}
-                  onChange={(items) => updateWidgets(dashboard.id, items)}
-                  onDeselect={toggleSelect}
-                  onClose={() => setMultiIds([])}
-                />
-              ) : selected && !bottomSettings ? (
-                <WidgetEditor
-                  embedded
-                  item={selected}
-                  sources={sources.map(({ object }) => object)}
-                  onChange={(item) => updateWidget(dashboard.id, item)}
-                  onClose={() => setSelectedId(null)}
-                  headerExtra={layeredSettings && <LayerSwitchButton to="chat" onClick={v3Panel.showChat} unread={v3Panel.unread} />}
-                  dataSection={selectedDataSection}
-                />
-              ) : undefined
-            }
-          />
+          <StackedEditorPanel resize={sidePanel} front={v3Panel.front} split={settingsPlacement === 'split'} chat={canvasChat || undefined} editor={settingsPanel} />
         ) : selected && editMode === 'manual' ? (
           <WidgetEditor
             item={selected}

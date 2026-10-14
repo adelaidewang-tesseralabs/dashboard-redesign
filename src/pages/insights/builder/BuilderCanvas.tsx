@@ -66,7 +66,7 @@ type BuilderCanvasProps = {
   fullScreenToolbar?: boolean
   /** Floats just above the toolbar, e.g. a way back to the Data tab. */
   aboveToolbar?: ReactNode
-  /** Builder V3.1: the tools dock as a rail on the canvas's left edge instead of floating at the bottom. */
+  /** Builder V3 panel layout B: the tools dock as a rail on the canvas's left edge instead of floating at the bottom. */
   toolbarPlacement?: 'bottom' | 'left'
 }
 
