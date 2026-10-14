@@ -22,6 +22,8 @@ import { summarizePage, summaryBasis } from './pageSummary'
 import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
 import { narrowedPicks } from './presetFilters/narrowPresets'
+import { staleOpenPicks, withViewerFilters } from './presetFilters/viewerFilters'
+import { listDatasets } from './v2/datasets'
 import { personalOverrides, usePersonalFilters, withPersonalValues } from './usePersonalView'
 import type { AddSourceKind } from './sourceKinds'
 import type { useBuilderChat } from './useBuilderChat'
@@ -121,9 +123,20 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [highlight])
-  const picks = presetFilters ? narrowedPicks(dashboard, personal.values) : personal.values
-  const shown = readOnly ? withPersonalValues(dashboard, picks) : dashboard
-  const overrides = readOnly ? personalOverrides(dashboard, picks) : []
+  const fullDashboard = dashboards.find((entry) => entry.id === dashboard.id) ?? dashboard
+  const viewerPage = readOnly && presetFilters ? withViewerFilters(dashboard, fullDashboard) : dashboard
+  const picks = presetFilters ? narrowedPicks(viewerPage, personal.values) : personal.values
+  const shown = readOnly ? withPersonalValues(viewerPage, picks) : dashboard
+  const overrides = readOnly ? personalOverrides(viewerPage, picks) : []
+  const stale = readOnly && presetFilters ? staleOpenPicks(dashboard, personal.values) : undefined
+  const staleKey = stale?.filterIds.join('|') ?? ''
+  useEffect(() => {
+    if (!stale || stale.filterIds.length === 0) return
+    personal.reset(stale.filterIds)
+    const labels = listDatasets(fullDashboard).filter((dataset) => stale.datasetKeys.includes(dataset.key)).map((dataset) => dataset.label)
+    toast(`The editor set preset filters for ${labels.join(', ')}, so your own filters there were cleared.`)
+    // Keyed on the stale ids alone: resetting them empties the set, so this runs once per change.
+  }, [staleKey])
   const widgets = dashboard.widgets ?? []
   const groups = dashboard.groups ?? []
   const empty = widgets.length === 0 && groups.length === 0 && !chat.thinking
