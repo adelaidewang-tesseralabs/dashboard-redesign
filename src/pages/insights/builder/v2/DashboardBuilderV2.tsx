@@ -3,9 +3,11 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
+import { dataIssues } from '../../../../data/dataIssues'
 import { groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView, resolvePageId } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
+import { useIsFinalBuilder } from '../../../../lib/builderVersion'
 import { useFixedFilterStyle } from '../../../../lib/fixedFilterStyle'
 import type { PanelLayout } from '../../../../lib/panelLayout'
 import { useCollapseNavWhile } from '../../../../nav/navSuppression'
@@ -13,6 +15,7 @@ import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
 import { useToast } from '../../../../ui/Toast'
 import { BuilderCanvas } from '../BuilderCanvas'
+import type { PageMove } from '../CanvasGrid'
 import { BuilderHeader } from '../BuilderHeader'
 import { displayTitle, itemLabel } from '../canvasItems'
 import { ChatPanel } from '../ChatPanel'
@@ -53,6 +56,8 @@ import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
 import { PageTabs } from './PageTabs'
 import { PreviewBanner } from './PreviewBanner'
+import { VersionHistoryPanel, versionNumber } from './VersionHistoryPanel'
+import { VersionPreviewBar } from './VersionPreviewBar'
 
 /**
  * Production flow only — where a selected widget's settings go: `side` layers them over the chat (V3),
@@ -66,6 +71,14 @@ export type SettingsPlacement = 'side' | 'bottom' | 'split'
  * and nothing can author SQL, so Data Foundry stays the source of truth for queries.
  */
 export type AddDatasetFlow = 'catalog' | 'production' | 'governed'
+
+/**
+ * Final builder reads the same saved dashboard as V6 but has no sections or fixed filters, so it hides them here
+ * instead of rewriting the data. The grid compacts upward, closing the rows section headers took.
+ */
+function finalPageView(page: Dashboard): Dashboard {
+  return { ...page, groups: [], filters: page.filters?.filter((filter) => !filter.fixed) }
+}
 
 /** Builder V2: build on the canvas, manage everything the dashboard reads in a Data tab. */
 type DashboardBuilderV2Props = {
@@ -90,11 +103,15 @@ type DashboardBuilderV2Props = {
    * `chat-left-select` is `chat-left` with settings only while something is selected. `settings-bottom` is handled by the caller through `settingsPlacement`.
    */
   panelLayout?: PanelLayout
+  /** Final builder: version history docks as a side panel instead of the caller's dialog. */
+  historyOpen?: boolean
+  onCloseHistory?: () => void
 }
 
 export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { dashboard, headerActions, addDatasetFlow = 'catalog', settingsPlacement = 'side', badge, readOnly = false, onOpenHistory, lineage = null, onLineageChange, onShare, panelLayout = 'layered' } = props
-  const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset } = useDashboards()
+  const { historyOpen = false, onCloseHistory } = props
+  const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset, restoreVersion } = useDashboards()
   const toast = useToast()
   const chat = useBuilderChat(dashboard, planFromCatalog)
   const widgets = dashboard.widgets ?? []
@@ -167,10 +184,36 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const layeredSettings = settingsPlacement === 'side' && !docked
   const asViewer = readOnly || previewing
   const pages = useDashboardPages(dashboard, asViewer, () => setSelectedId(null))
-  const page = pageView(dashboard, pages.activeId)
+  const final = useIsFinalBuilder()
+  const historyShown = final && historyOpen && !readOnly
+  const [versionId, setVersionId] = useState<string | null>(null)
+  const previewedVersion = historyShown ? dashboard.versions.find((version, index) => index > 0 && version.id === versionId) : undefined
+  const versionSource = previewedVersion ? { ...dashboard, ...previewedVersion.content } : dashboard
+  const page = final ? finalPageView(pageView(versionSource, pages.activeId)) : pageView(dashboard, pages.activeId)
+  const closeHistory = () => {
+    setVersionId(null)
+    onCloseHistory?.()
+  }
+  const restorePreviewed = () => {
+    if (!previewedVersion) return
+    restoreVersion(dashboard.id, previewedVersion.id)
+    toast(dataIssues(previewedVersion.content).length > 0 ? "Version restored. Some graphs can't load their data." : `Restored version ${versionNumber(dashboard, previewedVersion)}`)
+    setVersionId(null)
+  }
   const showPageTabs = asViewer ? pages.pages.length > 1 : governed || pages.pages.length > 1
   const v3Panel = useV3SidePanel({ enabled: productionFlow, chat, hasWidgets: widgets.length > 0, editorCoversChat: (!!selected || multiActive) && layeredSettings, setSelectedId })
   const multiSelect = governed && !bottomSettings && !asViewer
+  const pageMove: PageMove = {
+    pages: pages.pages.filter((entry) => entry.id !== pages.activeId),
+    onMove: (itemId, pageId) => {
+      const name = pages.moveWidget(itemId, pageId)
+      toast(`Moved to ${name}`, { label: 'View', onSelect: () => pages.select(pageId) })
+    },
+    onMoveToNewPage: (itemId) => {
+      const page = pages.moveWidgetToNewPage(itemId)
+      toast(`Moved to ${page.name}`, { label: 'View', onSelect: () => pages.select(page.id) })
+    },
+  }
 
   useEffect(() => {
     if (!multiActive) return
@@ -345,10 +388,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
         dashboard={dashboard}
         onChange={(item) => updateWidget(dashboard.id, item)}
         onOpenDataset={openDataset}
+        transformDrafts={final ? transformDrafts : undefined}
       />
     ) : undefined
-  const showSettings = view === 'canvas' && !asViewer && !lineage
-  const dataChatOpen = view === 'data' && !asViewer && !lineage && chat.chatOpen
+  const showSettings = view === 'canvas' && !asViewer && !lineage && !historyShown
+  const dataChatOpen = view === 'data' && !asViewer && !lineage && chat.chatOpen && !historyShown
   const canvasChatOpen = showSettings && chat.chatOpen && (productionFlow || !(selected && editMode === 'manual'))
   const chatShowing = dataChatOpen || canvasChatOpen
   if (!chatShowing && listReopened) setListReopened(false)
@@ -463,6 +507,14 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             onExit={() => togglePreview(false)}
           />
         )}
+        {previewedVersion && view === 'canvas' && (
+          <VersionPreviewBar
+            number={versionNumber(dashboard, previewedVersion)}
+            savedAt={previewedVersion.savedAt}
+            onRestore={restorePreviewed}
+            onBackToCurrent={() => setVersionId(null)}
+          />
+        )}
         {(asViewer || view === 'canvas') && showPageTabs && (
           <PageTabs
             pages={pages.pages}
@@ -475,11 +527,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
           <WidgetNavigationContext value={navigation}>
             <PreviewPersonContext value={previewAs && previewAs !== CURRENT_USER ? previewAs : undefined}>
               <BuilderCanvas
-                key={`${pages.activeId}:${previewing}`}
+                key={`${pages.activeId}:${previewing}:${previewedVersion?.id ?? ''}`}
                 dashboard={page}
-                sections={governed}
+                sections={governed && !final}
                 summaries={governed}
-                fixedFilterStyle={governed ? fixedFilterStyle : undefined}
+                fixedFilterStyle={governed && !final ? fixedFilterStyle : undefined}
                 fullScreenToolbar={governed}
                 toolbarPlacement={productionFlow && panelLayout === 'tools-left' ? 'left' : 'bottom'}
                 aboveToolbar={backToDatasetShown && <BackPill label="Back to dataset" onBack={backToDataset} onDismiss={() => setBackToDatasetKey(null)} />}
@@ -500,11 +552,14 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 onAddSource={productionFlow ? requestSource : openCatalog}
                 onOpenAddSource={sourceDialogs ? undefined : openCatalog}
                 onOpenData={openCatalog}
-                readOnly={asViewer}
-                previewing={previewing && !readOnly}
+                readOnly={asViewer || !!previewedVersion}
+                previewing={(previewing && !readOnly) || !!previewedVersion}
                 onOpenHistory={onOpenHistory}
                 refreshing={refreshing}
                 crossHighlight
+                pageMove={final && !asViewer ? pageMove : undefined}
+                presetFilters={final}
+                emptyStart={final}
               />
             </PreviewPersonContext>
           </WidgetNavigationContext>
@@ -607,6 +662,17 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
             />
           )
         ))}
+      {historyShown && (
+        <VersionHistoryPanel
+          dashboard={dashboard}
+          selectedId={previewedVersion?.id ?? null}
+          onSelect={(id) => {
+            setVersionId(id)
+            changeView('canvas')
+          }}
+          onClose={closeHistory}
+        />
+      )}
       {leaveDialog}
     </div>
   )

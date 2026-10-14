@@ -22,6 +22,8 @@ type SourceTreeProps = {
   onInsertColumn?: (name: string) => void
   /** Extra content rendered at the end of a folder, e.g. the Uploads folder's upload action. */
   folderFooter?: (node: CatalogNode) => ReactNode
+  /** A control beside a folder's row, e.g. a workflow's run picker. Replaces the folder's meta text. */
+  folderAction?: (node: CatalogNode) => ReactNode
 }
 
 const ROW = 'flex h-7 w-full items-center gap-1.5 rounded pr-1 text-left hover:bg-white/5'
@@ -38,19 +40,30 @@ export function SourceTree(props: SourceTreeProps) {
 }
 
 function TreeNode({ node, depth, ...props }: SourceTreeProps & { node: CatalogNode; depth: number }) {
-  const { expanded, forceOpen, onToggle, folderFooter } = props
+  const { expanded, forceOpen, onToggle, folderFooter, folderAction } = props
   if (node.table) return <TableNode node={node} table={node.table} depth={depth} {...props} />
 
   const open = forceOpen || expanded.has(node.key)
+  const action = folderAction?.(node)
+  const row = (
+    <button type="button" onClick={() => onToggle(node.key)} style={{ paddingLeft: 4 + depth * 16 }} className={cn(ROW, 'cursor-pointer', action && 'min-w-0 flex-1')}>
+      <ChevronRight className={cn('size-3.5 shrink-0 text-white/40 transition-transform', open && 'rotate-90')} />
+      <FolderIcon node={node} open={open} />
+      <span className={cn('min-w-0 truncate text-[13px]', depth === 0 ? 'font-medium text-white' : 'text-white/85')}>{node.label}</span>
+      <span className="text-xs text-white/35">{countTables(node)}</span>
+      {node.meta && !action && <span className="ml-auto truncate pl-2 text-[11px] text-white/35">{node.meta}</span>}
+    </button>
+  )
   return (
     <li role="treeitem" aria-expanded={open}>
-      <button type="button" onClick={() => onToggle(node.key)} style={{ paddingLeft: 4 + depth * 16 }} className={cn(ROW, 'cursor-pointer')}>
-        <ChevronRight className={cn('size-3.5 shrink-0 text-white/40 transition-transform', open && 'rotate-90')} />
-        <FolderIcon node={node} open={open} />
-        <span className={cn('min-w-0 truncate text-[13px]', depth === 0 ? 'font-medium text-white' : 'text-white/85')}>{node.label}</span>
-        <span className="text-xs text-white/35">{countTables(node)}</span>
-        {node.meta && <span className="ml-auto truncate pl-2 text-[11px] text-white/35">{node.meta}</span>}
-      </button>
+      {action ? (
+        <div className="flex items-center gap-1 pr-1">
+          {row}
+          {action}
+        </div>
+      ) : (
+        row
+      )}
       {open && (
         <ul role="group">
           {node.children?.map((child) => (

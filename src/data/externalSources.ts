@@ -70,6 +70,25 @@ export const WORKFLOWS: Workflow[] = [
   workflow('gl_reconciliation', 'GL reconciliation', '2026-10-06T18:05:00-07:00', ['reconcile/unmatched_entries.csv']),
 ]
 
+/** One run of a workflow, at the workflow version it ran. */
+export type WorkflowRun = { id: string; version: number; ranAt: string; author: string }
+
+const RUN_GAP_HOURS = [0, 26, 75, 170]
+const RUN_AUTHORS = ['olivier@tessera.ai', 'sophie@tessera.ai', 'olivier@tessera.ai', 'mehdi@tessera.ai']
+
+/** Newest first: the latest run, then a few older ones, each on an older workflow version. */
+export function workflowRuns(workflow: Workflow): WorkflowRun[] {
+  return RUN_GAP_HOURS.map((hours, index) => ({
+    id: `${workflow.id}-run-${RUN_GAP_HOURS.length - index}`,
+    version: RUN_GAP_HOURS.length - index + 1,
+    ranAt: new Date(Date.parse(workflow.lastRun) - hours * 36e5).toISOString(),
+    author: RUN_AUTHORS[index],
+  }))
+}
+
+/** Where the workflow lives in the main app, opened from the run picker. */
+export const workflowUrl = (workflow: Workflow) => `http://localhost:3000/t/staging/workflows/${workflow.id}`
+
 const uploads: DataObject[] = []
 
 /** Lands an uploaded file as a lake table under `destination` and returns it. */

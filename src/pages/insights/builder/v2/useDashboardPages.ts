@@ -9,7 +9,7 @@ import { usePersonalPage } from '../usePersonalView'
 export function useDashboardPages(dashboard: Dashboard, asViewer: boolean, onPageChange: () => void) {
   const [params, setParams] = useSearchParams()
   const [savedPageId, savePageId] = usePersonalPage(dashboard.id)
-  const { setActivePage, addPage, updatePage, movePage, duplicatePage, deletePage } = useDashboards()
+  const { setActivePage, addPage, updatePage, movePage, duplicatePage, deletePage, moveWidgetToPage } = useDashboards()
   const pages = visiblePages(dashboard, asViewer)
   const wanted = params.get('page') ?? savedPageId
   const activeId = pages.find((page) => page.id === wanted)?.id ?? pages[0].id
@@ -45,6 +45,16 @@ export function useDashboardPages(dashboard: Dashboard, asViewer: boolean, onPag
       const page = createPage(`${source?.name ?? 'Page'} copy`)
       duplicatePage(dashboard.id, pageId, page)
       select(page.id)
+    },
+    /** Returns the page's name, for the confirmation. */
+    moveWidget: (itemId: string, pageId: string) => {
+      moveWidgetToPage(dashboard.id, itemId, pageId)
+      return pages.find((page) => page.id === pageId)?.name ?? ''
+    },
+    moveWidgetToNewPage: (itemId: string) => {
+      const page = createPage(nextPageName(dashboardPages(dashboard)))
+      moveWidgetToPage(dashboard.id, itemId, page.id, page)
+      return page
     },
     remove: (pageId: string) => {
       const index = pages.findIndex((page) => page.id === pageId)

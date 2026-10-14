@@ -13,6 +13,7 @@ const VERSION_LABELS: Record<BuilderVersion, string> = {
   v4: 'V4 · Settings panel at the bottom',
   v5: 'V5 · Settings above chat',
   v6: 'V6 · Catalog only, no SQL',
+  final: 'Final · Team feedback',
 }
 
 /** Prototype-only control, always on screen, for comparing dashboard builder concepts. */

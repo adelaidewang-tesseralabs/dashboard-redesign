@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Database, FileText, Image, Minus, Plus, Table2, Video, X } from 'lucide-react'
 import { DATA_OBJECTS, findObject, type DataObject } from '../../../data/dataSources'
 import { isChartStyle, showsLegend, usesColor, usesLegend, usesSingleColor, type CanvasItem, type GraphItem, type MediaKind } from '../../../data/widgets'
+import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { CHART_COLOR_IDS, CHART_PALETTE_IDS, CHART_PALETTES, CHART_SINGLE_COLORS, isChartColor, isChartPalette, resolvePalette, type ChartPalette } from '../../../lib/colors'
 import { Button } from '../../../ui/Button'
@@ -72,8 +73,41 @@ export function WidgetEditor({ item, sources, onChange, onClose, dataSection, re
 
 type SectionProps<T extends CanvasItem = CanvasItem> = { item: T; onChange: (item: CanvasItem) => void }
 
+/**
+ * Final builder: both fields always show and an empty one hides that line on the card. Clearing writes the same
+ * show flags the checkboxes did, so other builder versions render the card the same way.
+ */
+function AlwaysOnPresentation({ item, onChange }: SectionProps) {
+  return (
+    <EditorSection title="Widget">
+      <span className="text-xs text-white/50">Title</span>
+      <input
+        aria-label="Widget title"
+        value={item.showTitle === false ? '' : (item.title ?? itemLabel(item))}
+        placeholder="No title"
+        onChange={(event) => {
+          const title = event.target.value
+          onChange(title.trim() ? { ...item, title, showTitle: true } : { ...item, showTitle: false })
+        }}
+        className={editorInputClass}
+      />
+      <span className="text-xs text-white/50">Description</span>
+      <textarea
+        aria-label="Widget description"
+        rows={2}
+        value={item.showDescription ? (item.description ?? '') : ''}
+        placeholder="No description"
+        onChange={(event) => onChange({ ...item, description: event.target.value, showDescription: !!event.target.value.trim() })}
+        className={`${editorInputClass} resize-none`}
+      />
+    </EditorSection>
+  )
+}
+
 function PresentationSection({ item, onChange }: SectionProps) {
+  const final = useIsFinalBuilder()
   const showTitle = item.showTitle !== false
+  if (final) return <AlwaysOnPresentation item={item} onChange={onChange} />
   return (
     <EditorSection title="Widget">
       <div className="flex items-center gap-5">

@@ -40,6 +40,7 @@ export function usePersonalFilters(dashboardId: string, persist = true) {
   return {
     values,
     setFilterValues: (filterId: string, picked: string[]) => save({ ...values, [filterId]: picked }),
+    setManyFilterValues: (picked: PersonalFilterValues) => save({ ...values, ...picked }),
     reset: (filterIds: string[]) => save(Object.fromEntries(Object.entries(values).filter(([filterId]) => !filterIds.includes(filterId)))),
   }
 }

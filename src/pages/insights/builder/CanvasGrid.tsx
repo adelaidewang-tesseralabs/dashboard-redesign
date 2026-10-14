@@ -38,6 +38,15 @@ type CanvasGridProps = {
   onHighlight?: (highlight: CrossHighlight) => void
   /** Builder V6: section rows, added from the gaps between rows of graphs or a graph's menu. */
   sections?: boolean
+  /** Final builder: "Move to page" in each graph's menu. */
+  pageMove?: PageMove
+}
+
+export type PageMove = {
+  /** Every page except the one on screen. */
+  pages: { id: string; name: string }[]
+  onMove: (itemId: string, pageId: string) => void
+  onMoveToNewPage: (itemId: string) => void
 }
 
 const ROW_HEIGHT = 60
@@ -48,7 +57,7 @@ const ID_PREFIX: Record<CanvasItem['source'], string> = { object: 'obj', sql: 's
 const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h }))
 
 /** Drag a widget by its body to move it, or by the bottom-right corner to resize it. Section rows drag their graphs along. */
-export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false }: CanvasGridProps) {
+export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, editingId = null, highlight = null, onHighlight, sections = false, pageMove }: CanvasGridProps) {
   const { addGroup, updateGroup, removeGroup, insertWidget } = useDashboards()
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
@@ -131,6 +140,17 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
       onMove: (sectionId) => moveToSection(item.id, sectionId),
     },
     onAddSectionAbove: sections ? () => addSectionAt(sectionRowAbove(allRects, widgetRects.find((rect) => rect.i === item.id))) : undefined,
+    moveToPage: pageMove && {
+      pages: pageMove.pages,
+      onMove: (pageId) => {
+        if (selectedId === item.id) onSelect(null)
+        pageMove.onMove(item.id, pageId)
+      },
+      onMoveToNewPage: () => {
+        if (selectedId === item.id) onSelect(null)
+        pageMove.onMoveToNewPage(item.id)
+      },
+    },
   })
   const insertLines = sections && !readOnly && !interacting ? insertableBreaks(widgetRects, groupRects, rendered, collapsed) : []
   useGraphShortcuts(

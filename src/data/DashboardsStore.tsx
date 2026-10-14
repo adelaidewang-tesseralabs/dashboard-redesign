@@ -15,6 +15,7 @@ import {
   type GeneralAccess,
   type GraphGroup,
   type MemberRole,
+  type SavedFilter,
   type SqlDataset,
 } from './dashboards'
 import { dashboardPages, resolvePageId } from './pages'
@@ -55,6 +56,8 @@ type DashboardsStore = {
   duplicatePage: (id: string, pageId: string, page: DashboardPage) => void
   /** Drops the page with everything on it; the last page can't be deleted. */
   deletePage: (id: string, pageId: string) => void
+  /** Sends a widget to the bottom of another page; a `newPage` is created in the same edit, after the last page. */
+  moveWidgetToPage: (id: string, itemId: string, pageId: string, newPage?: DashboardPage) => void
   /** `layout` holds the section's rect and any rects it pushed down, saved in the same edit. */
   addGroup: (id: string, group: GraphGroup, layout: WidgetRect[]) => void
   updateGroup: (id: string, group: GraphGroup) => void
@@ -80,6 +83,10 @@ type DashboardsStore = {
   updateFilter: (id: string, filter: DashboardFilter) => void
   setFilterValues: (id: string, filterId: string, values: string[]) => void
   removeFilter: (id: string, filterId: string) => void
+  addSavedFilter: (id: string, savedFilter: SavedFilter) => void
+  removeSavedFilter: (id: string, savedFilterId: string) => void
+  /** `runId` undefined goes back to the workflow's latest run. */
+  pinRun: (id: string, workflowId: string, runId: string | undefined) => void
   restoreVersion: (id: string, versionId: string) => void
   /** Steps back or forward one content edit on the dashboard; undoing is itself saved as a version. */
   undo: (id: string) => void
@@ -300,6 +307,24 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
         ),
       setArchived: (id, archived) =>
         setDashboards((current) => current.map((dashboard) => (dashboard.id === id ? { ...dashboard, archived } : dashboard))),
+      addSavedFilter: (id, savedFilter) =>
+        setDashboards((current) =>
+          current.map((dashboard) => (dashboard.id === id ? { ...dashboard, savedFilters: [...(dashboard.savedFilters ?? []), savedFilter] } : dashboard)),
+        ),
+      removeSavedFilter: (id, savedFilterId) =>
+        setDashboards((current) =>
+          current.map((dashboard) =>
+            dashboard.id === id ? { ...dashboard, savedFilters: dashboard.savedFilters?.filter((entry) => entry.id !== savedFilterId) } : dashboard,
+          ),
+        ),
+      pinRun: (id, workflowId, runId) =>
+        setDashboards((current) =>
+          current.map((dashboard) => {
+            if (dashboard.id !== id) return dashboard
+            const { [workflowId]: _previous, ...rest } = dashboard.pinnedRuns ?? {}
+            return { ...dashboard, pinnedRuns: runId ? { ...rest, [workflowId]: runId } : rest }
+          }),
+        ),
       deleteDashboard: (id) => {
         setDashboards((current) => current.filter((dashboard) => dashboard.id !== id))
         setFavorites(favorites.filter((favorite) => favorite !== id))
@@ -397,6 +422,18 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
       duplicatePage: (id, pageId, page) => editDashboard(id, (dashboard) => copyPage(withExplicitPages(dashboard), pageId, page)),
       deletePage: (id, pageId) =>
         editDashboard(id, (dashboard) => (dashboardPages(dashboard).length > 1 ? dropPage(withExplicitPages(dashboard), pageId) : dashboard)),
+      moveWidgetToPage: (id, itemId, pageId, newPage) =>
+        editDashboard(id, (dashboard) => {
+          const pinned = withExplicitPages(dashboard)
+          const onTarget = new Set([...(pinned.widgets ?? []), ...(pinned.groups ?? [])].filter((entry) => entry.pageId === pageId).map((entry) => entry.id))
+          const bottom = Math.max(0, ...(pinned.layout ?? []).filter((rect) => onTarget.has(rect.i)).map((rect) => rect.y + rect.h))
+          return {
+            ...pinned,
+            pages: newPage ? [...(pinned.pages ?? []), newPage] : pinned.pages,
+            widgets: pinned.widgets?.map((item) => (item.id === itemId ? { ...item, pageId } : item)),
+            layout: pinned.layout?.map((rect) => (rect.i === itemId ? { ...rect, x: 0, y: bottom } : rect)),
+          }
+        }),
       addGroup: (id, group, layout) =>
         editDashboard(id, (dashboard) => {
           const saved = new Set(layout.map((rect) => rect.i))

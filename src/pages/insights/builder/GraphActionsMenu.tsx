@@ -1,4 +1,4 @@
-import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Rows3, Sparkles, Trash2, Waypoints } from 'lucide-react'
+import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Plus, Rows3, Sparkles, Trash2, Waypoints } from 'lucide-react'
 import { Menu, type MenuEntry } from '../../../ui/Menu'
 
 export type WidgetActions = {
@@ -15,6 +15,13 @@ export type WidgetActions = {
   }
   /** Builder V6 only. */
   onAddSectionAbove?: () => void
+  /** Final builder, in place of sections. */
+  moveToPage?: {
+    /** The other pages. */
+    pages: { id: string; name: string }[]
+    onMove: (pageId: string) => void
+    onMoveToNewPage: () => void
+  }
 }
 
 /** Graphs only. Viewers get full screen, copy link and downloads; lineage and the dataset are for owners and editors. */
@@ -34,6 +41,8 @@ type GraphActionsMenuProps = {
   view?: GraphViewActions
   /** Narrow cards drop the full screen, copy link and download buttons, so the menu carries them instead. */
   viewInMenu?: boolean
+  /** Final builder: the header keeps only download, so full screen and copy link always live in the menu. */
+  openInMenu?: boolean
   /** Set when the Ask AI button is folded into the menu too. */
   onAskAi?: () => void
 }
@@ -43,9 +52,9 @@ export const graphToolButtonClass =
   'flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-faint)] hover:bg-[var(--dash-canvas)] hover:text-[var(--dash-fg)] data-popover-open:bg-[var(--dash-canvas)] data-popover-open:text-[var(--dash-fg)]'
 
 /** The "…" on a canvas item. Editing actions also have shortcuts: ⌘C / ⌘V duplicates, ⌘ Delete removes. */
-export function GraphActionsMenu({ label, actions, view, viewInMenu = false, onAskAi }: GraphActionsMenuProps) {
+export function GraphActionsMenu({ label, actions, view, viewInMenu = false, openInMenu = false, onAskAi }: GraphActionsMenuProps) {
   const askAi: MenuEntry[] = onAskAi ? [{ label: 'Ask AI', Icon: Sparkles, onSelect: onAskAi }] : []
-  const items = joinGroups([askAi, menuItems(actions, view, viewInMenu)])
+  const items = joinGroups([askAi, menuItems(actions, view, viewInMenu, openInMenu)])
   if (items.length === 0) return null
   return (
     <Menu
@@ -100,11 +109,11 @@ function dataGroup(view: GraphViewActions | undefined): MenuEntry[] {
   ]
 }
 
-function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined, viewInMenu: boolean): MenuEntry[] {
-  const opening = viewInMenu ? viewGroup(view) : []
+function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined, viewInMenu: boolean, openInMenu: boolean): MenuEntry[] {
+  const opening = viewInMenu ? viewGroup(view) : openInMenu ? viewGroup(view).slice(0, 2) : []
   const data = dataGroup(view)
   if (!actions) return joinGroups([opening, data])
-  const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove } = actions
+  const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove, moveToPage } = actions
   const editing: MenuEntry[] = [
     ...(onAddSectionAbove ? [{ label: 'Add section above', Icon: Rows3, onSelect: onAddSectionAbove }] : []),
     ...(onDuplicate ? [{ label: 'Duplicate', Icon: Copy, onSelect: onDuplicate }] : []),
@@ -121,6 +130,19 @@ function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | 
                 onSelect: () => moveTo.onMove(section.id),
                 active: moveTo.sectionId === section.id,
               })),
+            ],
+          },
+        ]
+      : []),
+    ...(moveToPage
+      ? [
+          {
+            type: 'submenu' as const,
+            label: 'Move to page',
+            Icon: FolderInput,
+            items: [
+              ...moveToPage.pages.map((page) => ({ label: page.name, onSelect: () => moveToPage.onMove(page.id) })),
+              { label: 'New page', Icon: Plus, onSelect: moveToPage.onMoveToNewPage },
             ],
           },
         ]

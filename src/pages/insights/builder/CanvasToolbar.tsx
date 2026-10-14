@@ -38,6 +38,8 @@ type CanvasToolbarProps = {
   fullScreen?: boolean
   /** `vertical`: a rail docked on the canvas's left edge, like the workflow canvas; menus and tooltips open to its right. */
   orientation?: 'horizontal' | 'vertical'
+  /** Final builder: no fixed filters, so the filter tool opens the preset filters directly instead of asking which kind. */
+  presetFiltersOnly?: boolean
 }
 
 const MOD_KEY = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl+'
@@ -73,6 +75,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
     onAppearanceChange,
     fullScreen = false,
     orientation = 'horizontal',
+    presetFiltersOnly = false,
   } = props
   const vertical = orientation === 'vertical'
   const menuSide = vertical ? 'right' : 'top'
@@ -109,15 +112,19 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
           />
           <Tool Icon={Type} label="Add text" onClick={onAddText} vertical={vertical} />
           {onAddSummary && <Tool Icon={ScrollText} label="Summarize page" onClick={onAddSummary} vertical={vertical} />}
-          <Menu
-            side={menuSide}
-            align={vertical ? 'start' : 'end'}
-            items={[
-              { label: 'Filter viewers can change', Icon: Eye, onSelect: () => onAddFilter('viewer') },
-              { label: 'Fixed filter, hidden from viewers', Icon: Pin, onSelect: () => onAddFilter('fixed') },
-            ]}
-            trigger={({ open, toggle }) => <Tool Icon={Filter} label="Add filter" active={open} onClick={toggle} vertical={vertical} />}
-          />
+          {presetFiltersOnly ? (
+            <Tool Icon={Filter} label="Preset filters for viewers" onClick={() => onAddFilter('viewer')} vertical={vertical} />
+          ) : (
+            <Menu
+              side={menuSide}
+              align={vertical ? 'start' : 'end'}
+              items={[
+                { label: 'Filter viewers can change', Icon: Eye, onSelect: () => onAddFilter('viewer') },
+                { label: 'Fixed filter, hidden from viewers', Icon: Pin, onSelect: () => onAddFilter('fixed') },
+              ]}
+              trigger={({ open, toggle }) => <Tool Icon={Filter} label="Add filter" active={open} onClick={toggle} vertical={vertical} />}
+            />
+          )}
           <Tool Icon={Image} label="Add media" onClick={onAddMedia} vertical={vertical} />
           {onAddSection && <Tool Icon={Rows3} label="Add section" onClick={onAddSection} vertical={vertical} />}
           {!vertical && <Divider />}

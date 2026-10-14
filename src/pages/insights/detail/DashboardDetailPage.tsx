@@ -19,8 +19,8 @@ import { DashboardIconActions, DetailHeaderActions } from './DetailHeaderActions
 import { ShareDialog } from './ShareDialog'
 import { VersionHistoryDialog } from './VersionHistoryDialog'
 
-const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', v4: 'bottom', v5: 'split', v6: 'split' }
-const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', v4: 'production', v5: 'production', v6: 'governed' }
+const SETTINGS_PLACEMENT: Record<BuilderVersion, SettingsPlacement> = { v1: 'side', v2: 'side', v3: 'side', v4: 'bottom', v5: 'split', v6: 'split', final: 'split' }
+const ADD_DATASET_FLOW: Record<BuilderVersion, AddDatasetFlow> = { v1: 'production', v2: 'catalog', v3: 'production', v4: 'production', v5: 'production', v6: 'governed', final: 'governed' }
 
 export function DashboardDetailPage() {
   const { dashboardId } = useParams()
@@ -98,12 +98,14 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           lineage={readOnly ? null : lineage}
           onLineageChange={setLineage}
           onShare={shareWith}
+          historyOpen={dialog === 'history'}
+          onCloseHistory={() => setDialog(null)}
         />
       ) : (
         <DashboardBuilder dashboard={dashboard} badge={badge} readOnly={readOnly} onOpenHistory={openHistory} />
       )}
 
-      <VersionHistoryDialog open={dialog === 'history'} onClose={() => setDialog(null)} dashboard={dashboard} />
+      <VersionHistoryDialog open={dialog === 'history' && (builderVersion !== 'final' || readOnly)} onClose={() => setDialog(null)} dashboard={dashboard} />
 
       <ShareDialog open={dialog === 'share'} onClose={() => setDialog(null)} dashboard={dashboard} role={role} invitee={invitee} />
 

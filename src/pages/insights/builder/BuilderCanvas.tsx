@@ -8,14 +8,16 @@ import { useResolvedAppearance } from '../../../lib/appearance'
 import type { FixedFilterStyle } from '../../../lib/fixedFilterStyle'
 import { cn } from '../../../lib/cn'
 import { useToast } from '../../../ui/Toast'
-import { CanvasGrid } from './CanvasGrid'
+import { CanvasGrid, type PageMove } from './CanvasGrid'
 import { sameHighlight, type CrossHighlight } from './crossHighlight'
 import { HighlightChip } from './HighlightChip'
 import { CanvasHero } from './CanvasHero'
+import { EmptyCanvasStart } from './EmptyCanvasStart'
 import { CanvasToolbar } from './CanvasToolbar'
 import { DataIssuesBanner } from './DataIssuesBanner'
 import { FilterBar, type FilterKind } from './FilterBar'
 import { FullScreenContext, type CanvasFullScreen } from './fullScreen'
+import { PresetFilterBar } from './presetFilters/PresetFilterBar'
 import { summarizePage, summaryBasis } from './pageSummary'
 import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
@@ -68,11 +70,17 @@ type BuilderCanvasProps = {
   aboveToolbar?: ReactNode
   /** Builder V3 panel layout B: the tools dock as a rail on the canvas's left edge instead of floating at the bottom. */
   toolbarPlacement?: 'bottom' | 'left'
+  /** Final builder: graphs move between pages instead of sections. */
+  pageMove?: PageMove
+  /** Final builder: per-dataset preset filters and saved filters instead of viewer and fixed filters. */
+  presetFilters?: boolean
+  /** Final builder: an empty canvas offers Add graph and a chat box, with no toolbar until something is on it. */
+  emptyStart?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom' } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false } = props
   const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -161,6 +169,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       }}
       onAddSummary={summaries ? addSummary : undefined}
       onAddFilter={setAddingFilter}
+      presetFiltersOnly={presetFilters}
       onAddMedia={() => addItem(mediaItem())}
       onAddSection={sections ? addSection : undefined}
       onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
@@ -171,7 +180,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   )
 
   const railed = toolbarPlacement === 'left'
-  const showRail = railed && !readOnly && !drawer && (!fullScreenId || fullScreenTools)
+  const starting = empty && emptyStart && !readOnly
+  const showRail = railed && !readOnly && !drawer && !starting && (!fullScreenId || fullScreenTools)
 
   return (
     <FullScreenContext value={fullScreen}>
@@ -188,7 +198,22 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             }}
             className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
           >
-            {widgets.some(isGraph) && (
+            {widgets.some(isGraph) && presetFilters && (
+              <PresetFilterBar
+                dashboard={shown}
+                canEdit={!readOnly}
+                opening={addingFilter !== null}
+                onOpened={() => setAddingFilter(null)}
+                onValuesChange={(filterId, values) => (readOnly ? personal.setFilterValues(filterId, values) : setFilterValues(dashboard.id, filterId, values))}
+                onApplyValues={(values) =>
+                  readOnly
+                    ? personal.setManyFilterValues(values)
+                    : Object.entries(values).forEach(([filterId, picked]) => setFilterValues(dashboard.id, filterId, picked))
+                }
+                onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
+              />
+            )}
+            {widgets.some(isGraph) && !presetFilters && (
               <FilterBar
                 dashboard={shown}
                 canEdit={!readOnly}
@@ -201,6 +226,19 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             )}
             {empty && readOnly ? (
               <p className="p-10 text-center text-sm text-[var(--dash-muted)]">Nothing to preview yet. Add a graph to the canvas first.</p>
+            ) : starting ? (
+              <EmptyCanvasStart
+                onPrompt={chat.send}
+                widgets={widgets}
+                sources={sources}
+                queries={queries}
+                sourcesLabel={sourcesLabel}
+                datasetsFirst={datasetsFirst}
+                datasetsOnly={datasetsOnly}
+                onAdd={addItem}
+                onAddSource={onAddSource}
+                onOpenAddSource={onOpenAddSource}
+              />
             ) : empty ? (
               <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
             ) : (
@@ -220,8 +258,9 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                   highlight={highlight}
                   onHighlight={highlighting ? toggleHighlight : undefined}
                   sections={sections}
+                  pageMove={pageMove}
                 />
-                {chat.thinking && !chat.editingId && <div className="h-80 animate-pulse rounded-lg bg-[var(--dash-card)]" />}
+                {chat.thinking && !chat.editingId && <div className={cn('h-80 animate-pulse rounded-lg bg-[var(--dash-card)]', emptyStart && 'w-1/2')} />}
               </div>
             )}
           </div>
@@ -247,7 +286,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 </div>
               </div>
             )
-          ) : drawer ?? (railed ? (
+          ) : starting ? null : drawer ?? (railed ? (
             <>
               {empty && (
                 <div data-dashboard-theme={theme} className="pointer-events-none absolute top-4 left-4 flex items-center gap-1.5 text-[var(--dash-muted)]">

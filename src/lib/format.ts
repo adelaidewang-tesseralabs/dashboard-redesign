@@ -9,6 +9,8 @@ const fullDate = new Intl.DateTimeFormat('en-US', {
   minute: '2-digit',
 })
 const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
+const dayDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
+const timeOnly = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
 const number = new Intl.NumberFormat('en-US')
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
 
@@ -27,6 +29,15 @@ export function formatDateTime(iso: string) {
 
 export function formatShortDate(iso: string) {
   return shortDate.format(new Date(iso))
+}
+
+/** A day heading, e.g. "Wednesday, Oct 7, 2026". */
+export function formatDay(iso: string) {
+  return dayDate.format(new Date(iso))
+}
+
+export function formatTime(iso: string) {
+  return timeOnly.format(new Date(iso))
 }
 
 export function formatNumber(value: number) {

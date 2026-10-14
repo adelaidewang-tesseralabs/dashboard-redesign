@@ -10,6 +10,8 @@ import type { TransformColumn } from './transforms/controls'
 import { FilterCards, isCardFilter } from './FilterCards'
 import { TopNField } from './TopNField'
 import { FiltersEditor } from './transforms/FiltersEditor'
+import type { TransformDrafts } from './transforms/transformDrafts'
+import { SharedDatasetTransforms } from './SharedDatasetTransforms'
 
 type DatasetDataSectionProps = {
   item: GraphItem
@@ -17,6 +19,8 @@ type DatasetDataSectionProps = {
   dashboard: Dashboard
   onChange: (item: CanvasItem) => void
   onOpenDataset: (key: string) => void
+  /** Final builder: edit the dataset's shared transforms from the graph panel too. */
+  transformDrafts?: TransformDrafts
 }
 
 const DEFAULT_OPTION = 'default'
@@ -40,7 +44,7 @@ function parseValue(id: string): Aggregate | undefined {
 }
 
 /** Widget panel for builder V2: pick the dataset and what to group by, then the graph's own value, filters, sort and Top N. */
-export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset }: DatasetDataSectionProps) {
+export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset, transformDrafts }: DatasetDataSectionProps) {
   const key = itemDatasetKey(item)
   const dataset = datasets.find((candidate) => candidate.key === key)
   const result = dataset ? datasetResult(dataset, dashboard) : undefined
@@ -126,6 +130,8 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
         )}
       </EditorSection>
 
+      {transformDrafts && dataset && <SharedDatasetTransforms dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} />}
+
       <EditorSection title="Value">
         <Select
           aria-label="Value"
@@ -137,7 +143,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
       </EditorSection>
 
       <EditorSection title="Filters">
-        <p className="-mt-1 text-xs text-white/45">Only this graph. Fixed, page and dataset filters also apply.</p>
+        <p className="-mt-1 text-xs text-white/45">Only this graph. {transformDrafts ? 'Preset and dataset filters also apply.' : 'Fixed, page and dataset filters also apply.'}</p>
         <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
         <span className="mt-1 text-xs text-white/50">Conditions</span>
         <FiltersEditor

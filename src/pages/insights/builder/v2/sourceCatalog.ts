@@ -1,11 +1,11 @@
 import { DATA_OBJECTS, type DataObject, type SourceOrigin } from '../../../../data/dataSources'
-import { externalTables, FOUNDRY_CATALOG, WORKFLOWS } from '../../../../data/externalSources'
+import { externalTables, FOUNDRY_CATALOG, WORKFLOWS, type Workflow } from '../../../../data/externalSources'
 import { formatDateTime } from '../../../../lib/format'
 
 export type CatalogKind = SourceOrigin | 'catalog' | 'schema' | 'run'
 
-/** A folder or a table in the unified source browser. Folders carry `children`, tables carry `table`. */
-export type CatalogNode = { key: string; label: string; kind: CatalogKind; meta?: string; children?: CatalogNode[]; table?: DataObject }
+/** A folder or a table in the unified source browser. Folders carry `children`, tables carry `table`, run folders carry `workflow`. */
+export type CatalogNode = { key: string; label: string; kind: CatalogKind; meta?: string; children?: CatalogNode[]; table?: DataObject; workflow?: Workflow }
 
 export const UPLOADS_KEY = 'uploads'
 
@@ -40,6 +40,7 @@ export function buildSourceCatalog(): CatalogNode[] {
         label: workflow.name,
         kind: 'run',
         meta: `Latest run ${formatDateTime(workflow.lastRun)}`,
+        workflow,
         children: workflow.outputs.map(leaf),
       })),
     },

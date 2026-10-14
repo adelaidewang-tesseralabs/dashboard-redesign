@@ -4,6 +4,7 @@ import type { Dashboard, SqlDataset } from "../../../../data/dashboards";
 import { useDashboards } from "../../../../data/DashboardsStore";
 import type { DataObject } from "../../../../data/dataSources";
 import type { DatasetTransforms } from "../../../../data/transforms";
+import { useIsFinalBuilder } from "../../../../lib/builderVersion";
 import { cn } from "../../../../lib/cn";
 import { downloadCsv, toCsv } from "../../../../lib/csv";
 import { Button } from "../../../../ui/Button";
@@ -108,8 +109,10 @@ export function DataTab(props: DataTabProps) {
     updateSqlDataset,
     removeDataset,
     setDatasetTransforms,
+    pinRun,
   } = useDashboards();
   const toast = useToast();
+  const final = useIsFinalBuilder();
   const [removing, setRemoving] = useState<Dataset | null>(null);
   const widgets = dashboard.widgets ?? [];
   const active =
@@ -200,6 +203,15 @@ export function DataTab(props: DataTabProps) {
                 sqlEditing && consoleTabs.active ? consoleTabs.insert : undefined
               }
               onCollapse={onCollapseList}
+              runVersions={
+                final
+                  ? {
+                      pinned: dashboard.pinnedRuns ?? {},
+                      onPin: (workflowId, runId) =>
+                        pinRun(dashboard.id, workflowId, runId),
+                    }
+                  : undefined
+              }
             />
           )}
           <CatalogConsole

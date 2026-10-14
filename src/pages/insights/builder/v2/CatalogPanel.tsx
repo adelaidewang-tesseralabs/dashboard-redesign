@@ -4,6 +4,7 @@ import type { DataObject } from '../../../../data/dataSources'
 import { uploadTable } from '../../../../data/externalSources'
 import { cn } from '../../../../lib/cn'
 import { CollapseListButton } from './CollapseListButton'
+import { RunVersionPicker } from './RunVersionPicker'
 import { buildSourceCatalog, filterCatalog, UPLOADS_KEY } from './sourceCatalog'
 import { SourceTree } from './SourceTree'
 
@@ -19,10 +20,12 @@ type CatalogPanelProps = {
   onNewSql?: () => void
   onInsertColumn?: (name: string) => void
   onCollapse?: () => void
+  /** Final builder: each workflow gets a run picker, and a picked run stays the default. */
+  runVersions?: { pinned: Record<string, string>; onPin: (workflowId: string, runId: string | undefined) => void }
 }
 
 /** The Data tab's Catalog view: browse every source the tenant can read, open tables in the console, or add them as datasets. */
-export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNewSql, onInsertColumn, onCollapse }: CatalogPanelProps) {
+export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNewSql, onInsertColumn, onCollapse, runVersions }: CatalogPanelProps) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(() => new Set(['mosaic']))
   const [dragging, setDragging] = useState(false)
@@ -107,6 +110,11 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
           onAdd={onAddTable}
           onOpenTable={onOpenTable}
           onInsertColumn={onInsertColumn}
+          folderAction={
+            runVersions &&
+            (({ workflow }) =>
+              workflow && <RunVersionPicker workflow={workflow} pinnedRunId={runVersions.pinned[workflow.id]} onPin={(runId) => runVersions.onPin(workflow.id, runId)} />)
+          }
         />
       </div>
       {dragging && (

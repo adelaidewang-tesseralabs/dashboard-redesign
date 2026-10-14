@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Download, Link2, Maximize2, Minimize2 } from 'lucide-react'
+import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { Menu } from '../../../ui/Menu'
 import { GraphActionsMenu, graphToolButtonClass, type GraphViewActions, type WidgetActions } from './GraphActionsMenu'
@@ -67,8 +68,11 @@ function useFoldedToolbar(ref: RefObject<HTMLElement | null>, buttonCount: numbe
 export function GraphToolbar({ label, actions, view, onComment }: GraphToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [askOpen, setAskOpen] = useState(false)
-  const { folded, cardWidth } = useFoldedToolbar(rootRef, (onComment ? 1 : 0) + (view ? 3 : 0) + 1)
+  const final = useIsFinalBuilder()
   const pinned = view?.fullScreen.open
+  // Final keeps download alone in the header; full screen still needs its exit button there.
+  const viewButtons = view ? (final ? (pinned ? 2 : 1) : 3) : 0
+  const { folded, cardWidth } = useFoldedToolbar(rootRef, (onComment ? 1 : 0) + viewButtons + 1)
   return (
     // Clicks stay here so using the toolbar doesn't also select the graph underneath. Left out of PNG downloads.
     <div
@@ -86,19 +90,28 @@ export function GraphToolbar({ label, actions, view, onComment }: GraphToolbarPr
       )}
     >
       {onComment && <WidgetComment label={label} onSubmit={onComment} open={askOpen} onOpenChange={setAskOpen} showTrigger={!folded} />}
-      {view && !folded && <ViewButtons view={view} />}
-      <GraphActionsMenu label={label} actions={actions} view={view} viewInMenu={folded} onAskAi={folded && onComment ? () => setAskOpen(true) : undefined} />
+      {view && !folded && <ViewButtons view={view} downloadOnly={final} />}
+      <GraphActionsMenu
+        label={label}
+        actions={actions}
+        view={view}
+        viewInMenu={folded}
+        openInMenu={final}
+        onAskAi={folded && onComment ? () => setAskOpen(true) : undefined}
+      />
     </div>
   )
 }
 
-function ViewButtons({ view }: { view: GraphViewActions }) {
+function ViewButtons({ view, downloadOnly }: { view: GraphViewActions; downloadOnly: boolean }) {
   const { fullScreen, onCopyLink, onDownloadCsv, onDownloadPng } = view
   return (
     <>
-      <button type="button" aria-label="Copy link" title="Copy link" onClick={onCopyLink} className={graphToolButtonClass}>
-        <Link2 className="size-3.5" />
-      </button>
+      {!downloadOnly && (
+        <button type="button" aria-label="Copy link" title="Copy link" onClick={onCopyLink} className={graphToolButtonClass}>
+          <Link2 className="size-3.5" />
+        </button>
+      )}
       <Menu
         items={[
           { label: 'Download CSV', onSelect: onDownloadCsv },
@@ -110,15 +123,17 @@ function ViewButtons({ view }: { view: GraphViewActions }) {
           </button>
         )}
       />
-      <button
-        type="button"
-        aria-label={fullScreen.open ? 'Exit full screen' : 'View full screen'}
-        title={fullScreen.open ? 'Exit full screen (Esc)' : 'View full screen'}
-        onClick={fullScreen.onToggle}
-        className={graphToolButtonClass}
-      >
-        {fullScreen.open ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-      </button>
+      {(!downloadOnly || fullScreen.open) && (
+        <button
+          type="button"
+          aria-label={fullScreen.open ? 'Exit full screen' : 'View full screen'}
+          title={fullScreen.open ? 'Exit full screen (Esc)' : 'View full screen'}
+          onClick={fullScreen.onToggle}
+          className={graphToolButtonClass}
+        >
+          {fullScreen.open ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+        </button>
+      )}
     </>
   )
 }
