@@ -17,6 +17,7 @@ import {
   type MemberRole,
   type SavedFilter,
   type SqlDataset,
+  isPageCopy,
 } from './dashboards'
 import { dashboardPages, resolvePageId } from './pages'
 import type { DatasetTransforms } from './transforms'
@@ -83,6 +84,8 @@ type DashboardsStore = {
   updateFilter: (id: string, filter: DashboardFilter) => void
   setFilterValues: (id: string, filterId: string, values: string[]) => void
   removeFilter: (id: string, filterId: string) => void
+  /** On: the filter shows on every page, replacing page-only filters on the same column. Off: it stays on the open page only. */
+  setFilterAllPages: (id: string, filterId: string, allPages: boolean) => void
   addSavedFilter: (id: string, savedFilter: SavedFilter) => void
   removeSavedFilter: (id: string, savedFilterId: string) => void
   /** `runId` undefined goes back to the workflow's latest run. */
@@ -573,6 +576,19 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
             dashboard.id === id ? { ...dashboard, filters: dashboard.filters?.filter((filter) => filter.id !== filterId), updatedAt: nowIso } : dashboard,
           ),
         ),
+      setFilterAllPages: (id, filterId, allPages) =>
+        editDashboard(id, (dashboard) => {
+          const target = dashboard.filters?.find((filter) => filter.id === filterId)
+          if (!target) return dashboard
+          if (!allPages)
+            return { ...dashboard, filters: dashboard.filters?.map((filter) => (filter.id === filterId ? { ...filter, allPages: undefined, pageId: activePageOf(dashboard) ?? filter.pageId } : filter)) }
+          return {
+            ...dashboard,
+            filters: dashboard.filters
+              ?.filter((filter) => filter.id === filterId || !isPageCopy(filter, target))
+              .map((filter) => (filter.id === filterId ? { ...filter, allPages: true } : filter)),
+          }
+        }),
       restoreVersion: (id, versionId) =>
         setState((current) => {
           const dashboard = current.dashboards.find((candidate) => candidate.id === id)

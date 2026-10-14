@@ -12,10 +12,13 @@ type FieldValuePanelProps = {
   onValuesChange: (values: string[]) => void
   /** Editors only. */
   onRemove?: () => void
+  /** Editors only: show the filter on every page, or only the open one. */
+  onAllPagesChange?: (allPages: boolean) => void
+  datasetLabel: string
 }
 
 /** Right side of the filter builder: search and tick the values one field keeps. */
-export function FieldValuePanel({ filter, column, readOnly, onValuesChange, onRemove }: FieldValuePanelProps) {
+export function FieldValuePanel({ filter, column, readOnly, onValuesChange, onRemove, onAllPagesChange, datasetLabel }: FieldValuePanelProps) {
   const [query, setQuery] = useState('')
   const values = column?.values ?? []
   const shown = values.filter((value) => value.toLowerCase().includes(query.trim().toLowerCase()))
@@ -28,7 +31,6 @@ export function FieldValuePanel({ filter, column, readOnly, onValuesChange, onRe
     <div className="flex min-h-0 w-full flex-col gap-3 text-left">
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{filter.label}</span>
-        <span className="shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/55">{filter.allPages ? 'All pages' : 'This page'}</span>
         {onRemove && (
           <button type="button" aria-label={`Remove ${filter.label}`} title="Remove field" onClick={onRemove} className="flex size-6 cursor-pointer items-center justify-center rounded text-white/50 hover:bg-white/10 hover:text-white">
             <Trash2 className="size-3.5" />
@@ -69,6 +71,12 @@ export function FieldValuePanel({ filter, column, readOnly, onValuesChange, onRe
             )}
           </div>
         </>
+      )}
+      {onAllPagesChange && (
+        <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
+          <EditorCheckbox label="Apply to all pages" checked={!!filter.allPages} onChange={onAllPagesChange} />
+          {filter.allPages && <p className="pl-6 text-[11px] text-white/45">Applies to {datasetLabel} graphs on every page.</p>}
+        </div>
       )}
     </div>
   )

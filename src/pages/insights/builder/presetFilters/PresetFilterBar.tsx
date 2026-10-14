@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { CURRENT_USER, type Dashboard, type SavedFilter } from '../../../../data/dashboards'
+import { CURRENT_USER, isPageCopy, type Dashboard, type SavedFilter } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
+import { useToast } from '../../../../ui/Toast'
 import { filterColumns } from '../dashboardFilters'
 import { itemDatasetKey, listDatasets } from '../v2/datasets'
 import { DatasetFilterBuilder } from './DatasetFilterBuilder'
@@ -23,7 +24,8 @@ type PresetFilterBarProps = {
 
 /** Final builder's filter row: one Olivier-style filter button per dataset, then saved filters. Replaces fixed and viewer filters. */
 export function PresetFilterBar({ dashboard, canEdit, opening, onOpened, onValuesChange, onApplyValues, onResetPersonal }: PresetFilterBarProps) {
-  const { dashboards, addFilter, removeFilter, addSavedFilter, removeSavedFilter } = useDashboards()
+  const { dashboards, addFilter, removeFilter, setFilterAllPages, undo, addSavedFilter, removeSavedFilter } = useDashboards()
+  const toast = useToast()
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [startAdding, setStartAdding] = useState(false)
   const full = dashboards.find((entry) => entry.id === dashboard.id) ?? dashboard
@@ -47,6 +49,16 @@ export function PresetFilterBar({ dashboard, canEdit, opening, onOpened, onValue
 
   const save = (name: string) =>
     addSavedFilter(dashboard.id, { id: crypto.randomUUID(), name, createdBy: CURRENT_USER, values: Object.fromEntries(presets.map((filter) => [filter.id, filter.values])) })
+  const changeAllPages = (filterId: string, allPages: boolean) => {
+    const filter = full.filters?.find((entry) => entry.id === filterId)
+    const replaced = allPages && filter ? (full.filters ?? []).filter((entry) => isPageCopy(entry, filter)).length : 0
+    setFilterAllPages(dashboard.id, filterId, allPages)
+    if (filter && replaced > 0)
+      toast(`${filter.label} is on all pages. Replaced its filter on ${replaced === 1 ? '1 other page' : `${replaced} other pages`}.`, {
+        label: 'Undo',
+        onSelect: () => undo(dashboard.id),
+      })
+  }
   const apply = (savedFilter: SavedFilter) =>
     onApplyValues(Object.fromEntries(presets.filter((filter) => canEdit || !filter.locked).map((filter) => [filter.id, savedFilter.values[filter.id] ?? []])))
 
@@ -75,14 +87,16 @@ export function PresetFilterBar({ dashboard, canEdit, opening, onOpened, onValue
               onClearAll={() => onApplyValues(Object.fromEntries(own.filter((filter) => canEdit || !filter.locked).map((filter) => [filter.id, []])))}
               onAdd={
                 canEdit
-                  ? (column, allPages) => {
+                  ? (column) => {
                       const id = crypto.randomUUID()
-                      addFilter(dashboard.id, { id, datasetKey: column.datasetKey, column: column.column, label: column.label, values: [], allPages: allPages || undefined })
+                      addFilter(dashboard.id, { id, datasetKey: column.datasetKey, column: column.column, label: column.label, values: [] })
                       return id
                     }
                   : undefined
               }
               onRemove={canEdit ? (filterId) => removeFilter(dashboard.id, filterId) : undefined}
+              onAllPagesChange={canEdit ? changeAllPages : undefined}
+              datasetLabel={dataset.label}
             />
           </DatasetFilterButton>
         )

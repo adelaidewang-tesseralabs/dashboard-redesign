@@ -67,6 +67,10 @@ export type DashboardFilter = {
   allPages?: boolean
 }
 
+/** A page-only preset filter on the same column as `filter`, which turning `filter` on for all pages replaces. */
+export const isPageCopy = (candidate: DashboardFilter, filter: DashboardFilter) =>
+  candidate.id !== filter.id && !candidate.allPages && !candidate.fixed && candidate.datasetKey === filter.datasetKey && candidate.column === filter.column
+
 /** Values per filter id; a filter missing here goes back to all values when the saved filter is applied. */
 export type SavedFilter = { id: string; name: string; values: Record<string, string[]>; createdBy: string }
 
