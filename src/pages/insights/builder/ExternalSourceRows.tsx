@@ -28,21 +28,30 @@ type ExternalSourceRowsProps = {
 
 /** Final builder's Add graph menu: every Foundry table and workflow output, graphable without adding it as a dataset first. */
 export function ExternalSourceRows({ widgets, submenu, onOpenSubmenu, side, onPick }: ExternalSourceRowsProps) {
-  const [openTable, setOpenTable] = useState<string | null>(null)
+  /** `top`: the hovered row's offset in the submenu, so the fields line up with it. */
+  const [openTable, setOpenTable] = useState<{ name: string; top: number } | null>(null)
   const graphed = (object: DataObject) => widgets.some((widget) => widget.source === 'object' && widget.objectName === object.name)
+  // offsetTop ignores scrolling, so subtract the list's scroll; less the panel padding, so the first field sits level with the row.
+  const openBeside = (name: string, row: HTMLElement) => setOpenTable({ name, top: row.offsetTop - (row.parentElement?.scrollTop ?? 0) - 8 })
 
-  /** The table list scrolls, so each table's fields open beside the whole list rather than inside it, where the scroll would clip them. */
+  /** The table list scrolls, so each table's fields open beside the list rather than inside it, where the scroll would clip them. */
   const tableRows = (tables: Located[]) => {
-    const open = tables.find(({ object }) => object.name === openTable)?.object
+    const open = tables.find(({ object }) => object.name === openTable?.name)?.object
     return (
       <>
-        <div className="-m-2 max-h-72 overflow-y-auto p-2">
+        <div className="-m-2 max-h-72 overflow-y-auto p-2" onScroll={() => setOpenTable(null)}>
           {tables.map(({ object, hint }) => (
-            <SubmenuButton key={object.name} label={object.label} hint={hint} bold={graphed(object)} open={openTable === object.name} onOpen={() => setOpenTable(object.name)} />
+            <div
+              key={object.name}
+              onMouseEnter={(event) => openBeside(object.name, event.currentTarget)}
+              onFocus={(event) => openBeside(object.name, event.currentTarget)}
+            >
+              <SubmenuButton label={object.label} hint={hint} bold={graphed(object)} open={openTable?.name === object.name} onOpen={() => undefined} />
+            </div>
           ))}
         </div>
-        {open && (
-          <div role="menu" aria-label={open.label} className={cn(menuSurfaceClass, 'absolute left-full z-50 ml-1.5 w-56', side)}>
+        {open && openTable && (
+          <div role="menu" aria-label={open.label} style={{ top: openTable.top }} className={cn(menuSurfaceClass, 'absolute left-full z-50 ml-1.5 w-56')}>
             {open.fields.map((field) => {
               const item = objectItem(open.name, field.key)
               return <OptionRow key={field.key} label={`by ${field.label}`} added={widgets.some((widget) => sameSource(widget, item))} onSelect={() => onPick(item)} />
