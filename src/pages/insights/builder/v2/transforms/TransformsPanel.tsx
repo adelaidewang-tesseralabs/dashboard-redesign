@@ -33,6 +33,17 @@ function shapeSummary({ shape }: DatasetTransforms) {
   return parts.length ? parts.join(' · ') : undefined
 }
 
+/** One line for everything the dataset does to its rows, e.g. "1 calculation · 2 filters · grouped by priority". */
+export function transformsSummary(transforms: DatasetTransforms = EMPTY_TRANSFORMS) {
+  const parts = [
+    plural(transforms.calculations.length, 'calculation', 'calculations'),
+    plural(transforms.filters.length, 'filter', 'filters'),
+    shapeSummary(transforms),
+  ].filter(Boolean)
+  const text = parts.join(' · ')
+  return text ? text[0].toUpperCase() + text.slice(1) : undefined
+}
+
 /** Calculations, Filters and Result shape for one dataset; each step only offers the columns that exist at that point. */
 export function TransformsPanel({ source, transforms = EMPTY_TRANSFORMS, onChange, rowLimit = true }: TransformsPanelProps) {
   if (!source.ok) return <p className="p-4 text-sm text-white/45">Fix the query to transform its result.</p>

@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { AGGREGATE_LABELS, aggregateLabel, columnTypes, defaultGraphValue, type Aggregate, type GraphQuery, type GraphSort, type RowFilter } from '../../../../data/transforms'
@@ -11,7 +12,8 @@ import { FilterCards, isCardFilter } from './FilterCards'
 import { TopNField } from './TopNField'
 import { FiltersEditor } from './transforms/FiltersEditor'
 import type { TransformDrafts } from './transforms/transformDrafts'
-import { SharedDatasetTransforms } from './SharedDatasetTransforms'
+import { DatasetSettingsCard } from './DatasetSettingsCard'
+import { DatasetSettingsPanel } from './DatasetSettingsPanel'
 
 type DatasetDataSectionProps = {
   item: GraphItem
@@ -45,6 +47,9 @@ function parseValue(id: string): Aggregate | undefined {
 
 /** Widget panel for builder V2: pick the dataset and what to group by, then the graph's own value, filters, sort and Top N. */
 export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpenDataset, transformDrafts }: DatasetDataSectionProps) {
+  // Keyed by graph so selecting another graph lands on its own settings, not the dataset view.
+  const [datasetSettingsFor, setDatasetSettingsFor] = useState<string | null>(null)
+  const closeDatasetSettings = useCallback(() => setDatasetSettingsFor(null), [])
   const key = itemDatasetKey(item)
   const dataset = datasets.find((candidate) => candidate.key === key)
   const result = dataset ? datasetResult(dataset, dashboard) : undefined
@@ -98,6 +103,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
           })}
           onChange={switchDataset}
         />
+        {transformDrafts && dataset && <DatasetSettingsCard dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} onOpen={() => setDatasetSettingsFor(item.id)} />}
         {item.source === 'object' && dataset?.kind === 'table' && (
           <>
             <span className="text-xs text-white/50">Group by</span>
@@ -130,7 +136,9 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
         )}
       </EditorSection>
 
-      {transformDrafts && dataset && <SharedDatasetTransforms dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} />}
+      {transformDrafts && dataset && datasetSettingsFor === item.id && (
+        <DatasetSettingsPanel dashboard={dashboard} dataset={dataset} transformDrafts={transformDrafts} onBack={closeDatasetSettings} />
+      )}
 
       <EditorSection title="Value">
         <Select
