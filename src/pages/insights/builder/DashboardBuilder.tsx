@@ -33,7 +33,11 @@ export function DashboardBuilder({ dashboard, badge, readOnly = false, onOpenHis
   const [foundryTab, setFoundryTab] = useState<FoundryTab | null>(null)
   const [sourceDialog, setSourceDialog] = useState<Exclude<AddSourceKind, 'foundry'> | null>(null)
 
-  const add = (item: CanvasItem) => addWidgets(dashboard.id, [item])
+  /** The new block takes the selection, whatever was selected before. */
+  const add = (item: CanvasItem) => {
+    addWidgets(dashboard.id, [item])
+    setSelectedId(item.id)
+  }
   const openSource = (kind: AddSourceKind) => {
     switch (kind) {
       case 'foundry':

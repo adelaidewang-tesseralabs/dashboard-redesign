@@ -178,7 +178,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [multiActive])
 
-  const add = (item: CanvasItem) => addWidgets(dashboard.id, [item])
+  /** The new block takes the selection, whatever was selected before. */
+  const add = (item: CanvasItem) => {
+    addWidgets(dashboard.id, [item])
+    selectWidget(item.id)
+  }
   const changeView = (next: BuilderView) => {
     if (next === 'canvas') setReturnToId(null)
     setView(next)

@@ -85,6 +85,21 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const [fullScreenHost, setFullScreenHost] = useState<HTMLDivElement | null>(null)
   if (fullScreenId && !dashboard.widgets?.some((widget) => widget.id === fullScreenId)) setFullScreenId(null)
   const fullScreen: CanvasFullScreen = { itemId: fullScreenId, setItemId: setFullScreenId, host: fullScreenHost, onSelect: readOnly ? undefined : onSelect }
+  const [revealId, setRevealId] = useState<string | null>(null)
+  /** Builders select what's added; the canvas also scrolls it into view, since new blocks often land below the fold. */
+  const addItem = (item: CanvasItem) => {
+    onAdd(item)
+    setRevealId(item.id)
+  }
+  useEffect(() => {
+    if (!revealId) return
+    // Grid items get their positions a frame after they mount.
+    const timer = window.setTimeout(() => {
+      document.querySelector(`[data-widget-id="${CSS.escape(revealId)}"]`)?.closest('[data-widget]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      setRevealId(null)
+    }, 150)
+    return () => window.clearTimeout(timer)
+  }, [revealId])
   const toggleHighlight = (next: CrossHighlight) => setHighlight((current) => (sameHighlight(current, next) ? null : next))
 
   useEffect(() => {
@@ -112,7 +127,10 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     const existing = widgets.find(isPageSummary)
     if (existing) return onSelect(existing.id)
     if (!summarizePage(dashboard)) return toast('Add a graph to this page first')
-    insertWidget(dashboard.id, summaryItem(summaryBasis(dashboard)), [])
+    const summary = summaryItem(summaryBasis(dashboard))
+    insertWidget(dashboard.id, summary, [])
+    onSelect(summary.id)
+    setRevealId(summary.id)
   }
   const theme = useResolvedAppearance(dashboard.appearance)
   const fullScreenTools = fullScreenToolbar && !readOnly
@@ -135,16 +153,15 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       onOpenChat={() => chat.setChatOpen(true)}
       onAddSource={onAddSource}
       onOpenAddSource={onOpenAddSource}
-      onAddWidget={onAdd}
+      onAddWidget={addItem}
       onAddText={() => {
         const item = textItem()
         requestTextEdit(item.id)
-        onAdd(item)
-        onSelect(item.id)
+        addItem(item)
       }}
       onAddSummary={summaries ? addSummary : undefined}
       onAddFilter={setAddingFilter}
-      onAddMedia={() => onAdd(mediaItem())}
+      onAddMedia={() => addItem(mediaItem())}
       onAddSection={sections ? addSection : undefined}
       onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
       onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
