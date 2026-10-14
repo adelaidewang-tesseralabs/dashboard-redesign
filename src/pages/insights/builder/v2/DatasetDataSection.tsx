@@ -6,8 +6,9 @@ import { Select } from '../../../../ui/Select'
 import { filterColumns } from '../dashboardFilters'
 import { EditorSection } from '../EditorFields'
 import { datasetIcon, datasetResult, graphColumns, graphFor, itemDatasetKey, type Dataset } from './datasets'
-import type { TransformColumn } from './transforms/controls'
+import { FieldLabel, type TransformColumn } from './transforms/controls'
 import { FilterCards, isCardFilter } from './FilterCards'
+import { GraphTransformSteps } from './GraphTransformSteps'
 import { TopNField } from './TopNField'
 import { CalculationsEditor } from './transforms/CalculationsEditor'
 import { FiltersEditor } from './transforms/FiltersEditor'
@@ -32,6 +33,8 @@ const SORT_OPTIONS: { value: string; label: string; sort?: GraphSort }[] = [
   { value: 'label-asc', label: 'Label, A to Z', sort: { by: 'label', direction: 'asc' } },
   { value: 'label-desc', label: 'Label, Z to A', sort: { by: 'label', direction: 'desc' } },
 ]
+
+const plural = (count: number, one: string, many: string) => (count === 0 ? undefined : `${count} ${count === 1 ? one : many}`)
 
 const valueId = (value: Aggregate) => (value.fn === 'count' ? 'count' : `${value.fn}:${value.field}`)
 
@@ -75,6 +78,79 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
   ]
   const sortValue = SORT_OPTIONS.find((option) => option.sort?.by === query.sort?.by && option.sort?.direction === query.sort?.direction)?.value ?? DEFAULT_OPTION
 
+  const groupBy = (
+    <>
+      {item.source === 'object' && dataset?.kind === 'table' && (
+        <>
+          <span className="text-xs text-white/50">Group by</span>
+          <Select
+            aria-label="Group by"
+            value={item.fieldKey}
+            options={dataset.object.fields.map((field) => ({ value: field.key, label: field.label }))}
+            onChange={(fieldKey) => onChange({ ...item, fieldKey })}
+          />
+        </>
+      )}
+      {item.source === 'sql' && dataset && (
+        <>
+          <span className="text-xs text-white/50">Group by</span>
+          <Select
+            aria-label="Group by"
+            value={query.groupBy ?? DEFAULT_OPTION}
+            options={[
+              { value: DEFAULT_OPTION, label: 'Not grouped, the query as is' },
+              ...(result ? graphColumns(dataset, result) : []).map((column) => ({ value: column.key, label: column.label })),
+            ]}
+            onChange={(value) => setQuery({ groupBy: value === DEFAULT_OPTION ? undefined : value })}
+          />
+        </>
+      )}
+    </>
+  )
+  const valueField = (
+    <>
+      <Select aria-label="Value" value={query.value ? valueId(query.value) : DEFAULT_OPTION} options={valueOptions} onChange={(id) => setQuery({ value: parseValue(id) })} />
+      {item.source === 'sql' && query.value && !query.groupBy && <p className="text-xs text-white/45">Grouped by {groupKey}, the query's first column.</p>}
+    </>
+  )
+  const filterControls = (
+    <>
+      <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
+      <span className="mt-1 text-xs text-white/50">Conditions</span>
+      <FiltersEditor
+        compact
+        filters={graphFilters.filter((filter) => !isCardFilter(filter))}
+        columns={columns}
+        onChange={(conditions) => setFilters([...graphFilters.filter(isCardFilter), ...conditions])}
+      />
+      <p className="text-[11px] text-white/40">Shift-click graphs on the canvas to filter several at once.</p>
+    </>
+  )
+  const sortField = (label: string) => (
+    <>
+      <span className="text-xs text-white/50">{label}</span>
+      <Select
+        aria-label={label}
+        value={sortValue}
+        options={SORT_OPTIONS.map(({ value, label }) => ({ value, label }))}
+        onChange={(value) => setQuery({ sort: SORT_OPTIONS.find((option) => option.value === value)?.sort })}
+      />
+    </>
+  )
+  const topN = (label?: string) => (
+    <TopNField
+      itemId={item.id}
+      limit={query.limit}
+      label={label}
+      onChange={(limit) => {
+        const next: Partial<GraphQuery> = { limit }
+        // Top N needs an order to mean "largest", so default to value, high to low.
+        if (limit && !query.sort) next.sort = { by: 'value', direction: 'desc' }
+        setQuery(next)
+      }}
+    />
+  )
+
   return (
     <>
       <EditorSection
@@ -100,31 +176,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
           onChange={switchDataset}
         />
         {graphCalculations && <p className="text-xs text-white/45">Everything below changes this graph only. Shared dataset settings are in the Data tab.</p>}
-        {item.source === 'object' && dataset?.kind === 'table' && (
-          <>
-            <span className="text-xs text-white/50">Group by</span>
-            <Select
-              aria-label="Group by"
-              value={item.fieldKey}
-              options={dataset.object.fields.map((field) => ({ value: field.key, label: field.label }))}
-              onChange={(fieldKey) => onChange({ ...item, fieldKey })}
-            />
-          </>
-        )}
-        {item.source === 'sql' && dataset && (
-          <>
-            <span className="text-xs text-white/50">Group by</span>
-            <Select
-              aria-label="Group by"
-              value={query.groupBy ?? DEFAULT_OPTION}
-              options={[
-                { value: DEFAULT_OPTION, label: 'Not grouped, the query as is' },
-                ...(result ? graphColumns(dataset, result) : []).map((column) => ({ value: column.key, label: column.label })),
-              ]}
-              onChange={(value) => setQuery({ groupBy: value === DEFAULT_OPTION ? undefined : value })}
-            />
-          </>
-        )}
+        {!graphCalculations && groupBy}
         {item.source === 'sql' && dataset?.kind === 'sql' && (
           <pre className="max-h-32 overflow-auto rounded-md border border-white/10 bg-white/[0.03] p-2 font-mono text-[11px] leading-5 whitespace-pre-wrap text-white/70">
             {dataset.dataset.sql}
@@ -132,58 +184,42 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
         )}
       </EditorSection>
 
-      {graphCalculations && (
-        <EditorSection title="Calculations">
-          <CalculationsEditor
-            calculations={calculations}
-            columns={datasetColumns}
-            onChange={(next) => setQuery({ calculations: next.length ? next : undefined })}
-          />
-        </EditorSection>
-      )}
-
-      <EditorSection title="Value">
-        <Select
-          aria-label="Value"
-          value={query.value ? valueId(query.value) : DEFAULT_OPTION}
-          options={valueOptions}
-          onChange={(id) => setQuery({ value: parseValue(id) })}
-        />
-        {item.source === 'sql' && query.value && !query.groupBy && <p className="text-xs text-white/45">Grouped by {groupKey}, the query's first column.</p>}
-      </EditorSection>
-
-      <EditorSection title="Filters">
-        <p className="-mt-1 text-xs text-white/45">Only this graph. {graphCalculations ? 'Preset and dataset filters also apply.' : 'Fixed, page and dataset filters also apply.'}</p>
-        <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
-        <span className="mt-1 text-xs text-white/50">Conditions</span>
-        <FiltersEditor
-          compact
-          filters={graphFilters.filter((filter) => !isCardFilter(filter))}
-          columns={columns}
-          onChange={(conditions) => setFilters([...graphFilters.filter(isCardFilter), ...conditions])}
-        />
-        <p className="text-[11px] text-white/40">Shift-click graphs on the canvas to filter several at once.</p>
-      </EditorSection>
-
-      <EditorSection title="Sort and limit">
-        <span className="text-xs text-white/50">Sort</span>
-        <Select
-          aria-label="Sort"
-          value={sortValue}
-          options={SORT_OPTIONS.map(({ value, label }) => ({ value, label }))}
-          onChange={(value) => setQuery({ sort: SORT_OPTIONS.find((option) => option.value === value)?.sort })}
-        />
-        <TopNField
-          itemId={item.id}
-          limit={query.limit}
-          onChange={(limit) => {
-            const next: Partial<GraphQuery> = { limit }
-            // Top N needs an order to mean "largest", so default to value, high to low.
-            if (limit && !query.sort) next.sort = { by: 'value', direction: 'desc' }
-            setQuery(next)
+      {graphCalculations ? (
+        <GraphTransformSteps
+          calculations={
+            <CalculationsEditor calculations={calculations} columns={datasetColumns} onChange={(next) => setQuery({ calculations: next.length ? next : undefined })} />
+          }
+          filters={filterControls}
+          shape={
+            <>
+              <div className="flex flex-col gap-1.5">{groupBy}</div>
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Value</FieldLabel>
+                {valueField}
+              </div>
+              <div className="flex flex-col gap-1.5">{sortField('Order by')}</div>
+              <div className="flex flex-col gap-1.5">{topN('Limit')}</div>
+            </>
+          }
+          summaries={{
+            calculations: plural(calculations.length, 'calculation', 'calculations'),
+            filters: plural(graphFilters.length, 'filter', 'filters'),
+            shape: [groupKey && `grouped by ${groupKey}`, query.limit && `top ${query.limit}`].filter(Boolean).join(' · ') || undefined,
           }}
         />
-      </EditorSection>
+      ) : (
+        <>
+          <EditorSection title="Value">{valueField}</EditorSection>
+          <EditorSection title="Filters">
+            <p className="-mt-1 text-xs text-white/45">Only this graph. Fixed, page and dataset filters also apply.</p>
+            {filterControls}
+          </EditorSection>
+          <EditorSection title="Sort and limit">
+            {sortField('Sort')}
+            {topN()}
+          </EditorSection>
+        </>
+      )}
     </>
   )
 }

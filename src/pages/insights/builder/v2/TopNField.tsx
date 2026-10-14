@@ -12,19 +12,20 @@ type TopNFieldProps = {
   itemId: string
   limit: number | undefined
   onChange: (limit: number | undefined) => void
+  label?: string
 }
 
 /** How many labels the graph shows, counted after every filter, in the graph's sort order. */
-export function TopNField({ itemId, limit, onChange }: TopNFieldProps) {
+export function TopNField({ itemId, limit, onChange, label = 'Show' }: TopNFieldProps) {
   const [customFor, setCustomFor] = useState<string | null>(null)
   const custom = customFor === itemId || (limit !== undefined && !PRESETS.includes(limit))
   const value = custom ? CUSTOM : limit ? String(limit) : ALL
 
   return (
     <>
-      <span className="text-xs text-white/50">Show</span>
+      <span className="text-xs text-white/50">{label}</span>
       <Select
-        aria-label="Show"
+        aria-label={label}
         value={value}
         options={[
           { value: ALL, label: 'All' },
