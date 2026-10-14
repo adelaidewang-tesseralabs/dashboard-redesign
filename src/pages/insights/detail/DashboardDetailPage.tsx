@@ -91,7 +91,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           headerActions={<DashboardIconActions {...actionProps} />}
           addDatasetFlow={ADD_DATASET_FLOW[builderVersion]}
           settingsPlacement={builderVersion === 'v3' && panelLayout === 'settings-bottom' ? 'bottom' : SETTINGS_PLACEMENT[builderVersion]}
-          panelLayout={builderVersion === 'v3' ? panelLayout : 'layered'}
+          panelLayout={builderVersion === 'v3' ? panelLayout : builderVersion === 'final' ? 'chat-left-select' : 'layered'}
           badge={badge}
           readOnly={readOnly}
           onOpenHistory={openHistory}

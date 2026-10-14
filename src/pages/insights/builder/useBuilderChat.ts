@@ -4,6 +4,7 @@ import { useDashboards } from '../../../data/DashboardsStore'
 import type { CanvasItem } from '../../../data/widgets'
 import { itemLabel } from './canvasItems'
 import type { ChatChoice, ChatMessage, ChatSource } from './ChatPanel'
+import { summarizePage } from './pageSummary'
 import { planWidgetEdit } from './planWidgetEdit'
 import { planWidgets } from './planWidgets'
 
@@ -19,8 +20,11 @@ const planFromInsights: ChatPlanner = (prompt, dashboard) => planWidgets(prompt,
 /** `targetId` scopes the prompt to one graph: the assistant edits it instead of adding graphs. */
 type PendingPrompt = { text: string; targetId?: string; datasetKey?: string }
 
-/** Tessera AI chat for a builder: sends a prompt, "thinks", then adds or edits graphs and replies. */
-export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = planFromInsights) {
+/**
+ * Tessera AI chat for a builder: sends a prompt, "thinks", then adds or edits graphs and replies.
+ * `answerOnly` (viewers, and editors previewing) answers about the data instead of changing the dashboard.
+ */
+export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = planFromInsights, answerOnly = false) {
   const { addWidgets, addSources, updateWidget } = useDashboards()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [pending, setPending] = useState<PendingPrompt | null>(null)
@@ -31,7 +35,9 @@ export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = plan
     const timer = window.setTimeout(() => {
       const reply = (message: Omit<ChatMessage, 'id' | 'role'>) => setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', ...message }])
       const target = pending.targetId ? dashboard.widgets?.find((widget) => widget.id === pending.targetId) : undefined
-      if (pending.targetId && !target) {
+      if (answerOnly) {
+        reply({ text: summarizePage(dashboard) ?? "This dashboard doesn't have any graphs to answer from yet." })
+      } else if (pending.targetId && !target) {
         reply({ text: 'That graph is no longer on the canvas.' })
       } else if (target) {
         const edit = planWidgetEdit(pending.text, target)
@@ -46,7 +52,7 @@ export function useBuilderChat(dashboard: Dashboard, planner: ChatPlanner = plan
       setPending(null)
     }, THINKING_MS)
     return () => window.clearTimeout(timer)
-  }, [pending, dashboard, planner, addWidgets, addSources, updateWidget])
+  }, [pending, dashboard, planner, answerOnly, addWidgets, addSources, updateWidget])
 
   const send = (text: string, target?: CanvasItem, datasetKey?: string) => {
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'user', text, target: target && itemLabel(target) }])

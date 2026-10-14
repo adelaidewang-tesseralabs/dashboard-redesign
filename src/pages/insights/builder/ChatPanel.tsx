@@ -41,6 +41,8 @@ type ChatPanelProps = {
   onSend: (text: string) => void
   onClose: () => void
   intro?: string
+  /** The composer's hint when no graph or dataset is in context. */
+  placeholder?: string
   onOpenSource?: (table: string) => void
   /** Makes the panel resizable at a width shared with the widget settings panel. */
   resize?: SidePanelResize
@@ -53,7 +55,7 @@ type ChatPanelProps = {
   onViewGraph?: (itemId: string) => void
 }
 
-export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSource, resize, context, headerExtra, embedded = false, onViewGraph }: ChatPanelProps) {
+export function ChatPanel({ messages, thinking, onSend, onClose, intro, placeholder, onOpenSource, resize, context, headerExtra, embedded = false, onViewGraph }: ChatPanelProps) {
   const endRef = useRef<HTMLDivElement>(null)
   const copy = context && CONTEXT_COPY[context.kind ?? 'graph']
 
@@ -127,7 +129,7 @@ export function ChatPanel({ messages, thinking, onSend, onClose, intro, onOpenSo
 
       <div className="flex shrink-0 flex-col gap-2 p-3">
         {context && copy && <ContextBar context={context} chip={copy.chip} clearLabel={copy.clear} disabled={thinking} onPick={onSend} />}
-        <ChatComposer onSubmit={onSend} disabled={thinking} autoFocus placeholder={copy?.placeholder} />
+        <ChatComposer onSubmit={onSend} disabled={thinking} autoFocus placeholder={copy?.placeholder ?? placeholder} />
       </div>
     </Root>
   )

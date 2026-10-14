@@ -54,6 +54,7 @@ import { useTransformDrafts } from './transforms/transformDrafts'
 import { useLeaveGuard } from './useLeaveGuard'
 import { useDashboardPages } from './useDashboardPages'
 import { useV3SidePanel } from './useV3SidePanel'
+import { ChatRail } from './ChatRail'
 import { PageTabs } from './PageTabs'
 import { PreviewBanner } from './PreviewBanner'
 import { VersionHistoryPanel, versionNumber } from './VersionHistoryPanel'
@@ -113,7 +114,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const { historyOpen = false, onCloseHistory } = props
   const { addWidgets, updateWidget, updateWidgets, addSources, addSqlDataset, restoreVersion } = useDashboards()
   const toast = useToast()
-  const chat = useBuilderChat(dashboard, planFromCatalog)
   const widgets = dashboard.widgets ?? []
   const { selected, setSelectedId } = useWidgetSelection(widgets)
   const { sources } = useAttachTables(dashboard)
@@ -137,6 +137,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const finalPreview = final && !readOnly && searchParams.get(EDIT_MODE_PARAM) !== 'edit'
   const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
   const previewing = previewAs !== null
+  const chat = useBuilderChat(dashboard, planFromCatalog, final && (readOnly || previewing))
   const [refreshing, setRefreshing] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('ai')
   const [addRequest, setAddRequest] = useState<AddDatasetRequest | null>(null)
@@ -404,7 +405,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
     ) : undefined
   const showSettings = view === 'canvas' && !asViewer && !lineage && !historyShown
   const dataChatOpen = view === 'data' && !asViewer && !lineage && chat.chatOpen && !historyShown
-  const canvasChatOpen = showSettings && chat.chatOpen && (productionFlow || !(selected && editMode === 'manual'))
+  /** Final keeps the chat on the canvas for viewers and previews too, answering about the data rather than editing. */
+  const canvasChatAllowed = showSettings || (final && asViewer && !historyShown)
+  const canvasChatOpen = canvasChatAllowed && chat.chatOpen && (productionFlow || !(selected && editMode === 'manual'))
+  const chatRail = final && !chat.chatOpen && !historyShown && (view === 'canvas' || !asViewer)
   const chatShowing = dataChatOpen || canvasChatOpen
   if (!chatShowing && listReopened) setListReopened(false)
   const activeDataset = datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0]
@@ -434,7 +438,12 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       thinking={chat.thinking}
       onSend={(text) => chat.send(text, selected ?? undefined)}
       onClose={closeChat}
-      intro="Describe the graphs you want, or select one to change it. I search every source you can access, and tell you which ones I used. Mention @table to pick one."
+      intro={
+        asViewer
+          ? `Ask about the data on this dashboard.${readOnly ? '' : ' Switch to Edit to add or change graphs.'}`
+          : 'Describe the graphs you want, or select one to change it. I search every source you can access, and tell you which ones I used. Mention @table to pick one.'
+      }
+      placeholder={asViewer ? 'Ask about this data' : undefined}
       onOpenSource={(table) => openDataset(tableKey(table))}
       context={selected ? { label: displayTitle(selected) || itemLabel(selected), suggestions: widgetSuggestions(selected), onClear: () => setSelectedId(null) } : undefined}
       headerExtra={selected && layeredSettings && <LayerSwitchButton to="editor" onClick={v3Panel.showEditor} />}
@@ -491,6 +500,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   return (
     <div className="flex min-h-0 flex-1">
       {chatOnLeft && (dataChat ? <DockedColumn label="Ask AI" resize={leftPanel}>{dataChat}</DockedColumn> : dockedChat)}
+      {chatRail && <ChatRail unread={v3Panel.unread} onOpen={openChat} />}
       {docked && !chatOnLeft && dockedSettings}
       <div className="relative flex min-w-0 flex-1 flex-col">
         <BuilderHeader
