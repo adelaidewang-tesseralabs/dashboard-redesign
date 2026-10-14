@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Check } from 'lucide-react'
+import { Check, Minus } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 
 type EditorSectionProps = { title: string; action?: ReactNode; children?: ReactNode }
@@ -17,20 +17,30 @@ export function EditorSection({ title, action, children }: EditorSectionProps) {
   )
 }
 
-type EditorCheckboxProps = { label: ReactNode; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }
+type EditorCheckboxProps = { label: ReactNode; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void; indeterminate?: boolean }
 
-export function EditorCheckbox({ label, checked, disabled, onChange }: EditorCheckboxProps) {
+/** `indeterminate`: some of what it stands for is ticked, e.g. a "Select all" over a partly ticked list. */
+export function EditorCheckbox({ label, checked, disabled, onChange, indeterminate = false }: EditorCheckboxProps) {
+  const mixed = indeterminate && !checked
   return (
     <label className={cn('flex cursor-pointer items-center gap-2 text-sm text-white/85', disabled && 'cursor-default opacity-60')}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
+      <input
+        type="checkbox"
+        checked={checked}
+        aria-checked={mixed ? 'mixed' : checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="peer sr-only"
+      />
       <span
         aria-hidden
         className={cn(
           'flex size-4 items-center justify-center rounded border border-white/30 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40',
-          checked && 'border-tlai-mint bg-tlai-mint text-black',
+          (checked || mixed) && 'border-tlai-mint bg-tlai-mint text-black',
         )}
       >
         {checked && <Check className="size-3" strokeWidth={3} />}
+        {mixed && <Minus className="size-3" strokeWidth={3} />}
       </span>
       {label}
     </label>

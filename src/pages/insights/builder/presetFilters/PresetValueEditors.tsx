@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { cn } from '../../../../lib/cn'
+import { selectAllLabel, selectAllState, toggleAll } from '../../../../lib/selectAll'
 import { EditorCheckbox } from '../EditorFields'
 
 const INPUT_CLASS =
@@ -22,6 +23,7 @@ type Bounds = { min?: string; max?: string }
 export function OptionsEditor({ label, values, readOnly, onChange, options, users, keepOne }: EditorProps & { options: string[]; users?: boolean; keepOne?: boolean }) {
   const [query, setQuery] = useState('')
   const shown = options.filter((option) => option.toLowerCase().includes(query.trim().toLowerCase()))
+  const allState = selectAllState(values, shown)
   const optionLabel = (option: string) =>
     users ? (
       <span className="flex items-center gap-2">
@@ -46,6 +48,17 @@ export function OptionsEditor({ label, values, readOnly, onChange, options, user
           className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/40"
         />
       </label>
+      {!readOnly && shown.length > 1 && (
+        <div className="border-b border-white/10 pb-2">
+          <EditorCheckbox
+            label={selectAllLabel(query.trim() !== '', shown.length)}
+            checked={allState === 'all'}
+            indeterminate={allState === 'some'}
+            disabled={keepOne && allState === 'all' && toggleAll(values, shown).length === 0}
+            onChange={() => onChange(toggleAll(values, shown))}
+          />
+        </div>
+      )}
       <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pb-1">
         {shown.length === 0 && <p className="text-xs text-white/45">No values match.</p>}
         {shown.map((option) =>

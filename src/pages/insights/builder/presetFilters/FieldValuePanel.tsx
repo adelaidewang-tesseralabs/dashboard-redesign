@@ -5,6 +5,7 @@ import { PRESET_OPERATOR_LABELS } from '../dashboardFilters'
 import { narrowValues, viewerCanNarrow } from './narrowPresets'
 import { operatorsFor, type PresetField } from './presetFields'
 import { BooleanEditor, DateEditor, OptionsEditor, SegmentedChoice, ValueInput } from './PresetValueEditors'
+import { coversAllValues } from './viewerFilters'
 
 type FieldValuePanelProps = {
   field: PresetField
@@ -49,7 +50,11 @@ export function FieldValuePanel({ field, values, preset, operator, locked, onVal
   // Lists show what applies; single values show the raw pick so typing isn't clamped mid-keystroke.
   const shown = !narrowing ? values : listValued ? narrowValues(operator, preset, values) : values.length ? values : preset
   const bounds = narrowing && !readOnly ? presetBounds(operator, preset) : {}
-  const editor = { label: field.label, values: shown, readOnly, onChange: onValuesChange }
+  const coversPreset = (picked: string[]) => listValued && (preset ?? []).every((value) => picked.includes(value))
+  // A viewer's pick of the whole preset is the preset, so it's stored as no pick and "Reset to preset" stays off.
+  const change = (picked: string[]) => onValuesChange(narrowing && coversPreset(picked) ? [] : picked)
+  const editor = { label: field.label, values: shown, readOnly, onChange: change }
+  const allValuesPreset = !!onOperatorChange && coversAllValues(values, field)
   const options = narrowing ? preset : field.options
   const snapToPreset = () => {
     if (!narrowing || readOnly || values.length === 0) return
@@ -78,8 +83,11 @@ export function FieldValuePanel({ field, values, preset, operator, locked, onVal
         </p>
       )}
       {bounds.hint && <p className="text-xs text-white/50">{bounds.hint}</p>}
-      {onOperatorChange && values.length > 0 && (
-        <p className="text-xs text-white/50">{viewerCanNarrow(operator, values) ? 'Viewers can narrow this, not widen it.' : "Viewers can't change this."}</p>
+      {allValuesPreset ? (
+        <p className="text-xs text-amber-200/90">Every value is ticked, so this filters nothing. Viewers get it as if there were no preset.</p>
+      ) : (
+        onOperatorChange &&
+        values.length > 0 && <p className="text-xs text-white/50">{viewerCanNarrow(operator, values) ? 'Viewers can narrow this, not widen it.' : "Viewers can't change this."}</p>
       )}
       <div className="contents" onBlur={snapToPreset}>
         <FieldEditor field={field} editor={editor} options={options} keepOne={narrowing} min={bounds.min} max={bounds.max} />

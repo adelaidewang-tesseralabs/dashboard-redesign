@@ -5,7 +5,7 @@ import { CURRENT_USER, type Dashboard } from '../../../data/dashboards'
  * Each person's own view of a dashboard, saved in this browser. In production this is one row per (user, dashboard).
  * Filter values and the last page are stored apart so the canvas and the builder can each own theirs.
  */
-const storageKey = (dashboardId: string, part: 'filters' | 'page') => `tessera-insights-view:${CURRENT_USER}:${dashboardId}:${part}`
+const storageKey = (dashboardId: string, part: 'filters' | 'page', user = CURRENT_USER) => `tessera-insights-view:${user}:${dashboardId}:${part}`
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -29,12 +29,15 @@ export type PersonalFilterValues = Record<string, string[]>
 /**
  * Values a person picked on unlocked filters while viewing. Entries for deleted filters are simply never read.
  * Without `persist` (an editor previewing), picks start from the dashboard's defaults and are dropped on leaving.
+ * `user`: whose picks, when the prototype stands in for someone else; switching person starts from their picks.
  */
-export function usePersonalFilters(dashboardId: string, persist = true) {
-  const key = storageKey(dashboardId, 'filters')
-  const [values, setValues] = useState<PersonalFilterValues>(() => (persist ? read(key, {}) : {}))
+export function usePersonalFilters(dashboardId: string, persist = true, user = CURRENT_USER) {
+  const key = storageKey(dashboardId, 'filters', user)
+  const [state, setState] = useState(() => ({ key, values: persist ? read<PersonalFilterValues>(key, {}) : {} }))
+  if (state.key !== key) setState({ key, values: persist ? read<PersonalFilterValues>(key, {}) : {} })
+  const values = state.values
   const save = (next: PersonalFilterValues) => {
-    setValues(next)
+    setState({ key, values: next })
     if (persist) write(key, next)
   }
   return {

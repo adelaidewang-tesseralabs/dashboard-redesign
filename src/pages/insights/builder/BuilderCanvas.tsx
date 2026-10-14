@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowLeft } from 'lucide-react'
-import type { Dashboard, SqlDataset } from '../../../data/dashboards'
+import { CURRENT_USER, type Dashboard, type SqlDataset } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
 import type { DataObject } from '../../../data/dataSources'
 import { isGraph, isPageSummary, mediaItem, summaryItem, textItem, type CanvasItem } from '../../../data/widgets'
@@ -22,6 +22,7 @@ import { summarizePage, summaryBasis } from './pageSummary'
 import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
 import { narrowedPicks } from './presetFilters/narrowPresets'
+import { useFilterViewer } from './presetFilters/useFilterViewer'
 import { staleOpenPicks, withViewerFilters } from './presetFilters/viewerFilters'
 import { listDatasets } from './v2/datasets'
 import { personalOverrides, usePersonalFilters, withPersonalValues } from './usePersonalView'
@@ -92,7 +93,10 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, canManageSharedFilters = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
-  const personal = usePersonalFilters(dashboard.id, !previewing)
+  const roleStandIn = useFilterViewer(dashboard)
+  /** Final only: saved filters and picks follow the person a role switch or preview stands for. */
+  const filterViewer = presetFilters ? roleStandIn : CURRENT_USER
+  const personal = usePersonalFilters(dashboard.id, !previewing, filterViewer)
   useUndoShortcuts(readOnly ? undefined : dashboard.id)
   const [addingFilter, setAddingFilter] = useState<FilterKind | null>(null)
   const highlighting = readOnly && crossHighlight
@@ -132,7 +136,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const picks = presetFilters ? narrowedPicks(viewerPage, personal.values) : personal.values
   const shown = readOnly ? withPersonalValues(viewerPage, picks) : dashboard
   const overrides = readOnly ? personalOverrides(viewerPage, picks) : []
-  const stale = readOnly && presetFilters ? staleOpenPicks(dashboard, personal.values) : undefined
+  const stale = readOnly && presetFilters ? staleOpenPicks(dashboard, fullDashboard, personal.values) : undefined
   const staleKey = stale?.filterIds.join('|') ?? ''
   useEffect(() => {
     if (!stale || stale.filterIds.length === 0) return
@@ -245,6 +249,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
                 pageId={pageId}
                 canManageShared={canManageSharedFilters}
+                viewer={filterViewer}
               />
             )}
             {widgets.some(isGraph) && !presetFilters && (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Check, Search } from 'lucide-react'
+import { Check, Minus, Search } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { selectAllLabel, selectAllState, toggleAll } from '../lib/selectAll'
 import { Button } from './Button'
 
 export type FilterField = {
@@ -71,6 +72,8 @@ function FieldPanel({ field, value, onChange }: { field: FilterField; value: str
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
   const options = field.options.filter((option) => option.label.toLowerCase().includes(needle))
+  const shownValues = options.map((option) => option.value)
+  const allState = selectAllState(value, shownValues)
 
   const toggle = (optionValue: string) => {
     if (field.single) return onChange(value.includes(optionValue) ? [] : [optionValue])
@@ -89,6 +92,21 @@ function FieldPanel({ field, value, onChange }: { field: FilterField; value: str
           className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/40"
         />
       </label>
+      {!field.single && options.length > 1 && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={allState === 'all' ? true : allState === 'some' ? 'mixed' : false}
+          onClick={() => onChange(toggleAll(value, shownValues))}
+          className="-mt-1 flex cursor-pointer items-center gap-2 rounded border-b border-white/10 px-1 py-1 pb-2 text-left hover:bg-white/5"
+        >
+          <span className={cn('flex size-4 shrink-0 items-center justify-center rounded-sm border border-white/30', allState !== 'none' && 'border-white bg-white text-black')}>
+            {allState === 'all' && <Check className="size-3" strokeWidth={3} />}
+            {allState === 'some' && <Minus className="size-3" strokeWidth={3} />}
+          </span>
+          <span className="truncate">{selectAllLabel(needle !== '', options.length)}</span>
+        </button>
+      )}
       <div role={field.single ? 'radiogroup' : 'group'} aria-label={field.label} className="flex max-h-48 flex-col gap-1 overflow-y-auto">
         {options.map((option) => {
           const checked = value.includes(option.value)

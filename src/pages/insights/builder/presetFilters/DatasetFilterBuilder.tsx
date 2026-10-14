@@ -105,7 +105,7 @@ export function DatasetFilterBuilder({ fields, filters, canEdit, viewer, onValue
       </div>
       {canEdit && (
         <p className="shrink-0 border-t border-white/15 px-4 py-2 text-left text-[11px] text-white/50">
-          {filters.some(curatesViewerFields) ? 'Viewers can filter only by fields with a preset.' : 'No presets: viewers can filter by any field.'}
+          {filters.some((filter) => curatesViewerFields(filter, fields)) ? 'Viewers can filter only by fields with a preset.' : 'No presets: viewers can filter by any field.'}
         </p>
       )}
     </div>

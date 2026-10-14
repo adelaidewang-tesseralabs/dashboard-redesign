@@ -139,6 +139,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const finalPreview = final && !readOnly && searchParams.get(EDIT_MODE_PARAM) !== 'edit'
   const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
   const previewing = previewAs !== null
+  /** Final's preview shows the dashboard as viewers get it, so the name and description can't be edited there. */
+  const headerReadOnly = readOnly || (final && previewing)
   const chat = useBuilderChat(dashboard, planFromCatalog, final && (readOnly || previewing))
   /** The empty page on screen, and how many chat messages there were when it became empty. */
   const [emptyStart, setEmptyStart] = useState<{ pageId: string; messages: number } | null>(null)
@@ -510,7 +512,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   if (lineage && onLineageChange) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        {lineage.kind !== 'graph' && <BuilderHeader dashboard={dashboard} badge={badge} readOnly={readOnly} onTagsClick={onEditDetails} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />}
+        {lineage.kind !== 'graph' && <BuilderHeader dashboard={dashboard} badge={badge} readOnly={headerReadOnly} editableDescription={final} onTagsClick={onEditDetails} trailing={<div className="flex items-center gap-2">{headerActions}</div>} />}
         <LineageView key={JSON.stringify(lineage)} dashboard={dashboard} target={lineage} onBack={() => onLineageChange(null)} />
         {leaveDialog}
       </div>
@@ -526,7 +528,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
         <BuilderHeader
           dashboard={dashboard}
           badge={badge}
-          readOnly={readOnly}
+          readOnly={headerReadOnly}
+          editableDescription={final}
           onTagsClick={onEditDetails}
           trailing={
             <DashboardActions

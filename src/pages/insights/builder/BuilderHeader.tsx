@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Dashboard } from "../../../data/dashboards";
 import { useDashboards } from "../../../data/DashboardsStore";
 import { TagChips } from "../../../ui/TagChips";
+import { EditableDescription } from "./EditableDescription";
 import { EditableTitle } from "./EditableTitle";
 
 type BuilderHeaderProps = {
@@ -13,6 +14,8 @@ type BuilderHeaderProps = {
   readOnly?: boolean;
   /** Makes the tags a button, e.g. to edit the dashboard's details. */
   onTagsClick?: () => void;
+  /** Unless `readOnly`, the description is edited in place like the name. */
+  editableDescription?: boolean;
 };
 
 /** Builder header: editable name, access badge and tags with an optional right-hand slot, and the description below. */
@@ -22,8 +25,16 @@ export function BuilderHeader({
   trailing,
   readOnly = false,
   onTagsClick,
+  editableDescription = false,
 }: BuilderHeaderProps) {
   const { updateDashboard } = useDashboards();
+  const saveDetails = (patch: { name?: string; description?: string }) =>
+    updateDashboard(dashboard.id, {
+      name: dashboard.name,
+      description: dashboard.description ?? "",
+      tags: dashboard.tags ?? [],
+      ...patch,
+    });
   return (
     <div className="flex shrink-0 flex-col gap-0.5 border-b border-white/10 px-5 py-3">
       <div className="flex min-w-0 items-center gap-2">
@@ -34,13 +45,7 @@ export function BuilderHeader({
         ) : (
           <EditableTitle
             value={dashboard.name}
-            onChange={(name) =>
-              updateDashboard(dashboard.id, {
-                name,
-                description: dashboard.description ?? "",
-                tags: dashboard.tags ?? [],
-              })
-            }
+            onChange={(name) => saveDetails({ name })}
           />
         )}
         {badge}
@@ -58,10 +63,17 @@ export function BuilderHeader({
         ) : null}
         {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
       </div>
-      {dashboard.description && (
-        <p className="min-w-0 truncate text-sm text-white/50">
-          {dashboard.description}
-        </p>
+      {editableDescription && !readOnly ? (
+        <EditableDescription
+          value={dashboard.description ?? ""}
+          onChange={(description) => saveDetails({ description })}
+        />
+      ) : (
+        dashboard.description && (
+          <p className="min-w-0 truncate text-sm text-white/50">
+            {dashboard.description}
+          </p>
+        )
       )}
     </div>
   );

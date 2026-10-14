@@ -20,12 +20,14 @@ type PresetFilterBarProps = {
   onApplyValues: (values: Record<string, string[]>) => void
   onResetPersonal?: () => void
   pageId?: string
+  /** Whose saved filters show: the signed-in person, or whoever the prototype stands in for. */
+  viewer: string
   /** Owners and editors, even while previewing: they can delete or stop sharing anyone's shared saved filter. */
   canManageShared?: boolean
 }
 
 /** Final builder's filter row: one Olivier-style filter button per dataset, then saved filters. Replaces fixed and viewer filters. */
-export function PresetFilterBar({ dashboard, canEdit, personalValues, onValuesChange, onApplyValues, onResetPersonal, pageId, canManageShared = false }: PresetFilterBarProps) {
+export function PresetFilterBar({ dashboard, canEdit, personalValues, onValuesChange, onApplyValues, onResetPersonal, pageId, canManageShared = false, viewer }: PresetFilterBarProps) {
   const { dashboards, addFilter, updateFilter, setFilterAllPages, undo } = useDashboards()
   const toast = useToast()
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -97,6 +99,7 @@ export function PresetFilterBar({ dashboard, canEdit, personalValues, onValuesCh
           filters={filters.filter(viewerOwns)}
           presets={presetValues}
           pageId={pageId}
+          viewer={viewer}
           canManageShared={canManageShared}
           onApplyValues={onApplyValues}
         />

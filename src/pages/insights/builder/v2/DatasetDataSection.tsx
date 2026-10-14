@@ -115,7 +115,7 @@ export function DatasetDataSection({ item, datasets, dashboard, onChange, onOpen
   )
   const filterControls = (
     <>
-      <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} />
+      <FilterCards columns={cardColumns} groupKey={groupKey} filters={graphFilters} onChange={setFilters} selectAll={graphCalculations} />
       <span className="mt-1 text-xs text-white/50">Conditions</span>
       <FiltersEditor
         compact

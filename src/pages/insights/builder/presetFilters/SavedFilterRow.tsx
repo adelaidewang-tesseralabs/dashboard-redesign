@@ -1,15 +1,15 @@
 import { useState, type ReactNode } from 'react'
-import { Check, Pencil, Save, Trash2, TriangleAlert, Users } from 'lucide-react'
+import { Check, Pencil, Trash2, TriangleAlert, UserX } from 'lucide-react'
 import type { SavedFilter } from '../../../../data/dashboards'
 import { cn } from '../../../../lib/cn'
 import { nameOf } from '../../../../lib/people'
-import { editorInputClass } from '../EditorFields'
+import { SavedFilterForm } from './SavedFilterForm'
 
-/** Creators get every action; owners and editors managing someone else's shared filter get sharing and delete only. */
+/** Creators get every action; owners and editors managing someone else's shared filter can stop sharing or delete it. */
 export type SavedFilterActions = {
-  onRename?: (name: string) => void
+  onEdit?: (patch: { name: string; shared: boolean }) => void
   onUpdate?: () => void
-  onShareChange?: (shared: boolean) => void
+  onStopSharing?: () => void
   onDelete?: () => void
 }
 
@@ -17,8 +17,8 @@ export type SavedFilterState = {
   own: boolean
   /** `active` while the viewer's filters match it since applying or saving it; `edited` once they've changed one. */
   applied?: 'active' | 'edited'
-  /** A field it sets is gone for viewers, or its values fall outside the presets. */
-  outdated: boolean
+  /** Why it no longer applies as saved: a field it sets is gone, or its values fall outside the presets. */
+  outdated?: string
   /** Saved on another page, so only shared fields apply here. */
   fromPage?: string
 }
@@ -28,15 +28,18 @@ type SavedFilterRowProps = {
   state: SavedFilterState
   onApply: () => void
   actions?: SavedFilterActions
+  nameTaken: (name: string, exceptId?: string) => boolean
 }
 
-const ACTION_CLASS =
-  'flex size-6 cursor-pointer items-center justify-center rounded text-white/45 opacity-0 group-hover/saved:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100'
-
-/** `pinned`: stays visible without hover, as a status. */
-function RowAction({ label, pinned, onClick, children }: { label: string; pinned?: boolean; onClick: () => void; children: ReactNode }) {
+function RowAction({ label, name, onClick, children }: { label: string; name: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={cn(ACTION_CLASS, pinned && 'text-white/70 opacity-100')}>
+    <button
+      type="button"
+      aria-label={`${label} ${name}`}
+      title={label}
+      onClick={onClick}
+      className="flex size-6 cursor-pointer items-center justify-center rounded text-white/45 opacity-0 group-hover/saved:opacity-100 hover:bg-white/10 hover:text-white focus-visible:opacity-100"
+    >
       {children}
     </button>
   )
@@ -44,7 +47,7 @@ function RowAction({ label, pinned, onClick, children }: { label: string; pinned
 
 function subtitle(savedFilter: SavedFilter, state: SavedFilterState) {
   return [
-    !state.own && `Shared by ${nameOf(savedFilter.createdBy)}`,
+    savedFilter.shared && (state.own ? 'By you' : `By ${nameOf(savedFilter.createdBy)}`),
     state.fromPage && `From ${state.fromPage}`,
     state.applied === 'edited' && 'Edited since applied',
   ]
@@ -52,34 +55,27 @@ function subtitle(savedFilter: SavedFilter, state: SavedFilterState) {
     .join(' · ')
 }
 
-export function SavedFilterRow({ savedFilter, state, onApply, actions }: SavedFilterRowProps) {
-  const [renaming, setRenaming] = useState(false)
-  const [name, setName] = useState(savedFilter.name)
-  const onRename = actions?.onRename
+export function SavedFilterRow({ savedFilter, state, onApply, actions, nameTaken }: SavedFilterRowProps) {
+  const [editing, setEditing] = useState(false)
+  const onEdit = actions?.onEdit
 
-  if (renaming && onRename)
+  if (editing && onEdit)
     return (
-      <form
-        className="p-1"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (name.trim()) onRename(name.trim())
-          setRenaming(false)
+      <SavedFilterForm
+        initialName={savedFilter.name}
+        initialShared={!!savedFilter.shared}
+        submitLabel="Save"
+        nameTaken={(name) => nameTaken(name, savedFilter.id)}
+        onSubmit={(patch) => {
+          onEdit(patch)
+          setEditing(false)
         }}
-      >
-        <input
-          autoFocus
-          aria-label={`Rename ${savedFilter.name}`}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          onBlur={() => setRenaming(false)}
-          onKeyDown={(event) => event.key === 'Escape' && (event.stopPropagation(), setRenaming(false))}
-          className={editorInputClass}
-        />
-      </form>
+        onCancel={() => setEditing(false)}
+      />
     )
 
   const details = subtitle(savedFilter, state)
+  const canUpdate = actions?.onUpdate && (state.applied === 'edited' || (state.applied === 'active' && state.outdated))
   return (
     <div className="group/saved flex items-center rounded-md hover:bg-white/10">
       <button type="button" onClick={onApply} aria-current={state.applied === 'active' || undefined} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 text-left">
@@ -87,42 +83,38 @@ export function SavedFilterRow({ savedFilter, state, onApply, actions }: SavedFi
         <span className="flex min-w-0 flex-col">
           <span className="truncate">{savedFilter.name}</span>
           {details && <span className="truncate text-[11px] text-white/45">{details}</span>}
+          {state.outdated && (
+            <span className="flex items-start gap-1 text-[11px] text-amber-300">
+              <TriangleAlert className="mt-px size-3 shrink-0" aria-hidden />
+              <span>Out of date: {state.outdated}</span>
+            </span>
+          )}
         </span>
       </button>
-      {state.outdated && (
-        <span title="Editors changed the preset filters, so some of this no longer applies as saved." className="flex size-6 shrink-0 items-center justify-center text-amber-300">
-          <TriangleAlert className="size-3.5" aria-label="Out of date" />
-        </span>
-      )}
       {actions && (
-        <span className="mr-1 flex items-center">
-          {actions.onUpdate && (
-            <RowAction label="Update with current filters" onClick={actions.onUpdate}>
-              <Save className="size-3.5" />
+        <span className="mr-1 flex shrink-0 items-center">
+          {canUpdate && (
+            <button
+              type="button"
+              title="Save your current filters to it"
+              onClick={actions.onUpdate}
+              className="h-6 cursor-pointer rounded px-1.5 text-[11px] font-medium text-tlai-mint hover:bg-white/10"
+            >
+              Update
+            </button>
+          )}
+          {actions.onStopSharing && (
+            <RowAction label="Stop sharing" name={savedFilter.name} onClick={actions.onStopSharing}>
+              <UserX className="size-3.5" />
             </RowAction>
           )}
-          {actions.onShareChange && (
-            <RowAction
-              label={savedFilter.shared ? 'Shared with everyone · Stop sharing' : 'Share with everyone'}
-              pinned={savedFilter.shared && state.own}
-              onClick={() => actions.onShareChange?.(!savedFilter.shared)}
-            >
-              <Users className="size-3.5" />
-            </RowAction>
-          )}
-          {onRename && (
-            <RowAction
-              label={`Rename ${savedFilter.name}`}
-              onClick={() => {
-                setName(savedFilter.name)
-                setRenaming(true)
-              }}
-            >
+          {onEdit && (
+            <RowAction label="Rename" name={savedFilter.name} onClick={() => setEditing(true)}>
               <Pencil className="size-3.5" />
             </RowAction>
           )}
           {actions.onDelete && (
-            <RowAction label={`Delete ${savedFilter.name}`} onClick={actions.onDelete}>
+            <RowAction label="Delete" name={savedFilter.name} onClick={actions.onDelete}>
               <Trash2 className="size-3.5" />
             </RowAction>
           )}

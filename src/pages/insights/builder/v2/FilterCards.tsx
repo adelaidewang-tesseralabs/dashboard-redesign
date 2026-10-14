@@ -1,6 +1,7 @@
-import { Check, Plus, X } from 'lucide-react'
+import { Check, Minus, Plus, X } from 'lucide-react'
 import type { RowFilter } from '../../../../data/transforms'
 import { cn } from '../../../../lib/cn'
+import { selectAllState, toggleAll } from '../../../../lib/selectAll'
 import { Select } from '../../../../ui/Select'
 import type { FilterColumn } from '../dashboardFilters'
 
@@ -16,13 +17,15 @@ type FilterCardsProps = {
   groupKey: string | undefined
   filters: RowFilter[]
   onChange: (filters: RowFilter[]) => void
+  /** Each card gets a "Select all" row above its values. */
+  selectAll?: boolean
 }
 
 const cardId = (column: string) => `${CARD_PREFIX}${column}`
 const picked = (filter: RowFilter | undefined) => (filter?.value ? filter.value.split(',') : [])
 
 /** Power BI-style filter cards: tick the values this graph shows. An empty card keeps every row. */
-export function FilterCards({ columns, groupKey, filters, onChange }: FilterCardsProps) {
+export function FilterCards({ columns, groupKey, filters, onChange, selectAll = false }: FilterCardsProps) {
   const cards = filters.filter(isCardFilter)
   const shown = [
     ...columns.filter((column) => column.column === groupKey),
@@ -47,6 +50,7 @@ export function FilterCards({ columns, groupKey, filters, onChange }: FilterCard
           values={picked(filters.find((filter) => filter.id === cardId(column.column)))}
           onValuesChange={(values) => setValues(column.column, values)}
           onRemove={() => remove(column.column)}
+          selectAll={selectAll}
         />
       ))}
       {addable.length > 0 && (
@@ -68,9 +72,11 @@ type FilterCardProps = {
   values: string[]
   onValuesChange: (values: string[]) => void
   onRemove: () => void
+  selectAll: boolean
 }
 
-function FilterCard({ column, automatic, values, onValuesChange, onRemove }: FilterCardProps) {
+function FilterCard({ column, automatic, values, onValuesChange, onRemove, selectAll }: FilterCardProps) {
+  const allState = selectAllState(values, column.values)
   const toggle = (value: string) => onValuesChange(values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value])
 
   return (
@@ -99,6 +105,21 @@ function FilterCard({ column, automatic, values, onValuesChange, onRemove }: Fil
         )}
       </header>
       <div role="group" aria-label={column.label} className="flex max-h-44 flex-col overflow-y-auto py-1">
+        {selectAll && column.values.length > 1 && (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={allState === 'all' ? true : allState === 'some' ? 'mixed' : false}
+            onClick={() => onValuesChange(toggleAll(values, column.values))}
+            className="mb-1 flex cursor-pointer items-center gap-2 border-b border-white/10 px-2.5 py-1 pb-1.5 text-left text-xs text-white/80 hover:bg-white/5"
+          >
+            <span className={cn('flex size-3.5 shrink-0 items-center justify-center rounded border border-white/30', allState !== 'none' && 'border-white bg-white text-black')}>
+              {allState === 'all' && <Check className="size-2.5" />}
+              {allState === 'some' && <Minus className="size-2.5" />}
+            </span>
+            Select all
+          </button>
+        )}
         {column.values.map((value) => {
           const checked = values.includes(value)
           return (
