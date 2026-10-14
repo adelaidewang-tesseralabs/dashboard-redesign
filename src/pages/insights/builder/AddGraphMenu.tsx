@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { Check, ChevronRight, FileCode2, Plus, Sparkles } from 'lucide-react'
+import { FileCode2, Plus, Sparkles } from 'lucide-react'
 import type { SqlDataset } from '../../../data/dashboards'
 import { DATA_OBJECTS, type DataObject } from '../../../data/dataSources'
 import { objectItem, sameSource, sqlDatasetItem, type CanvasItem } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
-import { menuGroupLabelClass, menuItemClass, menuSurfaceClass } from '../../../ui/menuStyles'
+import { menuSurfaceClass } from '../../../ui/menuStyles'
+import { ActionRow, OptionRow, SectionLabel, SubmenuRow } from './AddGraphMenuRows'
+import { ExternalSourceRows } from './ExternalSourceRows'
 import { ADD_SOURCE_KINDS, ORIGIN_META, SourceIcon, type AddSourceKind } from './sourceKinds'
 
 type AddGraphMenuProps = {
@@ -21,6 +22,8 @@ type AddGraphMenuProps = {
   datasetsFirst?: boolean
   /** Builder V3: only the datasets already on this dashboard, plus an "Add dataset" submenu of the production source dialogs. */
   datasetsOnly?: boolean
+  /** Final builder: graph any Mosaic object, Foundry table or workflow output straight away, with Add dataset last. `widgets` then spans every page. */
+  catalog?: boolean
   onAdd: (item: CanvasItem) => void
   onAddSource: (kind: AddSourceKind) => void
   /** Replaces the per-kind "Add data source" entries with one row that opens a combined dialog. */
@@ -36,7 +39,7 @@ const ADD_DATASET = '__add-dataset__'
 
 /** Pick-data entry point, modeled on the main app's dataviz "+ Add graph": one submenu per object listing its charts. */
 export function AddGraphMenu(props: AddGraphMenuProps) {
-  const { trigger, widgets, sources, queries = [], sourcesLabel = 'Dashboard sources', datasetsFirst = false, datasetsOnly = false, onAdd, onAddSource, onOpenAddSource, onAskAi, side = 'top', align = 'start' } = props
+  const { trigger, widgets, sources, queries = [], sourcesLabel = 'Dashboard sources', datasetsFirst = false, datasetsOnly = false, catalog = false, onAdd, onAddSource, onOpenAddSource, onAskAi, side = 'top', align = 'start' } = props
   const [open, setOpen] = useState(false)
   const [submenu, setSubmenu] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -74,19 +77,40 @@ export function AddGraphMenu(props: AddGraphMenuProps) {
     </SubmenuRow>
   )
 
+  const queryRows = queries.map((dataset) => (
+    <ActionRow
+      key={dataset.id}
+      icon={<FileCode2 className="size-4 shrink-0 text-white/60" />}
+      label={dataset.label}
+      onHover={() => setSubmenu(null)}
+      onSelect={() => select(() => onAdd(sqlDatasetItem(dataset)))}
+    />
+  ))
   const datasetsSection = sources.length + queries.length > 0 && (
     <>
       <SectionLabel>{sourcesLabel}</SectionLabel>
       {sources.map(({ object, label }) => renderObject(object, label))}
-      {queries.map((dataset) => (
-        <ActionRow
-          key={dataset.id}
-          icon={<FileCode2 className="size-4 shrink-0 text-white/60" />}
-          label={dataset.label}
-          onHover={() => setSubmenu(null)}
-          onSelect={() => select(() => onAdd(sqlDatasetItem(dataset)))}
-        />
+      {queryRows}
+    </>
+  )
+  const addDatasetRow = onOpenAddSource ? (
+    <ActionRow icon={<Plus className="size-4 text-white/60" />} label="Add dataset…" onHover={() => setSubmenu(null)} onSelect={() => select(onOpenAddSource)} />
+  ) : (
+    <SubmenuRow label="Add dataset" Icon={Plus} bold={false} open={submenu === ADD_DATASET} onOpen={() => setSubmenu(ADD_DATASET)} side={submenuSide}>
+      {ADD_SOURCE_KINDS.map((kind) => (
+        <ActionRow key={kind} icon={<SourceIcon origin={kind} />} label={ORIGIN_META[kind].label} onHover={() => undefined} onSelect={() => select(() => onAddSource(kind))} />
       ))}
+    </SubmenuRow>
+  )
+
+  const catalogItems = (
+    <>
+      {DATA_OBJECTS.map((object) => renderObject(object, object.label))}
+      {sources.filter(({ object }) => object.origin === 'upload').map(({ object, label }) => renderObject(object, label))}
+      {queryRows}
+      <ExternalSourceRows widgets={widgets} submenu={submenu} onOpenSubmenu={setSubmenu} side={submenuSide} onPick={(item) => select(() => onAdd(item))} />
+      <div className="my-1 h-px bg-white/10" />
+      {addDatasetRow}
     </>
   )
 
@@ -106,25 +130,13 @@ export function AddGraphMenu(props: AddGraphMenuProps) {
             side !== 'right' && (align === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2'),
           )}
         >
-          {datasetsOnly ? (
+          {catalog ? (
+            catalogItems
+          ) : datasetsOnly ? (
             <>
               {datasetsSection || <p className="px-2.5 py-2 text-xs text-white/45">No datasets on this dashboard yet</p>}
               <div className="my-1 h-px bg-white/10" />
-              {onOpenAddSource ? (
-                <ActionRow icon={<Plus className="size-4 text-white/60" />} label="Add dataset…" onHover={() => setSubmenu(null)} onSelect={() => select(onOpenAddSource)} />
-              ) : (
-                <SubmenuRow label="Add dataset" Icon={Plus} bold={false} open={submenu === ADD_DATASET} onOpen={() => setSubmenu(ADD_DATASET)} side={submenuSide}>
-                  {ADD_SOURCE_KINDS.map((kind) => (
-                    <ActionRow
-                      key={kind}
-                      icon={<SourceIcon origin={kind} />}
-                      label={ORIGIN_META[kind].label}
-                      onHover={() => undefined}
-                      onSelect={() => select(() => onAddSource(kind))}
-                    />
-                  ))}
-                </SubmenuRow>
-              )}
+              {addDatasetRow}
             </>
           ) : (
             <>
@@ -167,69 +179,5 @@ export function AddGraphMenu(props: AddGraphMenuProps) {
         </div>
       )}
     </div>
-  )
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return <div className={menuGroupLabelClass}>{children}</div>
-}
-
-const ROW = menuItemClass
-
-type SubmenuRowProps = {
-  label: string
-  Icon?: LucideIcon
-  bold: boolean
-  open: boolean
-  onOpen: () => void
-  side: string
-  children: ReactNode
-}
-
-function SubmenuRow({ label, Icon, bold, open, onOpen, side, children }: SubmenuRowProps) {
-  return (
-    <div className="relative" onMouseEnter={onOpen}>
-      <button
-        type="button"
-        role="menuitem"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={onOpen}
-        className={cn(ROW, open && 'bg-white/10 text-white', bold && 'font-semibold')}
-      >
-        {Icon && <Icon className="size-4 shrink-0 text-white/60" />}
-        <span className="min-w-0 flex-1 truncate" title={label}>
-          {label}
-        </span>
-        <ChevronRight className="size-4 text-white/50" />
-      </button>
-      {open && (
-        <div role="menu" aria-label={label} className={cn(menuSurfaceClass, 'absolute left-full z-50 ml-1.5 w-56', side)}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function OptionRow({ label, added, onSelect }: { label: string; added: boolean; onSelect: () => void }) {
-  return (
-    <button type="button" role="menuitem" disabled={added} onClick={onSelect} className={cn(ROW, 'disabled:cursor-default disabled:text-white/40 disabled:hover:bg-transparent')}>
-      <span className="flex-1">{label}</span>
-      {added && <Check className="size-3.5" aria-label="On the canvas" />}
-    </button>
-  )
-}
-
-type ActionRowProps = { icon: ReactNode; label: string; onHover: () => void; onSelect: () => void }
-
-function ActionRow({ icon, label, onHover, onSelect }: ActionRowProps) {
-  return (
-    <button type="button" role="menuitem" onMouseEnter={onHover} onClick={onSelect} className={ROW}>
-      {icon}
-      <span className="min-w-0 flex-1 truncate" title={label}>
-        {label}
-      </span>
-    </button>
   )
 }

@@ -10,8 +10,6 @@ import { ChatComposer } from './ChatComposer'
 
 type EmptyCanvasStartProps = Omit<ComponentProps<typeof AddGraphMenu>, 'trigger' | 'side' | 'align' | 'onAskAi'> & {
   onPrompt: (text: string) => void
-  /** Graphs on every page; a dashboard shows each source once, so these can't be suggested again. */
-  dashboardWidgets: CanvasItem[]
   onAddText: () => void
   onAddMedia: () => void
   /** Set when the page was emptied by an edit that can be undone, e.g. removing its last graph. */
@@ -51,8 +49,8 @@ function ActionButton({ Icon, label, onClick, active }: { Icon: LucideIcon; labe
 }
 
 /** Final builder's empty page: the toolbar's add actions, one-click suggested graphs, and the home page's chat box where the toolbar will sit. */
-export function EmptyCanvasStart({ onPrompt, dashboardWidgets, onAddText, onAddMedia, onUndo, ...menu }: EmptyCanvasStartProps) {
-  const suggestions = suggestedGraphs(menu.sources, menu.queries ?? [], dashboardWidgets)
+export function EmptyCanvasStart({ onPrompt, onAddText, onAddMedia, onUndo, ...menu }: EmptyCanvasStartProps) {
+  const suggestions = suggestedGraphs(menu.sources, menu.queries ?? [], menu.widgets)
   let suggestionRow: ReactNode = null
   if (suggestions.length > 0)
     suggestionRow = suggestions.map((suggestion) => (
@@ -80,7 +78,7 @@ export function EmptyCanvasStart({ onPrompt, dashboardWidgets, onAddText, onAddM
           <p className="text-sm text-[var(--dash-muted)]">Add something, or describe what you want below.</p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          <AddGraphMenu {...menu} side="bottom" align="center" trigger={({ open, toggle }) => <ActionButton Icon={Plus} label="Add graph" onClick={toggle} active={open} />} />
+          <AddGraphMenu {...menu} side="top" align="center" trigger={({ open, toggle }) => <ActionButton Icon={Plus} label="Add graph" onClick={toggle} active={open} />} />
           <ActionButton Icon={Type} label="Add text" onClick={onAddText} />
           <ActionButton Icon={Image} label="Add media" onClick={onAddMedia} />
         </div>

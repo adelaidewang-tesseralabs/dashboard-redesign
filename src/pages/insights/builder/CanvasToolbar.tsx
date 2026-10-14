@@ -17,6 +17,8 @@ type CanvasToolbarProps = {
   sourcesLabel?: string
   datasetsFirst?: boolean
   datasetsOnly?: boolean
+  /** Final builder's Add graph menu; see AddGraphMenu. */
+  catalog?: boolean
   onToggleChat: () => void
   onOpenChat: () => void
   onAddSource: (kind: AddSourceKind) => void
@@ -59,6 +61,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
     sourcesLabel,
     datasetsFirst,
     datasetsOnly,
+    catalog,
     onToggleChat,
     onOpenChat,
     onAddSource,
@@ -104,6 +107,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
             sourcesLabel={sourcesLabel}
             datasetsFirst={datasetsFirst}
             datasetsOnly={datasetsOnly}
+            catalog={catalog}
             onAdd={onAddWidget}
             onAddSource={onAddSource}
             onOpenAddSource={onOpenAddSource}

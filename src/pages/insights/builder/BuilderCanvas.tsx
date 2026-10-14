@@ -77,11 +77,13 @@ type BuilderCanvasProps = {
   presetFilters?: boolean
   /** Final builder: an empty canvas offers Add graph and a chat box, with no toolbar until something is on it. */
   emptyStart?: boolean
+  /** Final builder: Add graph lists every source, not just the dashboard's datasets. */
+  graphCatalog?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
@@ -148,6 +150,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     addItem(item)
   }
   const undoChange = canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined
+  /** A dashboard shows each source once across its pages, so the catalog checks graphs on every page. */
+  const menuWidgets = graphCatalog ? (dashboards.find((entry) => entry.id === dashboard.id)?.widgets ?? []) : widgets
   const theme = useResolvedAppearance(dashboard.appearance)
   const fullScreenTools = fullScreenToolbar && !readOnly
   /** `expandedId`: the graph filling the canvas, which opening Tessera AI aims the chat at. */
@@ -156,12 +160,13 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       orientation={toolbarPlacement === 'left' ? 'vertical' : 'horizontal'}
       fullScreen={expandedId !== null}
       chatOpen={chat.chatOpen}
-      widgets={widgets}
+      widgets={menuWidgets}
       sources={sources}
       queries={queries}
       sourcesLabel={sourcesLabel}
       datasetsFirst={datasetsFirst}
       datasetsOnly={datasetsOnly}
+      catalog={graphCatalog}
       onToggleChat={() => {
         if (expandedId && !chat.chatOpen) onSelect(expandedId)
         chat.setChatOpen((current) => !current)
@@ -185,6 +190,13 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
 
   const railed = toolbarPlacement === 'left'
   const starting = empty && emptyStart && !readOnly
+  const blockCount = widgets.length + groups.length
+  /** `armed` while the empty start shows; then the block count it ended at, until the next add or removal. */
+  const [manualHint, setManualHint] = useState<'armed' | number | null>(null)
+  if (starting && manualHint !== 'armed') setManualHint('armed')
+  if (manualHint === 'armed' && !starting && blockCount > 0) setManualHint(blockCount)
+  if (typeof manualHint === 'number' && blockCount !== manualHint) setManualHint(null)
+  const showManualHint = !readOnly && typeof manualHint === 'number'
   const showRail = railed && !readOnly && !drawer && !starting && (!fullScreenId || fullScreenTools)
 
   return (
@@ -232,16 +244,16 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             ) : starting ? (
               <EmptyCanvasStart
                 onPrompt={chat.send}
-                widgets={widgets}
+                widgets={menuWidgets}
                 sources={sources}
                 queries={queries}
                 sourcesLabel={sourcesLabel}
                 datasetsFirst={datasetsFirst}
                 datasetsOnly={datasetsOnly}
+                catalog={graphCatalog}
                 onAdd={addItem}
                 onAddSource={onAddSource}
                 onOpenAddSource={onOpenAddSource}
-                dashboardWidgets={dashboards.find((entry) => entry.id === dashboard.id)?.widgets ?? []}
                 onAddText={addText}
                 onAddMedia={() => addItem(mediaItem())}
                 onUndo={undoChange}
@@ -309,10 +321,10 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             </>
           ) : (
             <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex flex-col items-center gap-1.5">
-              {empty && (
+              {(empty || showManualHint) && (
                 // Sits over the canvas but outside its themed element, so it takes the theme itself.
                 <div data-dashboard-theme={theme} className="flex flex-col items-center gap-1.5 text-[var(--dash-muted)]">
-                  <span className="text-[11px] font-medium tracking-wider uppercase">Create manually</span>
+                  <span className="text-[11px] font-medium tracking-wider uppercase">{empty ? 'Create manually' : 'Create more blocks manually'}</span>
                   <ArrowDown className="size-3.5" />
                 </div>
               )}

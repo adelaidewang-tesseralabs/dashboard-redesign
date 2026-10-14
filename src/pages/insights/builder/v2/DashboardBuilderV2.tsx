@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { dataIssues } from '../../../../data/dataIssues'
-import { groupBySql, type DataObject } from '../../../../data/dataSources'
+import { findObject, groupBySql, type DataObject } from '../../../../data/dataSources'
 import { pageView, resolvePageId } from '../../../../data/pages'
 import { isGraph, type CanvasItem } from '../../../../data/widgets'
 import { EDIT_MODE_PARAM, useIsFinalBuilder } from '../../../../lib/builderVersion'
@@ -138,8 +138,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
   const previewing = previewAs !== null
   const chat = useBuilderChat(dashboard, planFromCatalog, final && (readOnly || previewing))
-  /** How many chat messages there were when the page last became empty. */
-  const [emptySince, setEmptySince] = useState<number | null>(null)
+  /** The empty page on screen, and how many chat messages there were when it became empty. */
+  const [emptyStart, setEmptyStart] = useState<{ pageId: string; messages: number } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('ai')
   const [addRequest, setAddRequest] = useState<AddDatasetRequest | null>(null)
@@ -231,6 +231,11 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
 
   /** The new block takes the selection, whatever was selected before. */
   const add = (item: CanvasItem) => {
+    // Graphing a table straight from the catalog adds it as a dataset too, so it outlives the graph. Added first, so undo takes back only the graph.
+    if (final && item.source === 'object' && !(dashboard.sources ?? []).some((source) => source.table === item.objectName)) {
+      const object = findObject(item.objectName)
+      if (object) addSources(dashboard.id, [{ table: object.name, label: object.label }])
+    }
     addWidgets(dashboard.id, [item])
     selectWidget(item.id)
   }
@@ -410,12 +415,18 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   /** Final keeps the chat on the canvas for viewers and previews too, answering about the data rather than editing. */
   const canvasChatAllowed = showSettings || (final && asViewer && !historyShown)
   // The empty canvas has its own chat box. A new message brings the panel back, so a reply that adds nothing still shows.
-  const emptyCanvas = final && view === 'canvas' && !asViewer && !historyShown && !page.widgets?.length && !page.groups?.length
-  if (emptyCanvas && emptySince === null) setEmptySince(chat.messages.length)
-  if (!emptyCanvas && emptySince !== null) setEmptySince(null)
-  const chatHidden = emptyCanvas && chat.messages.length === (emptySince ?? chat.messages.length)
+  const pageEmpty = !page.widgets?.length && !page.groups?.length
+  const emptyCanvas = final && view === 'canvas' && !asViewer && !historyShown && pageEmpty
+  if (emptyCanvas && emptyStart?.pageId !== pages.activeId) setEmptyStart({ pageId: pages.activeId, messages: chat.messages.length })
+  if (!emptyCanvas && emptyStart) {
+    // The first block on the page hands the conversation to the side panel; leaving the page or the canvas doesn't.
+    if (!pageEmpty && emptyStart.pageId === pages.activeId) chat.setChatOpen(true)
+    setEmptyStart(null)
+  }
+  const chatHidden = emptyCanvas && chat.messages.length === (emptyStart?.messages ?? chat.messages.length)
   const canvasChatOpen = canvasChatAllowed && chat.chatOpen && !chatHidden && (productionFlow || !(selected && editMode === 'manual'))
-  const chatRail = final && !chat.chatOpen && !historyShown && !chatHidden && (view === 'canvas' || !asViewer)
+  // The edit canvas opens the chat from the toolbar's Ask AI; previews and the Data tab have no toolbar.
+  const chatRail = final && !chat.chatOpen && !historyShown && !chatHidden && (asViewer || view !== 'canvas')
   const chatShowing = dataChatOpen || canvasChatOpen
   if (!chatShowing && listReopened) setListReopened(false)
   const activeDataset = datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0]
@@ -589,6 +600,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 pageMove={final && !asViewer ? pageMove : undefined}
                 presetFilters={final}
                 emptyStart={final}
+                graphCatalog={final}
               />
             </PreviewPersonContext>
           </WidgetNavigationContext>
