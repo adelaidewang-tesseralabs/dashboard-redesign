@@ -1,7 +1,6 @@
 import { Eye, TriangleAlert } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { widgetProblem } from '../../../../data/dataIssues'
-import { cn } from '../../../../lib/cn'
 import { nameOf } from '../../../../lib/people'
 import { PreviewPersonPicker } from './PreviewPersonPicker'
 
@@ -10,7 +9,7 @@ type PreviewBannerProps = {
   person: string
   onPersonChange: (user: string) => void
   onGrantAccess?: (user: string) => void
-  /** Omitted in Final, where preview is the default and the header's Edit button leaves it; the bar also turns neutral. */
+  /** Omitted in Final, where preview is the default and the header's Edit button leaves it. */
   onExit?: () => void
 }
 
@@ -30,12 +29,7 @@ function blockedFor(dashboard: Dashboard, person: string) {
 export function PreviewBanner({ dashboard, person, onPersonChange, onGrantAccess, onExit }: PreviewBannerProps) {
   const blocked = blockedFor(dashboard, person)
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center gap-2 border-b px-5 py-1.5 text-xs',
-        onExit ? 'border-amber-300/30 bg-amber-400/15 text-amber-100' : 'border-white/10 bg-white/[0.03] text-white/65',
-      )}
-    >
+    <div className="flex shrink-0 items-center gap-2 border-b border-amber-300/30 bg-amber-400/15 px-5 py-1.5 text-xs text-amber-100">
       <Eye className="size-3.5" />
       {onExit ? 'Viewing as' : 'Preview · Viewing as'}
       <PreviewPersonPicker dashboard={dashboard} person={person} onChange={onPersonChange} onGrantAccess={onGrantAccess} />
