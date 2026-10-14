@@ -90,7 +90,7 @@ function DashboardDetail({ dashboard }: { dashboard: Dashboard }) {
           dashboard={dashboard}
           headerActions={<DashboardIconActions {...actionProps} />}
           addDatasetFlow={ADD_DATASET_FLOW[builderVersion]}
-          settingsPlacement={SETTINGS_PLACEMENT[builderVersion]}
+          settingsPlacement={builderVersion === 'v3' && panelLayout === 'settings-bottom' ? 'bottom' : SETTINGS_PLACEMENT[builderVersion]}
           panelLayout={builderVersion === 'v3' ? panelLayout : 'layered'}
           badge={badge}
           readOnly={readOnly}

@@ -86,7 +86,8 @@ type DashboardBuilderV2Props = {
   onShare?: (invitee: string) => void
   /**
    * Production flow (V3): where the canvas tools, widget settings and chat sit. `layered` stacks settings over the chat on the right,
-   * `tools-left` also docks the toolbar as a left rail, and `settings-left` / `chat-left` split settings and chat across both sides.
+   * `tools-left` also docks the toolbar as a left rail, `settings-left` / `chat-left` split settings and chat across both sides, and
+   * `chat-left-select` is `chat-left` with settings only while something is selected. `settings-bottom` is handled by the caller through `settingsPlacement`.
    */
   panelLayout?: PanelLayout
 }
@@ -159,8 +160,10 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const fixedFilterStyle = useFixedFilterStyle()
   const sourceDialogs = productionFlow && !governed
   const bottomSettings = productionFlow && settingsPlacement === 'bottom'
-  const docked = productionFlow && (panelLayout === 'settings-left' || panelLayout === 'chat-left')
-  const chatOnLeft = docked && panelLayout === 'chat-left'
+  const docked = productionFlow && (panelLayout === 'settings-left' || panelLayout === 'chat-left' || panelLayout === 'chat-left-select')
+  const chatOnLeft = docked && panelLayout !== 'settings-left'
+  /** E only opens settings for a selection, so selecting reflows the canvas; C and D keep the column docked. */
+  const pinnedSettings = panelLayout !== 'chat-left-select'
   const layeredSettings = settingsPlacement === 'side' && !docked
   const asViewer = readOnly || previewing
   const pages = useDashboardPages(dashboard, asViewer, () => setSelectedId(null))
@@ -409,7 +412,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
       onViewGraph={viewChatGraph}
     />
   )
-  const dockedSettings = docked && showSettings && (
+  const dockedSettings = docked && showSettings && (settingsPanel || pinnedSettings) && (
     <DockedColumn label="Widget settings" resize={chatOnLeft ? sidePanel : leftPanel}>
       {settingsPanel ?? <SettingsEmptyState />}
     </DockedColumn>

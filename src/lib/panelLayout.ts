@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export const PANEL_LAYOUTS = ['layered', 'tools-left', 'settings-left', 'chat-left'] as const
+export const PANEL_LAYOUTS = ['layered', 'tools-left', 'settings-left', 'chat-left', 'chat-left-select', 'settings-bottom'] as const
 export type PanelLayout = (typeof PANEL_LAYOUTS)[number]
 
 export const PANEL_LAYOUT_LABELS: Record<PanelLayout, string> = {
@@ -8,6 +8,8 @@ export const PANEL_LAYOUT_LABELS: Record<PanelLayout, string> = {
   'tools-left': 'B · Tools on the left',
   'settings-left': 'C · Settings left, chat right',
   'chat-left': 'D · Chat left, settings right',
+  'chat-left-select': 'E · Chat left, settings on select',
+  'settings-bottom': 'F · Chat right, settings at bottom',
 }
 
 const STORAGE_KEY = 'insights-prototype.panel-layout'
