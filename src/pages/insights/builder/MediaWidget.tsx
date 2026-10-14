@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { Image } from 'lucide-react'
+import { Image, ImageOff } from 'lucide-react'
 import { useDashboards } from '../../../data/DashboardsStore'
 import type { CanvasItem, MediaFile, MediaKind } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
@@ -48,6 +48,29 @@ function mediaFromUrl(text: string): MediaFile | string {
   return { name: decodeURIComponent(url.pathname.split('/').filter(Boolean).at(-1) ?? url.hostname), kind: kindFromUrl(url), url: url.href }
 }
 
+const UNREACHABLE_LINK = "Couldn't load media from that link. Use a direct link to the file, like one ending in .png or .jpg."
+
+/** Most pasted links are web pages, not files; loading the link first keeps a broken image off the canvas. */
+function canLoad(media: MediaFile): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (media.kind === 'pdf') return resolve(true)
+    const probe = media.kind === 'image' ? new window.Image() : document.createElement('video')
+    const done = (ok: boolean) => {
+      clearTimeout(timer)
+      resolve(ok)
+    }
+    const timer = setTimeout(() => done(false), 10000)
+    probe.onerror = () => done(false)
+    if (probe instanceof HTMLVideoElement) {
+      probe.preload = 'metadata'
+      probe.onloadedmetadata = () => done(true)
+    } else {
+      probe.onload = () => done(probe.naturalWidth > 0)
+    }
+    probe.src = media.url
+  })
+}
+
 type MediaWidgetProps = { dashboardId: string; item: MediaItem; title: string; readOnly: boolean }
 
 /** An image, PDF or video on the canvas; until a file is added, editors see a drop zone and viewers see nothing to load. */
@@ -73,13 +96,24 @@ export function MediaWidget({ dashboardId, item, title, readOnly }: MediaWidgetP
 
 /** While editing, PDFs and videos ignore the pointer so the block can still be selected and dragged. */
 function MediaView({ media, interactive }: { media: MediaFile; interactive: boolean }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (failedUrl === media.url) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4 text-center">
+        <ImageOff className="size-6 text-[var(--dash-muted)]" strokeWidth={1.5} aria-hidden />
+        <p className="text-sm text-[var(--dash-fg)]">This media couldn't be loaded</p>
+        <p className="max-w-full truncate text-xs text-[var(--dash-muted)]">{media.name}</p>
+      </div>
+    )
+  }
+  const fail = () => setFailedUrl(media.url)
   switch (media.kind) {
     case 'image':
-      return <img src={media.url} alt={media.name} draggable={false} className="size-full object-contain" />
+      return <img src={media.url} alt={media.name} draggable={false} onError={fail} className="size-full object-contain" />
     case 'pdf':
       return <iframe src={media.url} title={media.name} className={cn('size-full bg-white', !interactive && 'pointer-events-none')} />
     case 'video':
-      return <video src={media.url} controls={interactive} className={cn('size-full object-contain', !interactive && 'pointer-events-none')} />
+      return <video src={media.url} controls={interactive} onError={fail} className={cn('size-full object-contain', !interactive && 'pointer-events-none')} />
     default: {
       const unhandled: never = media.kind
       return unhandled
@@ -93,6 +127,18 @@ export function MediaDropZone({ onAdd }: { onAdd: (media: MediaFile) => void }) 
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [checking, setChecking] = useState(false)
+
+  const addLink = async () => {
+    const result = mediaFromUrl(url)
+    if (typeof result === 'string') return setError(result)
+    setError(null)
+    setChecking(true)
+    const ok = await canLoad(result)
+    setChecking(false)
+    if (ok) onAdd(result)
+    else setError(UNREACHABLE_LINK)
+  }
 
   const accept = (result: MediaFile | string) => {
     if (typeof result === 'string') {
@@ -139,7 +185,7 @@ export function MediaDropZone({ onAdd }: { onAdd: (media: MediaFile) => void }) 
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            accept(mediaFromUrl(url))
+            if (!checking) void addLink()
           }}
           className="flex w-full max-w-sm items-center gap-1.5"
         >
@@ -149,11 +195,14 @@ export function MediaDropZone({ onAdd }: { onAdd: (media: MediaFile) => void }) 
             autoFocus
             value={url}
             placeholder="https://"
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => {
+              setUrl(event.target.value)
+              setError(null)
+            }}
             className="h-8 min-w-0 flex-1 rounded-md border border-[var(--dash-border)] bg-transparent px-2.5 text-sm text-[var(--dash-fg)] outline-none placeholder:text-[var(--dash-faint)] focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <button type="submit" disabled={!url.trim()} className="h-8 cursor-pointer rounded-md bg-[var(--dash-fg)] px-3 text-xs font-medium text-[var(--dash-card)] disabled:cursor-default disabled:opacity-40">
-            Add
+          <button type="submit" disabled={!url.trim() || checking} className="h-8 cursor-pointer rounded-md bg-[var(--dash-fg)] px-3 text-xs font-medium text-[var(--dash-card)] disabled:cursor-default disabled:opacity-40">
+            {checking ? 'Checking…' : 'Add'}
           </button>
           <button
             type="button"
