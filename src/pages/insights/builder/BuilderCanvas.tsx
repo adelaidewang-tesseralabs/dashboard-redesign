@@ -85,8 +85,6 @@ type BuilderCanvasProps = {
   graphCatalog?: boolean
   /** The page `dashboard` shows; saved filters remember it. */
   pageId?: string
-  /** Owners and editors: they can delete or stop sharing anyone's shared saved filter, even while previewing. */
-  canManageSharedFilters?: boolean
   /** Final builder: viewers and previews keep Ask AI and Summarize page where the edit toolbar sits. */
   viewerToolbar?: boolean
   /** A chat reply arrived while the chat was closed. */
@@ -95,7 +93,7 @@ type BuilderCanvasProps = {
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, canManageSharedFilters = false, viewerToolbar = false, chatUnread = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, viewerToolbar = false, chatUnread = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const roleStandIn = useFilterViewer(dashboard)
@@ -255,7 +253,6 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 }
                 onResetPersonal={overrides.length ? () => personal.reset(overrides) : undefined}
                 pageId={pageId}
-                canManageShared={canManageSharedFilters}
                 viewer={filterViewer}
               />
             )}

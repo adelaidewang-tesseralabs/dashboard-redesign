@@ -18,15 +18,13 @@ type ViewerSavedFiltersProps = {
   pageId?: string
   /** Whose saved filters these are: the signed-in person, or whoever the prototype stands in for. */
   viewer: string
-  /** Owners and editors, even while previewing: they can delete or stop sharing anyone's shared filter. */
-  canManageShared: boolean
   onApplyValues: (values: Record<string, string[]>) => void
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
 /** Saved filters, in viewer mode only: each person's own named picks, which they can share with everyone on the dashboard. */
-export function ViewerSavedFilters({ dashboard, filters, presets, pageId, viewer, canManageShared, onApplyValues }: ViewerSavedFiltersProps) {
+export function ViewerSavedFilters({ dashboard, filters, presets, pageId, viewer, onApplyValues }: ViewerSavedFiltersProps) {
   const { addSavedFilter, removeSavedFilter, updateSavedFilter } = useDashboards()
   const toast = useToast()
   const [appliedId, setAppliedId] = useState<string | null>(null)
@@ -88,7 +86,8 @@ export function ViewerSavedFilters({ dashboard, filters, presets, pageId, viewer
         },
         onDelete: () => remove(savedFilter),
       }
-    if (canManageShared && savedFilter.shared)
+    // Besides its creator, only the dashboard's owner moderates a shared filter; editors don't.
+    if (viewer === dashboard.owner && savedFilter.shared)
       return {
         onStopSharing: () => setShared(savedFilter, false),
         onDelete: () => remove(savedFilter),

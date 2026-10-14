@@ -616,7 +616,6 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 pageMove={final && !asViewer ? pageMove : undefined}
                 presetFilters={final}
                 pageId={pages.activeId}
-                canManageSharedFilters={!readOnly}
                 emptyStart={final}
                 graphCatalog={final}
                 viewerToolbar={final && asViewer}
