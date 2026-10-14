@@ -71,14 +71,19 @@ function canLoad(media: MediaFile): Promise<boolean> {
   })
 }
 
-type MediaWidgetProps = { dashboardId: string; item: MediaItem; title: string; readOnly: boolean }
+type MediaWidgetProps = { dashboardId: string; item: MediaItem; title: string; subtitle?: string; readOnly: boolean }
 
 /** An image, PDF or video on the canvas; until a file is added, editors see a drop zone and viewers see nothing to load. */
-export function MediaWidget({ dashboardId, item, title, readOnly }: MediaWidgetProps) {
+export function MediaWidget({ dashboardId, item, title, subtitle, readOnly }: MediaWidgetProps) {
   const { updateWidget } = useDashboards()
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg bg-[var(--dash-card)]">
-      {title && <h4 className="shrink-0 truncate px-4 pt-3 pb-2 text-sm font-medium text-[var(--dash-fg)]">{title}</h4>}
+      {(title || subtitle) && (
+        <div className="shrink-0 px-4 pt-3 pb-2">
+          {title && <h4 className="truncate text-sm font-medium text-[var(--dash-fg)]">{title}</h4>}
+          {subtitle && <p className="truncate text-xs text-[var(--dash-muted)]">{subtitle}</p>}
+        </div>
+      )}
       <div className="min-h-0 flex-1">
         {item.media ? (
           <MediaView media={item.media} interactive={readOnly} />
