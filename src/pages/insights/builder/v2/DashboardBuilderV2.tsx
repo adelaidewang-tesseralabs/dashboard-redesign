@@ -138,6 +138,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const previewAs = final ? (finalPreview ? (previewPerson ?? CURRENT_USER) : null) : previewPerson
   const previewing = previewAs !== null
   const chat = useBuilderChat(dashboard, planFromCatalog, final && (readOnly || previewing))
+  /** How many chat messages there were when the page last became empty. */
+  const [emptySince, setEmptySince] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('ai')
   const [addRequest, setAddRequest] = useState<AddDatasetRequest | null>(null)
@@ -407,8 +409,13 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   const dataChatOpen = view === 'data' && !asViewer && !lineage && chat.chatOpen && !historyShown
   /** Final keeps the chat on the canvas for viewers and previews too, answering about the data rather than editing. */
   const canvasChatAllowed = showSettings || (final && asViewer && !historyShown)
-  const canvasChatOpen = canvasChatAllowed && chat.chatOpen && (productionFlow || !(selected && editMode === 'manual'))
-  const chatRail = final && !chat.chatOpen && !historyShown && (view === 'canvas' || !asViewer)
+  // The empty canvas has its own chat box. A new message brings the panel back, so a reply that adds nothing still shows.
+  const emptyCanvas = final && view === 'canvas' && !asViewer && !historyShown && !page.widgets?.length && !page.groups?.length
+  if (emptyCanvas && emptySince === null) setEmptySince(chat.messages.length)
+  if (!emptyCanvas && emptySince !== null) setEmptySince(null)
+  const chatHidden = emptyCanvas && chat.messages.length === (emptySince ?? chat.messages.length)
+  const canvasChatOpen = canvasChatAllowed && chat.chatOpen && !chatHidden && (productionFlow || !(selected && editMode === 'manual'))
+  const chatRail = final && !chat.chatOpen && !historyShown && !chatHidden && (view === 'canvas' || !asViewer)
   const chatShowing = dataChatOpen || canvasChatOpen
   if (!chatShowing && listReopened) setListReopened(false)
   const activeDataset = datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0]

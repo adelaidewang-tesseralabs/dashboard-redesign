@@ -82,7 +82,7 @@ type BuilderCanvasProps = {
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
   const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false } = props
-  const { removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
+  const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const personal = usePersonalFilters(dashboard.id, !previewing)
   useUndoShortcuts(readOnly ? undefined : dashboard.id)
@@ -142,6 +142,12 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
     onSelect(summary.id)
     setRevealId(summary.id)
   }
+  const addText = () => {
+    const item = textItem()
+    requestTextEdit(item.id)
+    addItem(item)
+  }
+  const undoChange = canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined
   const theme = useResolvedAppearance(dashboard.appearance)
   const fullScreenTools = fullScreenToolbar && !readOnly
   /** `expandedId`: the graph filling the canvas, which opening Tessera AI aims the chat at. */
@@ -164,17 +170,13 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
       onAddSource={onAddSource}
       onOpenAddSource={onOpenAddSource}
       onAddWidget={addItem}
-      onAddText={() => {
-        const item = textItem()
-        requestTextEdit(item.id)
-        addItem(item)
-      }}
+      onAddText={addText}
       onAddSummary={summaries ? addSummary : undefined}
       onAddFilter={setAddingFilter}
       presetFiltersOnly={presetFilters}
       onAddMedia={() => addItem(mediaItem())}
       onAddSection={sections ? addSection : undefined}
-      onUndo={canUndo(dashboard.id) ? () => undo(dashboard.id) : undefined}
+      onUndo={undoChange}
       onRedo={canRedo(dashboard.id) ? () => redo(dashboard.id) : undefined}
       appearance={dashboard.appearance ?? 'dark'}
       onAppearanceChange={(appearance) => setAppearance(dashboard.id, appearance)}
@@ -239,6 +241,10 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                 onAdd={addItem}
                 onAddSource={onAddSource}
                 onOpenAddSource={onOpenAddSource}
+                dashboardWidgets={dashboards.find((entry) => entry.id === dashboard.id)?.widgets ?? []}
+                onAddText={addText}
+                onAddMedia={() => addItem(mediaItem())}
+                onUndo={undoChange}
               />
             ) : empty ? (
               <CanvasHero onPrompt={chat.send} sources={sources} onAdd={onAdd} onAddSource={onAddSource} onOpenData={onOpenData} />
