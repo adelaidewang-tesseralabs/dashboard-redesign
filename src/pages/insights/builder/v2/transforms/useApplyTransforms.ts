@@ -22,12 +22,13 @@ export function useApplyTransforms(dashboard: Dashboard, transformDrafts: Transf
   const { setDatasetTransforms, updateWidgets } = useDashboards()
   const toast = useToast()
 
-  return (datasetKey: string, datasetLabel: string, transforms: DatasetTransforms) => {
+  /** `silent` skips the toast, for edits that apply as they're made. */
+  return (datasetKey: string, datasetLabel: string, transforms: DatasetTransforms, { silent = false } = {}) => {
     setDatasetTransforms(dashboard.id, datasetKey, transformCount(transforms) > 0 ? transforms : undefined)
     transformDrafts.setDraft(datasetKey, null)
     const graphs = datasetUsage(dashboard.widgets ?? [], datasetKey).filter(isGraph)
     const trimmed = withoutMovedFilters(graphs, transforms)
     if (trimmed.length > 0) updateWidgets(dashboard.id, trimmed)
-    toast(graphs.length === 0 ? `Transforms saved to ${datasetLabel}` : `Applied to ${graphs.length === 1 ? '1 graph' : `${graphs.length} graphs`}`)
+    if (!silent) toast(graphs.length === 0 ? `Transforms saved to ${datasetLabel}` : `Applied to ${graphs.length === 1 ? '1 graph' : `${graphs.length} graphs`}`)
   }
 }
