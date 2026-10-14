@@ -74,7 +74,15 @@ export const isPageCopy = (candidate: DashboardFilter, filter: DashboardFilter) 
   candidate.id !== filter.id && !candidate.allPages && !candidate.fixed && candidate.datasetKey === filter.datasetKey && candidate.column === filter.column
 
 /** Values per filter id; a filter missing here goes back to all values when the saved filter is applied. */
-export type SavedFilter = { id: string; name: string; values: Record<string, string[]>; operators?: Record<string, PresetOperator>; createdBy: string }
+export type SavedFilter = {
+  id: string
+  name: string
+  values: Record<string, string[]>
+  operators?: Record<string, PresetOperator>
+  createdBy: string
+  /** Only its creator sees it unless they share it with everyone on the dashboard. */
+  shared?: boolean
+}
 
 export type PresetOperator = 'in' | 'eq' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte' | 'between'
 
@@ -123,7 +131,7 @@ export type Dashboard = {
   /** Section rows; their grid rows live in `layout` under the group id. */
   groups?: GraphGroup[]
   fieldLinks?: FieldLink[]
-  /** Final builder: named filter selections editors save for everyone to apply. */
+  /** Final builder: named filter selections anyone can save, privately or shared with everyone. */
   savedFilters?: SavedFilter[]
   /** Final builder: the run a workflow's outputs are read from, by workflow id, when it isn't the latest run. */
   pinnedRuns?: Record<string, string>
