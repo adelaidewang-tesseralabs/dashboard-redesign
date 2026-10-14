@@ -37,6 +37,7 @@ export function DashboardFormDialog({ open, dashboard, onClose, onSubmit }: Dash
     <Dialog
       open={open}
       onClose={onClose}
+      closeOnBackdrop={false}
       title={editing ? 'Dashboard details' : 'Create dashboard'}
       footer={
         <>

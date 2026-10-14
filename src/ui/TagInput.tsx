@@ -73,10 +73,11 @@ export function TagInput({ value, options, onChange, placeholder = 'Search or ad
     const onScroll = (event: Event) => {
       if (!popupRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', onPointer)
+    // Capture phase: dialogs stop mousedown from bubbling, which would hide clicks elsewhere in them.
+    document.addEventListener('mousedown', onPointer, true)
     window.addEventListener('scroll', onScroll, true)
     return () => {
-      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('mousedown', onPointer, true)
       window.removeEventListener('scroll', onScroll, true)
     }
   }, [open])

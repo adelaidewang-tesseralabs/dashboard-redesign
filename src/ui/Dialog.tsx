@@ -13,11 +13,13 @@ type DialogProps = {
   icon?: ReactNode
   /** `wide` matches the main app's "Add Foundry Source"; `lg` fits two-pane pickers such as the Foundry table browser. */
   size?: 'md' | 'wide' | 'lg'
+  /** Forms with typed input turn this off so a stray click outside doesn't discard it. */
+  closeOnBackdrop?: boolean
 }
 
 const SIZE_CLASS = { md: 'max-w-lg', wide: 'max-w-2xl', lg: 'max-w-4xl' } as const
 
-export function Dialog({ open, onClose, title, description, children, footer, icon, size = 'md' }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, icon, size = 'md', closeOnBackdrop = true }: DialogProps) {
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -28,7 +30,7 @@ export function Dialog({ open, onClose, title, description, children, footer, ic
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={closeOnBackdrop ? onClose : undefined}>
       <div
         role="dialog"
         aria-modal
