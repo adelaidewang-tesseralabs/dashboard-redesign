@@ -96,7 +96,7 @@ export function GraphToolbar({ label, actions, view, onComment }: GraphToolbarPr
         actions={actions}
         view={view}
         viewInMenu={folded}
-        openInMenu={final}
+        downloadOnly={final}
         onAskAi={folded && onComment ? () => setAskOpen(true) : undefined}
       />
     </div>

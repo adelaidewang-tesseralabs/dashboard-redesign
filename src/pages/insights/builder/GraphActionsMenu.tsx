@@ -24,7 +24,7 @@ export type WidgetActions = {
   }
 }
 
-/** Graphs only. Viewers get full screen, copy link and downloads; lineage and the dataset are for owners and editors. */
+/** Graphs only. Viewers get full screen, copy link (not in Final) and downloads; lineage and the dataset are for owners and editors. */
 export type GraphViewActions = {
   fullScreen: { open: boolean; onToggle: () => void }
   onCopyLink: () => void
@@ -41,8 +41,8 @@ type GraphActionsMenuProps = {
   view?: GraphViewActions
   /** Narrow cards drop the full screen, copy link and download buttons, so the menu carries them instead. */
   viewInMenu?: boolean
-  /** Final builder: the header keeps only download, so full screen and copy link always live in the menu. */
-  openInMenu?: boolean
+  /** Final builder: no full screen or copy link anywhere, so download is the only viewing action. */
+  downloadOnly?: boolean
   /** Set when the Ask AI button is folded into the menu too. */
   onAskAi?: () => void
 }
@@ -52,9 +52,9 @@ export const graphToolButtonClass =
   'flex size-6 cursor-pointer items-center justify-center rounded text-[var(--dash-faint)] hover:bg-[var(--dash-canvas)] hover:text-[var(--dash-fg)] data-popover-open:bg-[var(--dash-canvas)] data-popover-open:text-[var(--dash-fg)]'
 
 /** The "…" on a canvas item. Editing actions also have shortcuts: ⌘C / ⌘V duplicates, ⌘ Delete removes. */
-export function GraphActionsMenu({ label, actions, view, viewInMenu = false, openInMenu = false, onAskAi }: GraphActionsMenuProps) {
+export function GraphActionsMenu({ label, actions, view, viewInMenu = false, downloadOnly = false, onAskAi }: GraphActionsMenuProps) {
   const askAi: MenuEntry[] = onAskAi ? [{ label: 'Ask AI', Icon: Sparkles, onSelect: onAskAi }] : []
-  const items = joinGroups([askAi, menuItems(actions, view, viewInMenu, openInMenu)])
+  const items = joinGroups([askAi, menuItems(actions, view, viewInMenu, downloadOnly)])
   if (items.length === 0) return null
   return (
     <Menu
@@ -80,14 +80,17 @@ function joinGroups(groups: MenuEntry[][]): MenuEntry[] {
   return groups.filter((group) => group.length > 0).flatMap((group, index) => (index ? [{ type: 'separator' } as const, ...group] : group))
 }
 
-function viewGroup(view: GraphViewActions | undefined): MenuEntry[] {
+function viewGroup(view: GraphViewActions | undefined, downloadOnly: boolean): MenuEntry[] {
   if (!view) return []
   const { fullScreen, onCopyLink, onDownloadCsv, onDownloadPng } = view
-  return [
+  const opening: MenuEntry[] = [
     fullScreen.open
       ? { label: 'Exit full screen', Icon: Minimize2, onSelect: fullScreen.onToggle }
       : { label: 'View full screen', Icon: Maximize2, onSelect: fullScreen.onToggle },
     { label: 'Copy link', Icon: Link2, onSelect: onCopyLink },
+  ]
+  return [
+    ...(downloadOnly ? [] : opening),
     {
       type: 'submenu',
       label: 'Download',
@@ -109,8 +112,8 @@ function dataGroup(view: GraphViewActions | undefined): MenuEntry[] {
   ]
 }
 
-function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined, viewInMenu: boolean, openInMenu: boolean): MenuEntry[] {
-  const opening = viewInMenu ? viewGroup(view) : openInMenu ? viewGroup(view).slice(0, 2) : []
+function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | undefined, viewInMenu: boolean, downloadOnly: boolean): MenuEntry[] {
+  const opening = viewInMenu ? viewGroup(view, downloadOnly) : []
   const data = dataGroup(view)
   if (!actions) return joinGroups([opening, data])
   const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove, moveToPage } = actions
