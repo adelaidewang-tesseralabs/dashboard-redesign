@@ -19,17 +19,39 @@ function builtOn(dataset: Dataset) {
   return table?.startsWith(`${PUBLISHED_CATALOG}.`) ? table : undefined
 }
 
-/** "Dashboard › Dataset" for a published table, under the dashboard's current name when it still exists. */
-export function publishedLabel(entry: PublishedDataset, dashboards: Dashboard[]) {
-  const dashboardName = dashboards.find((dashboard) => dashboard.id === entry.dashboardId)?.name ?? entry.dashboardName
-  return `${dashboardName} › ${entry.table.label}`
+/** "Folder › Dataset" for a published table. */
+export function publishedLabel(entry: PublishedDataset) {
+  return `${entry.folder} › ${entry.table.label}`
 }
 
 /** What the dataset's published copy will read from, e.g. "Linked copy of Vendor Master Data › Vendors". */
-export function linkedCopyNote(dataset: Dataset, published: PublishedDataset[], dashboards: Dashboard[]) {
+export function linkedCopyNote(dataset: Dataset, published: PublishedDataset[]) {
   const source = builtOn(dataset)
   const entry = source && published.find((candidate) => candidate.table.name === source)
-  return entry ? `Linked copy of ${publishedLabel(entry, dashboards)}` : undefined
+  return entry ? `Linked copy of ${publishedLabel(entry)}` : undefined
+}
+
+/** The dashboard's Foundry folder name: as published, or the dashboard's name before its first publish. */
+export function folderName(dashboard: Dashboard, published: PublishedDataset[]) {
+  return published.find((entry) => entry.dashboardId === dashboard.id)?.folder ?? dashboard.name
+}
+
+/** Folder names other dashboards already use, lowercased, so two folders never look the same in the catalog. */
+export function otherFolders(dashboard: Dashboard, published: PublishedDataset[]) {
+  return new Set(published.filter((entry) => entry.dashboardId !== dashboard.id).map((entry) => entry.folder.trim().toLowerCase()))
+}
+
+/** Each new dataset's name in the folder: its own label, suffixed "(2)", "(3)"… when the folder already has that name. */
+export function folderNames(fresh: Dataset[], dashboard: Dashboard, taken: Set<string>) {
+  const used = new Set(taken)
+  const names = new Map<string, string>()
+  for (const dataset of fresh) {
+    let name = dataset.label
+    for (let n = 2; used.has(publishedPath(dashboard.id, name)); n++) name = `${dataset.label} (${n})`
+    used.add(publishedPath(dashboard.id, name))
+    names.set(dataset.key, name)
+  }
+  return names
 }
 
 /** False once the dataset is removed from its dashboard; its Foundry copy stays for whoever uses it. */
@@ -55,10 +77,10 @@ export function takenPaths(dashboard: Dashboard, published: PublishedDataset[]) 
 }
 
 /**
- * The dataset's current result as a Foundry table named `name`, or null when its query fails. Updating keeps the
- * `previous` path, name and first publish.
+ * The dataset's current result as a Foundry table named `name` in `folder`, or null when its query fails. Updating
+ * keeps the `previous` path, name and first publish.
  */
-export function toPublished(dataset: Dataset, dashboard: Dashboard, name: string, previous?: PublishedDataset): PublishedDataset | null {
+export function toPublished(dataset: Dataset, dashboard: Dashboard, folder: string, name: string, previous?: PublishedDataset): PublishedDataset | null {
   const result = datasetResult(dataset, dashboard)
   if (!result.ok) return null
   const fields: DataField[] = graphColumns(dataset, result).map(({ key, label }) => {
@@ -76,7 +98,7 @@ export function toPublished(dataset: Dataset, dashboard: Dashboard, name: string
     },
     view: datasetView(dataset, dashboard),
     dashboardId: dashboard.id,
-    dashboardName: previous?.dashboardName ?? dashboard.name,
+    folder,
     datasetKey: dataset.key,
     builtOn: builtOn(dataset),
     publishedAt: previous?.publishedAt ?? now,

@@ -5,50 +5,57 @@ import { useToast } from '../../../../ui/Toast'
 import type { FoundryAction, FoundrySummary } from './DatasetList'
 import { datasetResult, type Dataset } from './datasets'
 import { PublishDatasetsDialog } from './PublishDatasetsDialog'
-import { linkedCopyNote, publishStates, takenPaths, toPublished } from './publishDatasets'
+import { folderName, folderNames, linkedCopyNote, otherFolders, publishStates, takenPaths, toPublished } from './publishDatasets'
 
 const count = (n: number) => (n === 1 ? '1 dataset' : `${n} datasets`)
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 /** Final builder's Data tab: publishes the dashboard to Foundry as one folder of all its datasets, and keeps it in sync. */
 export function useFoundryPublishing(dashboard: Dashboard, datasets: Dataset[]) {
-  const { dashboards, published, publishDatasets } = useDashboards()
+  const { published, publishDatasets } = useDashboards()
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const states = publishStates(datasets, dashboard, published)
   const fresh = datasets.filter((dataset) => !states.has(dataset.key))
   const changed = datasets.filter((dataset) => states.get(dataset.key)?.changed)
-  const folder = `Foundry › Dashboards › ${dashboard.name}`
+  const folder = folderName(dashboard, published)
+  const names = folderNames(fresh, dashboard, takenPaths(dashboard, published))
   const firstPublish = states.size === 0
 
-  /** Publishes `names` (the new datasets' Foundry names) and updates every changed dataset, all or nothing. */
-  const sync = (names: Map<string, string>) => {
+  /** Publishes the new datasets and updates the changed ones, all or nothing; renaming the folder renames it for every table in it. */
+  const sync = (nextFolder: string) => {
     const broken = [...fresh, ...changed].find((dataset) => !datasetResult(dataset, dashboard).ok)
     if (broken) {
       toast(`Fix the query in ${broken.label} to ${firstPublish ? 'publish' : 'update'} Foundry`)
       return
     }
-    const entries = [
+    const synced = [
       ...changed.map((dataset) => {
         const previous = states.get(dataset.key)?.entry
-        return previous && toPublished(dataset, dashboard, previous.table.label, previous)
+        return previous && toPublished(dataset, dashboard, nextFolder, previous.table.label, previous)
       }),
-      ...fresh.map((dataset) => toPublished(dataset, dashboard, names.get(dataset.key) ?? dataset.label)),
+      ...fresh.map((dataset) => toPublished(dataset, dashboard, nextFolder, names.get(dataset.key) ?? dataset.label)),
     ].filter((entry) => entry != null)
-    publishDatasets(entries)
+    const syncedPaths = new Set(synced.map((entry) => entry.table.name))
+    const renamed =
+      nextFolder === folder
+        ? []
+        : published.filter((entry) => entry.dashboardId === dashboard.id && !syncedPaths.has(entry.table.name)).map((entry) => ({ ...entry, folder: nextFolder }))
+    publishDatasets([...synced, ...renamed])
     setOpen(false)
-    toast(firstPublish ? `Published ${count(entries.length)} to ${folder}` : `Updated ${folder}`)
+    toast(firstPublish ? `Published ${count(synced.length)} to Foundry › Dashboards › ${nextFolder}` : `Updated Foundry › Dashboards › ${nextFolder}`)
   }
 
+  const location = `Foundry › Dashboards › ${folder}`
   const pending = [changed.length > 0 && `update ${count(changed.length)}`, fresh.length > 0 && `publish ${fresh.length} new`].filter(Boolean).join(' and ')
   const action: FoundryAction | undefined =
     datasets.length === 0
       ? undefined
       : firstPublish
-        ? { state: 'publish', hint: `Publish ${count(datasets.length)} to ${folder}`, onClick: () => setOpen(true) }
+        ? { state: 'publish', hint: `Publish ${count(datasets.length)} to ${location}`, onClick: () => setOpen(true) }
         : pending
-          ? { state: 'update', hint: `${sentence(pending)} in ${folder}`, onClick: () => (fresh.length > 0 ? setOpen(true) : sync(new Map())) }
-          : { state: 'published', hint: `Every dataset is up to date in ${folder}`, onClick: () => undefined }
+          ? { state: 'update', hint: `${sentence(pending)} in ${location}`, onClick: () => setOpen(true) }
+          : { state: 'published', hint: `Every dataset is up to date in ${location}`, onClick: () => undefined }
 
   const summary: FoundrySummary = {
     statusFor: (dataset) => {
@@ -62,11 +69,12 @@ export function useFoundryPublishing(dashboard: Dashboard, datasets: Dataset[]) 
   const dialog = open && (
     <PublishDatasetsDialog
       dashboard={dashboard}
-      fresh={fresh}
+      folder={folder}
+      otherFolders={otherFolders(dashboard, published)}
+      fresh={fresh.map((dataset) => ({ dataset, name: names.get(dataset.key) ?? dataset.label }))}
       changed={changed}
       firstPublish={firstPublish}
-      taken={takenPaths(dashboard, published)}
-      noteFor={(dataset) => linkedCopyNote(dataset, published, dashboards)}
+      noteFor={(dataset) => linkedCopyNote(dataset, published)}
       onClose={() => setOpen(false)}
       onPublish={sync}
     />

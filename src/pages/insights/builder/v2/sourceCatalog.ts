@@ -13,15 +13,12 @@ export const UPLOADS_KEY = 'uploads'
 
 const leaf = (table: DataObject): CatalogNode => ({ key: table.name, label: table.label, kind: table.origin ?? 'mosaic', table })
 
-/**
- * Final builder: datasets published from dashboards, one folder per dashboard. A dashboard that's since been renamed
- * shows its current name; one that's been deleted keeps the name it had when it published.
- */
+/** Final builder: datasets published from dashboards, one folder per dashboard under the name it was published with. */
 export type FinalCatalog = { published: PublishedDataset[]; dashboards: Dashboard[] }
 
 function publishedLeaf(entry: PublishedDataset, { published, dashboards }: FinalCatalog): CatalogNode {
   const source = entry.builtOn && published.find((candidate) => candidate.table.name === entry.builtOn)
-  const meta = !onItsDashboard(entry, dashboards) ? 'No longer on the dashboard' : source ? `Built on ${publishedLabel(source, dashboards)}` : undefined
+  const meta = !onItsDashboard(entry, dashboards) ? 'No longer on the dashboard' : source ? `Built on ${publishedLabel(source)}` : undefined
   return { ...leaf(entry.table), meta }
 }
 
@@ -36,7 +33,7 @@ function dashboardsCatalog(final: FinalCatalog): CatalogNode[] {
       kind: 'catalog',
       children: [...folders].map(([id, entries]) => ({
         key: `foundry.dashboards.${id}`,
-        label: final.dashboards.find((dashboard) => dashboard.id === id)?.name ?? entries[0].dashboardName,
+        label: entries[0].folder,
         kind: 'schema',
         children: entries.map((entry) => publishedLeaf(entry, final)),
       })),

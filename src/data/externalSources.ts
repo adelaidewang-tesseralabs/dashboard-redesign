@@ -108,13 +108,14 @@ export const PUBLISHED_CATALOG = 'dashboards'
 /** What a published table runs: the dataset's query with its dataset-level calculations, filters and result shape. */
 export type PublishedView = { sql: string; transforms?: DatasetTransforms }
 
-/** A dashboard dataset published to Foundry. It outlives the dashboard, so it keeps the dashboard's name from publish time. */
+/** A dashboard dataset published to Foundry. It outlives the dashboard. */
 export type PublishedDataset = {
   table: DataObject
   /** As of the last publish or update; the dashboard's copy can move on until it's updated again. */
   view: PublishedView
   dashboardId: string
-  dashboardName: string
+  /** The dashboard's folder under Foundry › Dashboards. Named when publishing and renamed only from the publish dialog, not by renaming the dashboard. */
+  folder: string
   datasetKey: string
   /** Set when the dataset reads another published dashboard table: this copy follows that table's updates. */
   builtOn?: string
