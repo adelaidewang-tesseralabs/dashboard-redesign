@@ -1,7 +1,8 @@
 import { Pin, Sparkles } from 'lucide-react'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import type { SummaryItem } from '../../../data/widgets'
+import type { CanvasItem, SummaryItem } from '../../../data/widgets'
+import { useToast } from '../../../ui/Toast'
 import { summarizePage, summaryBasis } from './pageSummary'
 import { TextWidget } from './TextWidget'
 
@@ -20,24 +21,49 @@ export function SummaryText({ dashboard, item, title, readOnly, selected }: Summ
   const { updateWidget } = useDashboards()
   const story = summarizePage(dashboard) ?? NO_GRAPHS
   const basis = summaryBasis(dashboard)
-  const saveText = (markdown: string) => updateWidget(dashboard.id, { ...item, markdown, summary: { basis, edited: true } })
-  const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: true }
+  const { inline } = item.summary
+  const saveText = (markdown: string) => updateWidget(dashboard.id, { ...item, markdown, summary: { basis, edited: true, inline } })
+  const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: !inline, doubleClickToEdit: inline }
 
-  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={!readOnly} />} />
+  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={!readOnly && !inline} />} />
   const outdated = !readOnly && item.summary.basis !== basis
   return (
     <TextWidget
       {...props}
       item={item}
+      badge={inline && <AiSummaryLabel pinned={false} />}
       footer={
         outdated && (
           <OutdatedNotice
-            onReplace={() => updateWidget(dashboard.id, { ...item, markdown: story, summary: { basis } })}
-            onKeep={() => updateWidget(dashboard.id, { ...item, summary: { basis, edited: true } })}
+            onReplace={() => updateWidget(dashboard.id, { ...item, markdown: story, summary: { basis, inline } })}
+            onKeep={() => updateWidget(dashboard.id, { ...item, summary: { basis, edited: true, inline } })}
           />
         )
       }
     />
+  )
+}
+
+/** Final builder: an empty text block can be filled with a summary of its page, which then sits wherever the block does. */
+export function GenerateSummaryButton({ dashboard, item }: { dashboard: Dashboard; item: Extract<CanvasItem, { source: 'text' }> }) {
+  const { updateWidget } = useDashboards()
+  const toast = useToast()
+  const generate = () => {
+    if (!summarizePage(dashboard)) {
+      toast('Add a graph to this page first')
+      return
+    }
+    updateWidget(dashboard.id, { ...item, markdown: '', summary: { basis: summaryBasis(dashboard), inline: true } })
+  }
+  return (
+    <button
+      type="button"
+      onClick={generate}
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--dash-border)] px-2.5 py-1 text-xs font-medium text-[var(--dash-fg)] hover:bg-white/10"
+    >
+      <Sparkles className="size-3.5 text-[var(--dash-selected)]" aria-hidden />
+      Generate AI summary
+    </button>
   )
 }
 

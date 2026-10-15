@@ -46,8 +46,9 @@ type Placement = { pageId?: string }
 /**
  * A text block Tessera AI writes from its page's graphs. Until someone edits it, its text is rewritten from the graphs
  * on every render; once `edited`, it keeps the person's text and offers a rewrite when the graphs no longer match `basis`.
+ * `inline` (Final builder): generated into an ordinary text block on the grid, instead of the summary pinned above it.
  */
-export type PageSummary = { basis: string; edited?: boolean }
+export type PageSummary = { basis: string; edited?: boolean; inline?: boolean }
 
 /** A widget on the canvas, keyed by where its data comes from. */
 export type CanvasItem = Presentation &
@@ -72,8 +73,8 @@ export const isGraph = (item: CanvasItem): item is GraphItem => item.source === 
 
 export type SummaryItem = Extract<CanvasItem, { source: 'text' }> & { summary: PageSummary }
 
-/** The page summary sits above the grid at its text's own height, so it has no grid rect. */
-export const isPageSummary = (item: CanvasItem): item is SummaryItem => item.source === 'text' && !!item.summary
+/** The page summary sits above the grid at its text's own height, so it has no grid rect. Inline summaries are on the grid. */
+export const isPageSummary = (item: CanvasItem): item is SummaryItem => item.source === 'text' && !!item.summary && !item.summary.inline
 
 export const DATA_CHECKS_TABLE = 'data_checks'
 

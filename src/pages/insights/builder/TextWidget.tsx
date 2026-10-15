@@ -28,6 +28,8 @@ type TextWidgetProps = {
   badge?: ReactNode;
   /** Pinned below the text. */
   footer?: ReactNode;
+  /** Offered to editors while the block has no text, e.g. a way to fill it. */
+  emptyAction?: ReactNode;
   /** Saves edited text in place of a plain update, for blocks that track who wrote them. */
   onSaveText?: (markdown: string) => void;
   /** Sized by its text, and the editor grows as you type, instead of filling a grid cell. */
@@ -66,6 +68,7 @@ export function TextWidget({
   selected,
   badge,
   footer,
+  emptyAction,
   onSaveText,
   fitContent = false,
   doubleClickToEdit = false,
@@ -247,6 +250,9 @@ export function TextWidget({
           <span className="pointer-events-none absolute right-2 bottom-2 rounded-full border border-[var(--dash-border)] bg-[var(--dash-card)] px-2 py-0.5 text-[11px] text-[var(--dash-muted)]">
             Double-click to edit
           </span>
+        )}
+        {emptyAction && !readOnly && !draft.trim() && (
+          <div className="shrink-0 px-4 pb-3">{emptyAction}</div>
         )}
         {footer}
       </div>

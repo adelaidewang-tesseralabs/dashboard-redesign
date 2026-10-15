@@ -19,6 +19,7 @@ import { FilterBar, type FilterKind } from './FilterBar'
 import { FullScreenContext, type CanvasFullScreen } from './fullScreen'
 import { PresetFilterBar } from './presetFilters/PresetFilterBar'
 import { summarizePage, summaryBasis } from './pageSummary'
+import { SummaryBanner } from './SummaryBanner'
 import { requestTextEdit } from './TextWidget'
 import { canvasRects, newSection, sectionRowAbove } from './sections'
 import { narrowedPicks } from './presetFilters/narrowPresets'
@@ -87,13 +88,15 @@ type BuilderCanvasProps = {
   pageId?: string
   /** Final builder: viewers and previews keep Ask AI and Summarize page where the edit toolbar sits. */
   viewerToolbar?: boolean
+  /** Final builder: Summarize page opens a summary banner. Held by the builder so it stays open, rewritten, across pages. */
+  summaryBanner?: { open: boolean; onOpenChange: (open: boolean) => void }
   /** A chat reply arrived while the chat was closed. */
   chatUnread?: boolean
 }
 
 /** Dot-grid canvas shared by both builder versions: hero or widget grid, and the floating toolbar. */
 export function BuilderCanvas(props: BuilderCanvasProps) {
-  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, viewerToolbar = false, chatUnread = false } = props
+  const { dashboard, chat, selectedId, onSelect, multiSelectedIds, onToggleSelect, sources, queries, sourcesLabel, datasetsFirst, datasetsOnly, onAdd, onAddSource, onOpenAddSource, onOpenData, drawer, readOnly = false, previewing = false, refreshing = false, onComment, onOpenHistory, crossHighlight = false, sections = false, summaries = false, fixedFilterStyle, fullScreenToolbar = false, aboveToolbar, toolbarPlacement = 'bottom', pageMove, presetFilters = false, emptyStart = false, graphCatalog = false, pageId, viewerToolbar = false, summaryBanner, chatUnread = false } = props
   const { dashboards, removeWidget, setLayout, setFilterValues, setAppearance, addGroup, insertWidget, undo, redo, canUndo, canRedo } = useDashboards()
   const toast = useToast()
   const roleStandIn = useFilterViewer(dashboard)
@@ -240,6 +243,9 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             }}
             className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
           >
+            {readOnly && summaryBanner?.open && (
+              <SummaryBanner dashboard={dashboard} filtered={(shown.filters ?? []).some((filter) => filter.values.length > 0)} onClose={() => summaryBanner.onOpenChange(false)} />
+            )}
             {widgets.some(isGraph) && presetFilters && (
               <PresetFilterBar
                 dashboard={shown}
@@ -340,7 +346,12 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                       chatOpen={chat.chatOpen}
                       unread={chatUnread}
                       onToggleChat={() => chat.setChatOpen((current) => !current)}
-                      onSummarize={() => chat.send('Summarize this page')}
+                      {...(summaryBanner
+                        ? {
+                            onSummarize: summarizePage(dashboard) ? () => summaryBanner.onOpenChange(!summaryBanner.open) : undefined,
+                            summaryOpen: summaryBanner.open,
+                          }
+                        : { onSummarize: () => chat.send('Summarize this page') })}
                     />
                   </div>
                 )}

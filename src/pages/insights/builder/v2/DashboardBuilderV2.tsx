@@ -131,6 +131,8 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
   /** The user opened the dataset list again while the chat had it collapsed. */
   const [listReopened, setListReopened] = useState(false)
   const [listCollapsedByUser, setListCollapsedByUser] = useState(false)
+  /** Final viewers' AI summary banner; not saved anywhere. */
+  const [summaryOpen, setSummaryOpen] = useState(false)
   /** The dataset whose "Using" chip the user cleared in the Data tab chat. */
   const [contextClearedKey, setContextClearedKey] = useState<string | null>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
@@ -586,7 +588,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 key={`${pages.activeId}:${previewing}:${previewedVersion?.id ?? ''}`}
                 dashboard={page}
                 sections={governed && !final}
-                summaries={governed}
+                summaries={governed && !final}
                 fixedFilterStyle={governed && !final ? fixedFilterStyle : undefined}
                 fullScreenToolbar={governed}
                 toolbarPlacement={productionFlow && panelLayout === 'tools-left' ? 'left' : 'bottom'}
@@ -619,6 +621,7 @@ export function DashboardBuilderV2(props: DashboardBuilderV2Props) {
                 emptyStart={final}
                 graphCatalog={final}
                 viewerToolbar={final && asViewer}
+                summaryBanner={final ? { open: summaryOpen, onOpenChange: setSummaryOpen } : undefined}
                 chatUnread={v3Panel.unread}
               />
             </PreviewPersonContext>

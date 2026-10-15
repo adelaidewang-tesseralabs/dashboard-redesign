@@ -6,6 +6,7 @@ import { runSql, type Cell as DataCell } from '../../../data/dataSources'
 import { withFilterFields } from '../../../data/filterFields'
 import { aggregateLabel, applyTransforms, defaultGraphValue, graphResult, type GraphQuery } from '../../../data/transforms'
 import { showsLegend, usesSingleColor, type CanvasItem } from '../../../data/widgets'
+import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { formatNumber } from '../../../lib/format'
 import { chartHighlight, type CrossHighlight } from './crossHighlight'
 import { dashboardRowFilters } from './dashboardFilters'
@@ -17,7 +18,7 @@ import { labelsOf, objectGraphQuery, type GraphColors } from './graphColors'
 import { MediaWidget } from './MediaWidget'
 import { usePreviewPerson } from './previewPerson'
 import { SourceChart } from './SourceChart'
-import { PinnedMark, SummaryText } from './SummaryText'
+import { GenerateSummaryButton, PinnedMark, SummaryText } from './SummaryText'
 import { TextWidget } from './TextWidget'
 import { useGraphView } from './useGraphView'
 import { sqlKey, tableKey } from './v2/datasets'
@@ -69,6 +70,7 @@ type WidgetBodyProps = Required<Pick<CanvasWidgetProps, 'dashboard' | 'item' | '
 
 function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors, onComment }: WidgetBodyProps) {
   const previewPerson = usePreviewPerson()
+  const final = useIsFinalBuilder()
   const title = displayTitle(item)
   const subtitle = displaySubtitle(item)
   const label = title || itemLabel(item)
@@ -92,8 +94,18 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       return withCornerMenu(<MediaWidget dashboardId={dashboard.id} item={item} title={title} subtitle={subtitle} readOnly={readOnly} />)
     case 'text': {
       const { summary } = item
-      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && <PinnedMark />)
-      return withCornerMenu(<TextWidget dashboardId={dashboard.id} item={item} title={title} readOnly={readOnly} selected={selected} doubleClickToEdit />)
+      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && !summary.inline && <PinnedMark />)
+      return withCornerMenu(
+        <TextWidget
+          dashboardId={dashboard.id}
+          item={item}
+          title={title}
+          readOnly={readOnly}
+          selected={selected}
+          doubleClickToEdit
+          emptyAction={final && <GenerateSummaryButton dashboard={dashboard} item={item} />}
+        />,
+      )
     }
     case 'object': {
       const resolved = resolveObjectItem(item)
