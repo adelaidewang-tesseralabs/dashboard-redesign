@@ -142,6 +142,8 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
   const picks = presetFilters ? narrowedPicks(viewerPage, personal.values) : personal.values
   const shown = readOnly ? withPersonalValues(viewerPage, picks) : dashboard
   const overrides = readOnly ? personalOverrides(viewerPage, picks) : []
+  /** A summary still written by AI says what the viewer's own summary would; one rewritten by hand may not. */
+  const pageHasAiSummary = (dashboard.widgets ?? []).some((item) => item.source === 'text' && !!item.summary && !item.summary.edited)
   const stale = readOnly && presetFilters ? staleOpenPicks(dashboard, fullDashboard, personal.values) : undefined
   const staleKey = stale?.filterIds.join('|') ?? ''
   useEffect(() => {
@@ -243,7 +245,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
             }}
             className="min-h-0 flex-1 overflow-auto bg-[var(--dash-canvas)] bg-[radial-gradient(var(--dash-dot)_1px,transparent_1px)] bg-size-[18px_18px]"
           >
-            {readOnly && summaryBanner?.open && (
+            {readOnly && summaryBanner?.open && !pageHasAiSummary && (
               <SummaryBanner dashboard={dashboard} filtered={(shown.filters ?? []).some((filter) => filter.values.length > 0)} onClose={() => summaryBanner.onOpenChange(false)} />
             )}
             {widgets.some(isGraph) && presetFilters && (
@@ -350,6 +352,7 @@ export function BuilderCanvas(props: BuilderCanvasProps) {
                         ? {
                             onSummarize: summarizePage(dashboard) ? () => summaryBanner.onOpenChange(!summaryBanner.open) : undefined,
                             summaryOpen: summaryBanner.open,
+                            hideSummarize: pageHasAiSummary,
                           }
                         : { onSummarize: () => chat.send('Summarize this page') })}
                     />
