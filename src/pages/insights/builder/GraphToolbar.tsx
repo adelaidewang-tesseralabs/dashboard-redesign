@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
-import { Download, Link2, Maximize2, Minimize2 } from 'lucide-react'
+import { Download, Link2, Maximize2, Minimize2, PinOff } from 'lucide-react'
 import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { Menu } from '../../../ui/Menu'
@@ -63,7 +63,7 @@ function useFoldedToolbar(ref: RefObject<HTMLElement | null>, buttonCount: numbe
 }
 
 /**
- * A canvas item's top-right icon buttons: Ask AI, copy link, download, full screen, then "…" for editing.
+ * A canvas item's top-right icon buttons: Ask AI, unpin, copy link, download, full screen, then "…" for editing.
  * It floats over the card's corner rather than taking width from the title.
  */
 export function GraphToolbar({ label, actions, view, onComment, askPlaceholder }: GraphToolbarProps) {
@@ -73,7 +73,8 @@ export function GraphToolbar({ label, actions, view, onComment, askPlaceholder }
   const pinned = view?.fullScreen.open
   // Final keeps download alone in the header; full screen still needs its exit button there.
   const viewButtons = view ? (final ? (pinned ? 2 : 1) : 3) : 0
-  const { folded, cardWidth } = useFoldedToolbar(rootRef, (onComment ? 1 : 0) + viewButtons + 1)
+  const unpin = actions?.pin?.pinned ? actions.pin.onToggle : undefined
+  const { folded, cardWidth } = useFoldedToolbar(rootRef, (onComment ? 1 : 0) + (unpin ? 1 : 0) + viewButtons + 1)
   return (
     // Clicks stay here so using the toolbar doesn't also select the graph underneath. Left out of PNG downloads.
     <div
@@ -91,6 +92,11 @@ export function GraphToolbar({ label, actions, view, onComment, askPlaceholder }
       )}
     >
       {onComment && <WidgetComment label={label} placeholder={askPlaceholder} onSubmit={onComment} open={askOpen} onOpenChange={setAskOpen} showTrigger={!folded} />}
+      {unpin && !folded && (
+        <button type="button" aria-label="Unpin" title="Unpin" onClick={unpin} className={graphToolButtonClass}>
+          <PinOff className="size-3.5" />
+        </button>
+      )}
       {view && !folded && <ViewButtons view={view} downloadOnly={final} />}
       <GraphActionsMenu
         label={label}

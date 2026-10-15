@@ -5,7 +5,7 @@ import { problemMessage, widgetProblem } from '../../../data/dataIssues'
 import { runSql, type Cell as DataCell } from '../../../data/dataSources'
 import { withFilterFields } from '../../../data/filterFields'
 import { aggregateLabel, applyTransforms, defaultGraphValue, graphResult, type GraphQuery } from '../../../data/transforms'
-import { showsLegend, usesSingleColor, type CanvasItem } from '../../../data/widgets'
+import { showsLegend, usesSingleColor, type CanvasItem, type GraphItem } from '../../../data/widgets'
 import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { formatNumber } from '../../../lib/format'
 import { chartHighlight, type CrossHighlight } from './crossHighlight'
@@ -74,18 +74,22 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
   const title = displayTitle(item)
   const subtitle = displaySubtitle(item)
   const label = title || itemLabel(item)
+  const pinnedMark = !readOnly && item.pinnedAt ? <PinnedMark /> : null
   const toolbar = (view?: GraphViewActions) => (
-    <div className="flex items-center gap-1">
-      {!readOnly && item.pinnedAt && <PinnedMark />}
-      <GraphToolbar label={label} actions={actions} view={view} onComment={onComment} askPlaceholder={readOnly ? 'Ask about this graph' : undefined} />
-    </div>
+    <GraphToolbar label={label} actions={actions} view={view} onComment={onComment} askPlaceholder={readOnly ? 'Ask about this graph' : undefined} />
   )
-  // Items without a chart header carry the toolbar in their top-right corner.
+  const graphBadge = (graph: GraphItem) => (
+    <>
+      <GraphFilterBadge dashboard={dashboard} item={graph} highlight={highlight} />
+      {pinnedMark}
+    </>
+  )
+  // Items without a chart header carry the toolbar in their top-right corner, and the pin mark beside it.
   const withCornerMenu = (body: ReactNode, leading?: ReactNode) => (
     <>
       {body}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-        {leading}
+        {leading || pinnedMark}
         {toolbar()}
       </div>
     </>
@@ -136,7 +140,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           legend={showsLegend(item)}
           highlight={chartHighlight(highlight, datasetKey, rows, field.key, query)}
           onSelectLabel={onHighlight && ((value) => onHighlight({ datasetKey, column: field.key, columnLabel: field.label, value }))}
-          badge={<GraphFilterBadge dashboard={dashboard} item={item} highlight={highlight} />}
+          badge={graphBadge(item)}
         />
       )
     }
@@ -168,7 +172,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           legend={showsLegend(item)}
           highlight={chartHighlight(highlight, datasetKey, rows, undefined, query)}
           onSelectLabel={onHighlight && labelColumn !== undefined ? (value) => onHighlight({ datasetKey, column: labelColumn, columnLabel: labelColumn, value }) : undefined}
-          badge={<GraphFilterBadge dashboard={dashboard} item={item} highlight={highlight} />}
+          badge={graphBadge(item)}
         />
       )
     }
