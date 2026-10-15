@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
+import type { PublishedDataset } from '../../../../data/externalSources'
 import { cn } from '../../../../lib/cn'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
@@ -17,6 +18,8 @@ type PublishDatasetsDialogProps = {
   fresh: { dataset: Dataset; name: string }[]
   /** Published datasets edited since, updated in the same go. */
   changed: Dataset[]
+  /** Published tables whose dataset left the dashboard, deleted from Foundry; `usedBy` names dashboards that read them. */
+  removed: { entry: PublishedDataset; usedBy: string[] }[]
   firstPublish: boolean
   /** Extra context under a dataset, e.g. that it's a linked copy of another dashboard's table. */
   noteFor: (dataset: Dataset) => string | undefined
@@ -27,7 +30,7 @@ type PublishDatasetsDialogProps = {
 const BROKEN = 'The query has an error. Fix it to publish.'
 
 /** Mount only while open, so each opening starts from the folder's current name. The name is only editable on the first publish. */
-export function PublishDatasetsDialog({ dashboard, folder, otherFolders, fresh, changed, firstPublish, noteFor, onClose, onPublish }: PublishDatasetsDialogProps) {
+export function PublishDatasetsDialog({ dashboard, folder, otherFolders, fresh, changed, removed, firstPublish, noteFor, onClose, onPublish }: PublishDatasetsDialogProps) {
   const [name, setName] = useState(folder)
   const broken = new Set([...fresh.map(({ dataset }) => dataset), ...changed].filter((dataset) => !datasetResult(dataset, dashboard).ok).map((dataset) => dataset.key))
   const folderError = !firstPublish
@@ -91,6 +94,17 @@ export function PublishDatasetsDialog({ dashboard, folder, otherFolders, fresh, 
               Changed since publishing · updates in Foundry
             </DatasetLine>
           ))}
+          {removed.map(({ entry, usedBy }) => (
+            <DatasetLine key={entry.table.name} icon={<Trash2 className="size-3.5 shrink-0 text-white/55" />} name={entry.table.label} error={false}>
+              <span className="block truncate">Removed from the dashboard · deleted from Foundry</span>
+              {usedBy.length > 0 && (
+                <span className="flex items-start gap-1 whitespace-normal text-amber-300">
+                  <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden />
+                  Used by {usedBy.join(', ')}. Its graphs from this table will stop working.
+                </span>
+              )}
+            </DatasetLine>
+          ))}
         </ul>
       </div>
     </Dialog>
@@ -103,7 +117,9 @@ function DatasetLine({ icon, name, error, children }: { icon: ReactNode; name: s
       <span className="pt-0.5">{icon}</span>
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-[13px] text-white">{name}</span>
-        <span className={cn('truncate text-xs', error ? 'text-red-300' : 'text-white/45')}>{error ? BROKEN : children}</span>
+        <span className={cn('flex min-w-0 flex-col text-xs', error ? 'text-red-300' : 'text-white/45')}>
+          {error ? BROKEN : typeof children === 'string' ? <span className="truncate">{children}</span> : children}
+        </span>
       </span>
     </li>
   )

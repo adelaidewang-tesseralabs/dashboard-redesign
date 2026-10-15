@@ -7,7 +7,7 @@ import { onItsDashboard, publishedLabel } from './publishDatasets'
 export type CatalogKind = SourceOrigin | 'catalog' | 'schema' | 'run'
 
 /** A folder or a table in the unified source browser. Folders carry `children`, tables carry `table`, run folders carry `workflow`. */
-export type CatalogNode = { key: string; label: string; kind: CatalogKind; meta?: string; children?: CatalogNode[]; table?: DataObject; workflow?: Workflow }
+export type CatalogNode = { key: string; label: string; kind: CatalogKind; meta?: string; warning?: string; children?: CatalogNode[]; table?: DataObject; workflow?: Workflow }
 
 export const UPLOADS_KEY = 'uploads'
 
@@ -18,8 +18,8 @@ export type FinalCatalog = { published: PublishedDataset[]; dashboards: Dashboar
 
 function publishedLeaf(entry: PublishedDataset, { published, dashboards }: FinalCatalog): CatalogNode {
   const source = entry.builtOn && published.find((candidate) => candidate.table.name === entry.builtOn)
-  const meta = !onItsDashboard(entry, dashboards) ? 'No longer on the dashboard' : source ? `Built on ${publishedLabel(source)}` : undefined
-  return { ...leaf(entry.table), meta }
+  const warning = onItsDashboard(entry, dashboards) ? undefined : 'This table is not used in the dashboard'
+  return { ...leaf(entry.table), meta: source ? `Built on ${publishedLabel(source)}` : undefined, warning }
 }
 
 function dashboardsCatalog(final: FinalCatalog): CatalogNode[] {

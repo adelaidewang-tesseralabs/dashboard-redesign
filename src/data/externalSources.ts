@@ -137,6 +137,10 @@ export function registerPublishedTables(entries: PublishedDataset[]) {
   for (const entry of entries) published.set(entry.table.name, entry)
 }
 
+export function unregisterPublishedTables(paths: string[]) {
+  for (const path of paths) published.delete(path)
+}
+
 export function publishedView(table: string): PublishedView | undefined {
   return published.get(table)?.view
 }

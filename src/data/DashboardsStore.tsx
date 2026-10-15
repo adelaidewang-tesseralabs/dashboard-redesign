@@ -19,7 +19,7 @@ import {
   type SqlDataset,
   isPageCopy,
 } from './dashboards'
-import { registerPublishedTables, type PublishedDataset } from './externalSources'
+import { registerPublishedTables, unregisterPublishedTables, type PublishedDataset } from './externalSources'
 import { dashboardPages, resolvePageId } from './pages'
 import type { DatasetTransforms } from './transforms'
 import { contentOf, recordVersion, restoreVersion, type DashboardContent } from './versions'
@@ -94,8 +94,12 @@ type DashboardsStore = {
   pinRun: (id: string, workflowId: string, runId: string | undefined) => void
   /** Datasets published to Foundry from any dashboard. Not dashboard content, so undo and version restore leave them. */
   published: PublishedDataset[]
+  /** Each dashboard's Foundry folder name, kept once named even if every table in it is removed. */
+  foundryFolders: Record<string, string>
   /** Adds datasets to Foundry, or updates ones already published at the same path. */
   publishDatasets: (entries: PublishedDataset[]) => void
+  /** Deletes these published tables from Foundry; datasets elsewhere that read them stop working. */
+  unpublishDatasets: (paths: string[]) => void
   restoreVersion: (id: string, versionId: string) => void
   /** Steps back or forward one content edit on the dashboard; undoing is itself saved as a version. */
   undo: (id: string) => void
@@ -106,7 +110,7 @@ type DashboardsStore = {
 
 /** Content before each edit (`past`, oldest first) and after each undo (`future`, next redo first), per dashboard, for this session. */
 type EditHistory = { past: DashboardContent[]; future: DashboardContent[] }
-type StoreState = { dashboards: Dashboard[]; history: Record<string, EditHistory>; published: PublishedDataset[] }
+type StoreState = { dashboards: Dashboard[]; history: Record<string, EditHistory>; published: PublishedDataset[]; foundryFolders: Record<string, string> }
 
 const MAX_UNDO = 100
 
@@ -216,8 +220,9 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
     dashboards: isNewUserState() ? SAMPLE_DASHBOARDS : [...DASHBOARDS, ...SAMPLE_DASHBOARDS],
     history: {},
     published: [],
+    foundryFolders: {},
   }))
-  const { dashboards, history, published } = state
+  const { dashboards, history, published, foundryFolders } = state
   const setDashboards = useCallback(
     (update: (current: Dashboard[]) => Dashboard[]) => setState((current) => ({ ...current, dashboards: update(current.dashboards) })),
     [],
@@ -344,10 +349,19 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
           }),
         ),
       published,
+      foundryFolders,
       publishDatasets: (entries) => {
         registerPublishedTables(entries)
         const paths = new Set(entries.map((entry) => entry.table.name))
-        setState((current) => ({ ...current, published: [...current.published.filter((entry) => !paths.has(entry.table.name)), ...entries] }))
+        setState((current) => ({
+          ...current,
+          published: [...current.published.filter((entry) => !paths.has(entry.table.name)), ...entries],
+          foundryFolders: { ...current.foundryFolders, ...Object.fromEntries(entries.map((entry) => [entry.dashboardId, entry.folder])) },
+        }))
+      },
+      unpublishDatasets: (paths) => {
+        unregisterPublishedTables(paths)
+        setState((current) => ({ ...current, published: current.published.filter((entry) => !paths.includes(entry.table.name)) }))
       },
       deleteDashboard: (id) => {
         setDashboards((current) => current.filter((dashboard) => dashboard.id !== id))
@@ -627,7 +641,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
       canUndo: (id) => (history[id]?.past.length ?? 0) > 0,
       canRedo: (id) => (history[id]?.future.length ?? 0) > 0,
     }
-  }, [dashboards, history, published, favorites, setFavorites, setContent, setDashboards])
+  }, [dashboards, history, published, foundryFolders, favorites, setFavorites, setContent, setDashboards])
 
   return <Context.Provider value={value}>{children}</Context.Provider>
 }

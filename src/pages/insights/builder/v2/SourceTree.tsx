@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CaseSensitive, Check, ChevronRight, Database, FolderClosed, FolderOpen, PlayCircle, Plus, Table2 } from 'lucide-react'
+import { CaseSensitive, Check, ChevronRight, Database, FolderClosed, FolderOpen, PlayCircle, Plus, Table2, TriangleAlert } from 'lucide-react'
 import type { DataObject } from '../../../../data/dataSources'
 import { cn } from '../../../../lib/cn'
 import { ORIGIN_META } from '../sourceKinds'
@@ -93,6 +93,11 @@ function TableNode({ node, table, depth, expanded, added, activeTable, onToggle,
         >
           <Table2 className="size-3.5 shrink-0 text-white/45" />
           <span className="min-w-0 truncate text-[13px] text-white/85">{node.label}</span>
+          {node.warning && (
+            <span title={node.warning} aria-label={node.warning} className="flex shrink-0">
+              <TriangleAlert className="size-3.5 text-amber-400" />
+            </span>
+          )}
           {node.meta && (
             <span title={node.meta} className="min-w-0 shrink-[3] truncate text-[11px] text-white/35">
               {node.meta}

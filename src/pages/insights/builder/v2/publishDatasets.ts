@@ -32,13 +32,25 @@ export function linkedCopyNote(dataset: Dataset, published: PublishedDataset[]) 
 }
 
 /** The dashboard's Foundry folder name: as published, or the dashboard's name before its first publish. */
-export function folderName(dashboard: Dashboard, published: PublishedDataset[]) {
-  return published.find((entry) => entry.dashboardId === dashboard.id)?.folder ?? dashboard.name
+export function folderName(dashboard: Dashboard, folders: Record<string, string>) {
+  return folders[dashboard.id] ?? dashboard.name
 }
 
 /** Folder names other dashboards already use, lowercased, so two folders never look the same in the catalog. */
-export function otherFolders(dashboard: Dashboard, published: PublishedDataset[]) {
-  return new Set(published.filter((entry) => entry.dashboardId !== dashboard.id).map((entry) => entry.folder.trim().toLowerCase()))
+export function otherFolders(dashboard: Dashboard, folders: Record<string, string>) {
+  return new Set(Object.entries(folders).flatMap(([id, folder]) => (id === dashboard.id ? [] : [folder.trim().toLowerCase()])))
+}
+
+/** The dashboard's published tables whose dataset has since been removed from it. */
+export function removedEntries(datasets: Dataset[], dashboard: Dashboard, published: PublishedDataset[]) {
+  return published.filter((entry) => entry.dashboardId === dashboard.id && !datasets.some((dataset) => dataset.key === entry.datasetKey))
+}
+
+/** Names of other dashboards with a dataset that reads this published table. */
+export function dashboardsUsing(entry: PublishedDataset, dashboards: Dashboard[]) {
+  return dashboards
+    .filter((dashboard) => dashboard.id !== entry.dashboardId && listDatasets(dashboard).some((dataset) => sqlTable(datasetSql(dataset)) === entry.table.name))
+    .map((dashboard) => dashboard.name)
 }
 
 /** Each new dataset's name in the folder: its own label, suffixed "(2)", "(3)"… when the folder already has that name. */
@@ -54,7 +66,7 @@ export function folderNames(fresh: Dataset[], dashboard: Dashboard, taken: Set<s
   return names
 }
 
-/** False once the dataset is removed from its dashboard; its Foundry copy stays for whoever uses it. */
+/** False once the dataset is removed from its dashboard; its Foundry copy stays until the dashboard next updates Foundry. */
 export function onItsDashboard(entry: PublishedDataset, dashboards: Dashboard[]) {
   const dashboard = dashboards.find((candidate) => candidate.id === entry.dashboardId)
   return !dashboard || listDatasets(dashboard).some((dataset) => dataset.key === entry.datasetKey)
