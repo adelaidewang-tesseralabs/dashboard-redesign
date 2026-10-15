@@ -179,7 +179,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
       : { dashboardId: dashboard.id, selected: widgets.find((item) => item.id === selectedId) ?? null, onPaste: insertCopy, onDelete: remove },
   )
 
-  const renderWidget = (item: CanvasItem, actions: WidgetActions, className?: string) => (
+  const renderWidget = (item: CanvasItem, actions: WidgetActions, className?: string, fitContent = false) => (
     <SelectableWidget
       selected={selectedId === item.id || !!multiSelectedIds?.has(item.id)}
       readOnly={readOnly}
@@ -197,6 +197,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
         highlight={highlight}
         onHighlight={onHighlight}
         colors={graphColors.get(item.id)}
+        fitContent={fitContent}
       />
     </SelectableWidget>
   )
@@ -254,10 +255,15 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     <div className="flex flex-col gap-3">
       {pinned.map((item) => {
         const rows = savedRect(item)?.h ?? itemSize(item).h
+        const hug = item.source === 'text'
         return (
-          // Raised so the text toolbar's dropdowns open over the blocks below.
-          <div key={item.id} style={{ height: rows * ROW_HEIGHT + (rows - 1) * GAP }} className="relative has-[[data-comment-open]]:z-20 has-[[data-editing]]:z-20 has-[[data-popover-open]]:z-20">
-            {renderWidget(item, actionsFor(item), 'h-full')}
+          // Raised so the text toolbar's dropdowns open over the blocks below. Text hugs its content; the rest keep their grid height.
+          <div
+            key={item.id}
+            style={hug ? undefined : { height: rows * ROW_HEIGHT + (rows - 1) * GAP }}
+            className="relative has-[[data-comment-open]]:z-20 has-[[data-editing]]:z-20 has-[[data-popover-open]]:z-20"
+          >
+            {renderWidget(item, actionsFor(item), hug ? undefined : 'h-full', hug)}
           </div>
         )
       })}

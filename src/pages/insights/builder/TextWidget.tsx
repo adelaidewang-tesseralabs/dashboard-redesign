@@ -230,6 +230,7 @@ export function TextWidget({
                 VERTICAL_ALIGN_CLASS[style.verticalAlign ?? "top"],
                 TEXT_ALIGN_CLASS[textAlign],
                 !readOnly && !doubleClickToEdit && "cursor-text",
+                fitContent && canStartEditing && "pb-8",
               )}
             >
               {item.markdown.trim() ? (

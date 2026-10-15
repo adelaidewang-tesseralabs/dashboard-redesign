@@ -41,12 +41,14 @@ type CanvasWidgetProps = {
   onHighlight?: (highlight: CrossHighlight) => void
   /** Default-palette graphs: this graph's own colors, kept apart from unrelated graphs on the dashboard. */
   colors?: GraphColors
+  /** Text blocks size to their text instead of filling a grid cell, e.g. when pinned above the grid. */
+  fitContent?: boolean
 }
 
-export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = false, selected = false, highlight = null, onHighlight, colors }: CanvasWidgetProps) {
+export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = false, selected = false, highlight = null, onHighlight, colors, fitContent = false }: CanvasWidgetProps) {
   const label = displayTitle(item) || itemLabel(item)
   const graphView = useGraphView({ dashboard, item, label, readOnly })
-  const body = { dashboard, item, readOnly, selected, highlight, onHighlight, colors, onComment }
+  const body = { dashboard, item, readOnly, selected, highlight, onHighlight, colors, onComment, fitContent }
   return (
     <div ref={graphView.cardRef} data-widget-id={item.id} className="group/widget relative h-full">
       <WidgetBody {...body} actions={actions} viewFor={graphView.viewFor} />
@@ -66,9 +68,9 @@ export function CanvasWidget({ dashboard, item, actions, onComment, readOnly = f
 }
 
 type WidgetBodyProps = Required<Pick<CanvasWidgetProps, 'dashboard' | 'item' | 'readOnly' | 'selected' | 'highlight'>> &
-  Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors' | 'onComment'> & { viewFor: (columns: string[], rows: DataCell[][]) => GraphViewActions }
+  Pick<CanvasWidgetProps, 'actions' | 'onHighlight' | 'colors' | 'onComment' | 'fitContent'> & { viewFor: (columns: string[], rows: DataCell[][]) => GraphViewActions }
 
-function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors, onComment }: WidgetBodyProps) {
+function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, highlight, onHighlight, colors, onComment, fitContent }: WidgetBodyProps) {
   const previewPerson = usePreviewPerson()
   const final = useIsFinalBuilder()
   const title = displayTitle(item)
@@ -97,7 +99,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       return withCornerMenu(<MediaWidget dashboardId={dashboard.id} item={item} title={title} subtitle={subtitle} readOnly={readOnly} />)
     case 'text': {
       const { summary } = item
-      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && !summary.inline && <PinnedMark />)
+      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} fitContent={fitContent} />, !readOnly && summary.edited && !summary.inline && <PinnedMark />)
       return withCornerMenu(
         <TextWidget
           dashboardId={dashboard.id}
@@ -106,6 +108,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
           readOnly={readOnly}
           selected={selected}
           doubleClickToEdit
+          fitContent={fitContent}
           emptyAction={final && <GenerateSummaryButton dashboard={dashboard} item={item} />}
         />,
       )
