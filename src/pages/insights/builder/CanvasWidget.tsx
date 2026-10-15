@@ -84,12 +84,12 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       {pinnedMark}
     </>
   )
-  // Items without a chart header carry the toolbar in their top-right corner, and the pin mark beside it.
+  // Items without a chart header carry the toolbar in their top-right corner, and the pin mark beside it unless `leading` replaces it.
   const withCornerMenu = (body: ReactNode, leading?: ReactNode) => (
     <>
       {body}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-        {leading || pinnedMark}
+        {leading === undefined ? pinnedMark : leading}
         {toolbar()}
       </div>
     </>
@@ -101,7 +101,7 @@ function WidgetBody({ dashboard, item, actions, viewFor, readOnly, selected, hig
       return withCornerMenu(<MediaWidget dashboardId={dashboard.id} item={item} title={title} subtitle={subtitle} readOnly={readOnly} />)
     case 'text': {
       const { summary } = item
-      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && !summary.inline && <PinnedMark />)
+      if (summary) return withCornerMenu(<SummaryText dashboard={dashboard} item={{ ...item, summary }} title={title} readOnly={readOnly} selected={selected} />, !readOnly && summary.edited && !summary.inline ? <PinnedMark /> : null)
       return withCornerMenu(
         <TextWidget
           dashboardId={dashboard.id}

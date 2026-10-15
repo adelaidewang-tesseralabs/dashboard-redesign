@@ -24,14 +24,16 @@ export function SummaryText({ dashboard, item, title, readOnly, selected }: Summ
   const { inline } = item.summary
   const saveText = (markdown: string) => updateWidget(dashboard.id, { ...item, markdown, summary: { basis, edited: true, inline } })
   const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: !inline, doubleClickToEdit: inline }
+  /** The summary above the grid is always pinned; one in a text block only when its block is. */
+  const pinned = !readOnly && (!inline || !!item.pinnedAt)
 
-  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={!readOnly && !inline} />} />
+  if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={pinned} />} />
   const outdated = !readOnly && item.summary.basis !== basis
   return (
     <TextWidget
       {...props}
       item={item}
-      badge={inline && <AiSummaryLabel pinned={false} />}
+      badge={inline && <AiSummaryLabel pinned={pinned} />}
       footer={
         outdated && (
           <OutdatedNotice
