@@ -3,8 +3,10 @@ import GridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'rea
 import 'react-grid-layout/css/styles.css'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import { GRID_COLS, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
+import { GRID_COLS, MAX_PINNED, isAboveGrid, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
+import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
+import { useToast } from '../../../ui/Toast'
 import { CanvasWidget } from './CanvasWidget'
 import type { CrossHighlight } from './crossHighlight'
 import type { WidgetActions } from './GraphActionsMenu'
@@ -60,7 +62,10 @@ const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }
 
 /** Drag a widget by its body to move it, or by the bottom-right corner to resize it. Section rows drag their graphs along. */
 export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, askWhileViewing = false, editingId = null, highlight = null, onHighlight, sections = false, pageMove }: CanvasGridProps) {
-  const { addGroup, updateGroup, removeGroup, insertWidget } = useDashboards()
+  const { addGroup, updateGroup, removeGroup, insertWidget, updateWidget } = useDashboards()
+  const pinning = useIsFinalBuilder()
+  const toast = useToast()
+  const savedRect = (item: CanvasItem) => dashboard.layout?.find((rect) => rect.i === item.id)
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
@@ -78,7 +83,8 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     }),
   )
   const summary = widgets.find(isPageSummary)
-  const shownWidgets = widgets.filter((item) => !hidden.has(item.id) && !isPageSummary(item))
+  const pinned = widgets.filter((item) => item.pinnedAt).toSorted((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0))
+  const shownWidgets = widgets.filter((item) => !hidden.has(item.id) && !isAboveGrid(item))
   const shownGroups = groups.filter((group) => !hidden.has(group.id))
   const layout: LayoutItem[] = [
     ...widgetRects
@@ -110,7 +116,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
   /** A copy lands right under its original, or at the bottom when pasted where the original isn't. */
   const insertCopy = (item: CanvasItem) => {
     if (isPageSummary(item)) return
-    const copy = { ...item, id: `${ID_PREFIX[item.source]}-${crypto.randomUUID()}` }
+    const copy = { ...item, pinnedAt: undefined, id: `${ID_PREFIX[item.source]}-${crypto.randomUUID()}` }
     const source = widgetRects.find((rect) => rect.i === item.id)
     const { w, h } = source ?? itemSize(item)
     const bottom = Math.max(0, ...allRects.map((rect) => rect.y + rect.h))
@@ -133,7 +139,19 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     const { group, layout: next } = newSection(allRects, row)
     addGroup(dashboard.id, group, next)
   }
+  /** Unpinning puts the block back at the top of the grid, at its old size; its old spot has usually filled up. */
+  const togglePin = (item: CanvasItem) => {
+    if (item.pinnedAt) {
+      const { w, h } = savedRect(item) ?? itemSize(item)
+      onLayoutChange(insertRect(allRects, { i: item.id, x: 0, y: 0, w, h }))
+      updateWidget(dashboard.id, { ...item, pinnedAt: undefined })
+      return
+    }
+    if (pinned.length >= MAX_PINNED) return toast(`A page can have up to ${MAX_PINNED} pinned blocks. Unpin one first.`)
+    updateWidget(dashboard.id, { ...item, pinnedAt: Date.now() })
+  }
   const actionsFor = (item: CanvasItem): WidgetActions => ({
+    pin: pinning ? { pinned: !!item.pinnedAt, onToggle: () => togglePin(item) } : undefined,
     onDuplicate: () => insertCopy(item),
     onRemove: () => remove(item.id),
     move: {
@@ -231,11 +249,20 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     </div>
   )
 
-  if (!summary) return grid
+  if (!summary && pinned.length === 0) return grid
   return (
     <div className="flex flex-col gap-3">
+      {pinned.map((item) => {
+        const rows = savedRect(item)?.h ?? itemSize(item).h
+        return (
+          // Raised so the text toolbar's dropdowns open over the blocks below.
+          <div key={item.id} style={{ height: rows * ROW_HEIGHT + (rows - 1) * GAP }} className="relative has-[[data-comment-open]]:z-20 has-[[data-editing]]:z-20 has-[[data-popover-open]]:z-20">
+            {renderWidget(item, actionsFor(item), 'h-full')}
+          </div>
+        )
+      })}
       {/* Above the grid so the text toolbar's dropdowns open over the graphs. */}
-      <div className="relative z-10">{renderWidget(summary, { onRemove: () => remove(summary.id) })}</div>
+      {summary && <div className="relative z-10">{renderWidget(summary, { onRemove: () => remove(summary.id) })}</div>}
       {grid}
     </div>
   )

@@ -1,4 +1,4 @@
-import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Plus, Rows3, Sparkles, Trash2, Waypoints } from 'lucide-react'
+import { Copy, Database, Download, FolderInput, Link2, Maximize2, Minimize2, MoreHorizontal, Pin, PinOff, Plus, Rows3, Sparkles, Trash2, Waypoints } from 'lucide-react'
 import { Menu, type MenuEntry } from '../../../ui/Menu'
 
 export type WidgetActions = {
@@ -22,6 +22,8 @@ export type WidgetActions = {
     onMove: (pageId: string) => void
     onMoveToNewPage: () => void
   }
+  /** Final builder: pin the block above the grid, or put it back at the top of the grid. */
+  pin?: { pinned: boolean; onToggle: () => void }
 }
 
 /** Graphs only. Viewers get full screen, copy link (not in Final) and downloads; lineage and the dataset are for owners and editors. */
@@ -117,8 +119,9 @@ function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | 
   const opening = viewInMenu ? viewGroup(view, downloadOnly) : []
   const data = dataGroup(view)
   if (!actions) return joinGroups([opening, data])
-  const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove, moveToPage } = actions
+  const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove, moveToPage, pin } = actions
   const editing: MenuEntry[] = [
+    ...(pin ? [pin.pinned ? { label: 'Unpin', Icon: PinOff, onSelect: pin.onToggle } : { label: 'Pin to top', Icon: Pin, onSelect: pin.onToggle }] : []),
     ...(onAddSectionAbove ? [{ label: 'Add section above', Icon: Rows3, onSelect: onAddSectionAbove }] : []),
     ...(onDuplicate ? [{ label: 'Duplicate', Icon: Copy, onSelect: onDuplicate }] : []),
     ...(moveTo?.sections.length

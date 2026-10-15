@@ -1,5 +1,5 @@
 import type { Dashboard, GraphGroup } from '../../../data/dashboards'
-import { GRID_COLS, isPageSummary, type WidgetRect } from '../../../data/widgets'
+import { GRID_COLS, isAboveGrid, type WidgetRect } from '../../../data/widgets'
 import { insertRect, layoutWidgets } from './layoutWidgets'
 
 /** Section rows always span the grid and are one row tall. */
@@ -20,7 +20,7 @@ export function sectionRects(groups: GraphGroup[], saved: WidgetRect[], others: 
 export function canvasRects(dashboard: Dashboard) {
   const groups = dashboard.groups ?? []
   const saved = dashboard.layout ?? []
-  const gridWidgets = (dashboard.widgets ?? []).filter((item) => !isPageSummary(item))
+  const gridWidgets = (dashboard.widgets ?? []).filter((item) => !isAboveGrid(item))
   const widgetRects = layoutWidgets(gridWidgets, saved, saved.filter((rect) => groups.some((group) => group.id === rect.i)))
   return { widgetRects, groupRects: sectionRects(groups, saved, widgetRects) }
 }

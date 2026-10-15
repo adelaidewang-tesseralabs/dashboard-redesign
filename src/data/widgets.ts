@@ -40,8 +40,14 @@ export type TextBoxStyle = {
   textAlign?: 'left' | 'center' | 'right'
 }
 
-/** Unset or unknown `pageId` means the dashboard's first page. */
-type Placement = { pageId?: string }
+/**
+ * Unset or unknown `pageId` means the dashboard's first page. `pinnedAt` (Final builder): shown full width above the grid,
+ * latest pin first; its grid rect is kept for its height.
+ */
+type Placement = { pageId?: string; pinnedAt?: number }
+
+/** Pinned blocks a page can hold, so the graphs aren't pushed off screen. */
+export const MAX_PINNED = 3
 
 /**
  * A text block Tessera AI writes from its page's graphs. Until someone edits it, its text is rewritten from the graphs
@@ -75,6 +81,9 @@ export type SummaryItem = Extract<CanvasItem, { source: 'text' }> & { summary: P
 
 /** The page summary sits above the grid at its text's own height, so it has no grid rect. Inline summaries are on the grid. */
 export const isPageSummary = (item: CanvasItem): item is SummaryItem => item.source === 'text' && !!item.summary && !item.summary.inline
+
+/** Pinned blocks and the page summary sit above the grid, outside its layout. */
+export const isAboveGrid = (item: CanvasItem) => isPageSummary(item) || !!item.pinnedAt
 
 export const DATA_CHECKS_TABLE = 'data_checks'
 
