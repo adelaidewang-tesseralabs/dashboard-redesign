@@ -114,7 +114,7 @@ export type PublishedDataset = {
   /** As of the last publish or update; the dashboard's copy can move on until it's updated again. */
   view: PublishedView
   dashboardId: string
-  /** The dashboard's folder under Foundry › Dashboards. Named when publishing and renamed only from the publish dialog, not by renaming the dashboard. */
+  /** The dashboard's folder under Foundry › Dashboards. Named on the first publish and fixed after, so published tables keep their place. */
   folder: string
   datasetKey: string
   /** Set when the dataset reads another published dashboard table: this copy follows that table's updates. */

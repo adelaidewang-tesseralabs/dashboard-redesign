@@ -26,11 +26,17 @@ type PublishDatasetsDialogProps = {
 
 const BROKEN = 'The query has an error. Fix it to publish.'
 
-/** Mount only while open, so each opening starts from the folder's current name. */
+/** Mount only while open, so each opening starts from the folder's current name. The name is only editable on the first publish. */
 export function PublishDatasetsDialog({ dashboard, folder, otherFolders, fresh, changed, firstPublish, noteFor, onClose, onPublish }: PublishDatasetsDialogProps) {
   const [name, setName] = useState(folder)
   const broken = new Set([...fresh.map(({ dataset }) => dataset), ...changed].filter((dataset) => !datasetResult(dataset, dashboard).ok).map((dataset) => dataset.key))
-  const folderError = !name.trim() ? 'Add a folder name' : otherFolders.has(name.trim().toLowerCase()) ? 'Another dashboard folder has this name' : null
+  const folderError = !firstPublish
+    ? null
+    : !name.trim()
+      ? 'Add a folder name'
+      : otherFolders.has(name.trim().toLowerCase())
+        ? 'Another dashboard folder has this name'
+        : null
   const caption = (dataset: Dataset) => noteFor(dataset) ?? datasetOriginLabel(dataset)
 
   return (
@@ -45,24 +51,32 @@ export function PublishDatasetsDialog({ dashboard, folder, otherFolders, fresh, 
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={folderError !== null || broken.size > 0} onClick={() => onPublish(name.trim())}>
+          <Button disabled={folderError !== null || broken.size > 0} onClick={() => onPublish(firstPublish ? name.trim() : folder)}>
             {firstPublish ? (fresh.length === 1 ? 'Publish 1 dataset' : `Publish ${fresh.length} datasets`) : 'Update Foundry'}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-white/70">Folder name</span>
-          <input
-            autoFocus
-            aria-invalid={folderError !== null}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className={cn(editorInputClass, folderError && 'border-red-400/60')}
-          />
-          {folderError && <span className="text-xs text-red-300">{folderError}</span>}
-        </label>
+        {firstPublish ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-white/70">Folder name</span>
+            <input
+              autoFocus
+              aria-invalid={folderError !== null}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className={cn(editorInputClass, folderError && 'border-red-400/60')}
+            />
+            {folderError && <span className="text-xs text-red-300">{folderError}</span>}
+          </label>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium text-white/70">Folder name</span>
+            <span className="text-[13px] text-white">{folder}</span>
+            <span className="text-xs text-white/45">Set when first published</span>
+          </div>
+        )}
         <ul aria-label="Datasets in the folder" className="flex max-h-72 flex-col gap-2.5 overflow-y-auto">
           {fresh.map(({ dataset, name: tableName }) => {
             const Icon = datasetIcon(dataset)

@@ -22,7 +22,7 @@ export function useFoundryPublishing(dashboard: Dashboard, datasets: Dataset[]) 
   const names = folderNames(fresh, dashboard, takenPaths(dashboard, published))
   const firstPublish = states.size === 0
 
-  /** Publishes the new datasets and updates the changed ones, all or nothing; renaming the folder renames it for every table in it. */
+  /** Publishes the new datasets and updates the changed ones, all or nothing. `nextFolder` only differs on the first publish. */
   const sync = (nextFolder: string) => {
     const broken = [...fresh, ...changed].find((dataset) => !datasetResult(dataset, dashboard).ok)
     if (broken) {
@@ -36,12 +36,7 @@ export function useFoundryPublishing(dashboard: Dashboard, datasets: Dataset[]) 
       }),
       ...fresh.map((dataset) => toPublished(dataset, dashboard, nextFolder, names.get(dataset.key) ?? dataset.label)),
     ].filter((entry) => entry != null)
-    const syncedPaths = new Set(synced.map((entry) => entry.table.name))
-    const renamed =
-      nextFolder === folder
-        ? []
-        : published.filter((entry) => entry.dashboardId === dashboard.id && !syncedPaths.has(entry.table.name)).map((entry) => ({ ...entry, folder: nextFolder }))
-    publishDatasets([...synced, ...renamed])
+    publishDatasets(synced)
     setOpen(false)
     toast(firstPublish ? `Published ${count(synced.length)} to Foundry › Dashboards › ${nextFolder}` : `Updated Foundry › Dashboards › ${nextFolder}`)
   }
