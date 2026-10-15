@@ -12,20 +12,18 @@ type SummaryTextProps = {
   title: string
   readOnly: boolean
   selected: boolean
-  /** Size to the text even when inline, e.g. pinned above the grid. */
-  fitContent?: boolean
 }
 
 const NO_GRAPHS = 'Add graphs to this page and AI will summarize what they show.'
 
 /** A page summary by Tessera AI. It rewrites itself as the graphs change until someone edits it; then it asks first. */
-export function SummaryText({ dashboard, item, title, readOnly, selected, fitContent = false }: SummaryTextProps) {
+export function SummaryText({ dashboard, item, title, readOnly, selected }: SummaryTextProps) {
   const { updateWidget } = useDashboards()
   const story = summarizePage(dashboard) ?? NO_GRAPHS
   const basis = summaryBasis(dashboard)
   const { inline } = item.summary
   const saveText = (markdown: string) => updateWidget(dashboard.id, { ...item, markdown, summary: { basis, edited: true, inline } })
-  const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: fitContent || !inline, doubleClickToEdit: inline }
+  const props = { dashboardId: dashboard.id, title, readOnly, selected, onSaveText: saveText, fitContent: !inline, doubleClickToEdit: inline }
 
   if (!item.summary.edited) return <TextWidget {...props} item={{ ...item, markdown: story }} badge={<AiSummaryLabel pinned={!readOnly && !inline} />} />
   const outdated = !readOnly && item.summary.basis !== basis

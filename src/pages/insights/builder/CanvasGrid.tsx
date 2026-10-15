@@ -3,7 +3,7 @@ import GridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'rea
 import 'react-grid-layout/css/styles.css'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import { GRID_COLS, MAX_PINNED, isAboveGrid, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
+import { GRID_COLS, MAX_PINNED, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
 import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
 import { useToast } from '../../../ui/Toast'
@@ -12,6 +12,7 @@ import type { CrossHighlight } from './crossHighlight'
 import type { WidgetActions } from './GraphActionsMenu'
 import { dashboardGraphColors } from './graphColors'
 import { insertRect } from './layoutWidgets'
+import { keepPinnedOnTop, pinnedOrder } from './pinnedLayout'
 import { SectionInsertLine } from './SectionInsertLine'
 import { SectionRow } from './SectionRow'
 import { SelectableWidget } from './SelectableWidget'
@@ -65,7 +66,6 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
   const { addGroup, updateGroup, removeGroup, insertWidget, updateWidget } = useDashboards()
   const pinning = useIsFinalBuilder()
   const toast = useToast()
-  const savedRect = (item: CanvasItem) => dashboard.layout?.find((rect) => rect.i === item.id)
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
@@ -83,11 +83,13 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     }),
   )
   const summary = widgets.find(isPageSummary)
-  const pinned = widgets.filter((item) => item.pinnedAt).toSorted((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0))
-  const shownWidgets = widgets.filter((item) => !hidden.has(item.id) && !isAboveGrid(item))
+  const pinnedIds = new Set(widgets.filter((item) => item.pinnedAt).map((item) => item.id))
+  /** Pinned blocks stay on the top rows: dragging or resizing anything settles them back there. */
+  const withPinsOnTop = (rects: WidgetRect[]) => (pinnedIds.size ? keepPinnedOnTop(rects, pinnedOrder(rects, pinnedIds)) : rects)
+  const shownWidgets = widgets.filter((item) => !hidden.has(item.id) && !isPageSummary(item))
   const shownGroups = groups.filter((group) => !hidden.has(group.id))
   const layout: LayoutItem[] = [
-    ...widgetRects
+    ...withPinsOnTop(widgetRects)
       .filter((rect) => !hidden.has(rect.i))
       .map((rect) => {
         const item = widgets.find((widget) => widget.id === rect.i)
@@ -96,7 +98,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     ...groupRects.filter((rect) => !hidden.has(rect.i)).map((rect) => ({ ...rect, minH: SECTION_ROWS, maxH: SECTION_ROWS, minW: GRID_COLS, isResizable: false })),
   ]
   const graphColors = dashboardGraphColors(dashboard)
-  const save = (next: Layout) => onLayoutChange(toRects(next))
+  const save = (next: Layout) => onLayoutChange(withPinsOnTop(toRects(next)))
   const saveDrag = (next: Layout, before: LayoutItem | null, after: LayoutItem | null) => {
     const dy = before && after ? after.y - before.y : 0
     const own = before ? (members.get(before.i) ?? []) : []
@@ -139,15 +141,16 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     const { group, layout: next } = newSection(allRects, row)
     addGroup(dashboard.id, group, next)
   }
-  /** Unpinning puts the block back at the top of the grid, at its old size; its old spot has usually filled up. */
+  /** A new pin goes first, at the top left. An unpinned block stays where it is unless the remaining pins need its spot. */
   const togglePin = (item: CanvasItem) => {
+    const order = pinnedOrder(allRects, pinnedIds).filter((id) => id !== item.id)
     if (item.pinnedAt) {
-      const { w, h } = savedRect(item) ?? itemSize(item)
-      onLayoutChange(insertRect(allRects, { i: item.id, x: 0, y: 0, w, h }))
+      onLayoutChange(keepPinnedOnTop(allRects, order))
       updateWidget(dashboard.id, { ...item, pinnedAt: undefined })
       return
     }
-    if (pinned.length >= MAX_PINNED) return toast(`A page can have up to ${MAX_PINNED} pinned blocks. Unpin one first.`)
+    if (pinnedIds.size >= MAX_PINNED) return toast(`A page can have up to ${MAX_PINNED} pinned blocks. Unpin one first.`)
+    onLayoutChange(keepPinnedOnTop(allRects, [item.id, ...order]))
     updateWidget(dashboard.id, { ...item, pinnedAt: Date.now() })
   }
   const actionsFor = (item: CanvasItem): WidgetActions => ({
@@ -179,7 +182,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
       : { dashboardId: dashboard.id, selected: widgets.find((item) => item.id === selectedId) ?? null, onPaste: insertCopy, onDelete: remove },
   )
 
-  const renderWidget = (item: CanvasItem, actions: WidgetActions, className?: string, fitContent = false) => (
+  const renderWidget = (item: CanvasItem, actions: WidgetActions, className?: string) => (
     <SelectableWidget
       selected={selectedId === item.id || !!multiSelectedIds?.has(item.id)}
       readOnly={readOnly}
@@ -197,7 +200,6 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
         highlight={highlight}
         onHighlight={onHighlight}
         colors={graphColors.get(item.id)}
-        fitContent={fitContent}
       />
     </SelectableWidget>
   )
@@ -250,25 +252,11 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     </div>
   )
 
-  if (!summary && pinned.length === 0) return grid
+  if (!summary) return grid
   return (
     <div className="flex flex-col gap-3">
-      {pinned.map((item) => {
-        const rows = savedRect(item)?.h ?? itemSize(item).h
-        const hug = item.source === 'text'
-        return (
-          // Raised so the text toolbar's dropdowns open over the blocks below. Text hugs its content; the rest keep their grid height.
-          <div
-            key={item.id}
-            style={hug ? undefined : { height: rows * ROW_HEIGHT + (rows - 1) * GAP }}
-            className="relative has-[[data-comment-open]]:z-20 has-[[data-editing]]:z-20 has-[[data-popover-open]]:z-20"
-          >
-            {renderWidget(item, actionsFor(item), hug ? undefined : 'h-full', hug)}
-          </div>
-        )
-      })}
       {/* Above the grid so the text toolbar's dropdowns open over the graphs. */}
-      {summary && <div className="relative z-10">{renderWidget(summary, { onRemove: () => remove(summary.id) })}</div>}
+      <div className="relative z-10">{renderWidget(summary, { onRemove: () => remove(summary.id) })}</div>
       {grid}
     </div>
   )

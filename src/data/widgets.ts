@@ -41,8 +41,8 @@ export type TextBoxStyle = {
 }
 
 /**
- * Unset or unknown `pageId` means the dashboard's first page. `pinnedAt` (Final builder): shown full width above the grid,
- * latest pin first; its grid rect is kept for its height.
+ * Unset or unknown `pageId` means the dashboard's first page. `pinnedAt` (Final builder): kept on the grid's top rows,
+ * where other blocks can sit beside it but never above.
  */
 type Placement = { pageId?: string; pinnedAt?: number }
 
@@ -81,10 +81,6 @@ export type SummaryItem = Extract<CanvasItem, { source: 'text' }> & { summary: P
 
 /** The page summary sits above the grid at its text's own height, so it has no grid rect. Inline summaries are on the grid. */
 export const isPageSummary = (item: CanvasItem): item is SummaryItem => item.source === 'text' && !!item.summary && !item.summary.inline
-
-/** Pinned blocks and the page summary sit above the grid, outside its layout. */
-export const isAboveGrid = (item: CanvasItem) => isPageSummary(item) || !!item.pinnedAt
-
 export const DATA_CHECKS_TABLE = 'data_checks'
 
 export const mediaItem = (): CanvasItem => ({ id: `media-${crypto.randomUUID()}`, source: 'media', showTitle: false })
