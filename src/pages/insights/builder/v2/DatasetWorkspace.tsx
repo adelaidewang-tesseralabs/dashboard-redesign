@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ChartColumn, FileCode2, MoreHorizontal, Play, RefreshCw } from 'lucide-react'
+import { ChartColumn, FileCode2, MoreHorizontal, Play } from 'lucide-react'
 import type { Dashboard, SqlDataset } from '../../../../data/dashboards'
 import { runSql, type SqlResult } from '../../../../data/dataSources'
 import { applyTransforms, columnTypes, type DatasetTransforms } from '../../../../data/transforms'
@@ -11,7 +11,7 @@ import { Menu } from '../../../../ui/Menu'
 import { filterColumns, findFilterColumn } from '../dashboardFilters'
 import { EditableTitle } from '../EditableTitle'
 import { CreateGraphMenu } from './CreateGraphMenu'
-import { datasetMenuItems, foundryNote, type DatasetFoundry } from './DatasetList'
+import { datasetMenuItems, foundryNote, type FoundryStatus } from './DatasetList'
 import { DatasetUsedIn } from './DatasetUsedIn'
 import { FieldLinks } from './FieldLinks'
 import { datasetOriginLabel, datasetPath, datasetSql, graphColumns, type Dataset, type GraphColumn } from './datasets'
@@ -46,8 +46,8 @@ type DatasetWorkspaceProps = {
   rowLimit?: boolean
   transformsOpen?: boolean
   onTransformsOpenChange?: (open: boolean) => void
-  /** Final builder: the dataset's place in Foundry. */
-  foundry?: DatasetFoundry
+  /** Final builder: where the dataset stands in Foundry. */
+  foundry?: FoundryStatus
 }
 
 /** Right pane of the Data tab: the selected dataset's query or preview, its result, schema and the graphs using it. */
@@ -82,12 +82,6 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
             {foundryNote(foundry)}
           </span>
         </div>
-        {foundry?.status === 'changed' && (
-          <Button variant="outline" size="sm" onClick={foundry.onUpdate}>
-            <RefreshCw className="size-3.5" />
-            Update in Foundry
-          </Button>
-        )}
         {dataset.kind === 'table' && onEditAsSql && (
           <Button variant="ghost" size="sm" onClick={onEditAsSql}>
             <FileCode2 className="size-3.5" />
@@ -96,7 +90,7 @@ export function DatasetWorkspace(props: DatasetWorkspaceProps) {
         )}
         {createAction('primary')}
         <Menu
-          items={datasetMenuItems({ onRename: focusName, onDuplicate, onDownload, onRemove, foundry })}
+          items={datasetMenuItems({ onRename: focusName, onDuplicate, onDownload, onRemove })}
           trigger={({ toggle }) => (
             <Button variant="outline" size="sm" aria-label={`More actions for ${dataset.label}`} title="More actions" onClick={toggle} className="px-2">
               <MoreHorizontal className="size-4" />

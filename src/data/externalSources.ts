@@ -116,6 +116,8 @@ export type PublishedDataset = {
   dashboardId: string
   dashboardName: string
   datasetKey: string
+  /** Set when the dataset reads another published dashboard table: this copy follows that table's updates. */
+  builtOn?: string
   publishedAt: string
   publishedBy: string
   updatedAt?: string

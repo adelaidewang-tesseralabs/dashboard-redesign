@@ -67,7 +67,7 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
         },
         onDrop,
       }
-  const catalog = buildSourceCatalog(final ? { published, dashboardName: (id) => dashboards.find((dashboard) => dashboard.id === id)?.name } : undefined)
+  const catalog = buildSourceCatalog(final ? { published, dashboards } : undefined)
 
   return (
     <nav

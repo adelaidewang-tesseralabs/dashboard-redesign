@@ -1,8 +1,8 @@
 import { CURRENT_USER, type Dashboard } from '../../../../data/dashboards'
-import type { DataField } from '../../../../data/dataSources'
+import { sqlTable, type DataField } from '../../../../data/dataSources'
 import { PUBLISHED_CATALOG, publishedPath, type PublishedDataset, type PublishedView } from '../../../../data/externalSources'
 import { PROTOTYPE_NOW } from '../../../../lib/format'
-import { datasetResult, datasetSql, graphColumns, type Dataset } from './datasets'
+import { datasetResult, datasetSql, graphColumns, listDatasets, type Dataset } from './datasets'
 
 /** A dataset's published copy, and whether the dashboard's copy has changed since. */
 export type PublishState = { entry: PublishedDataset; changed: boolean }
@@ -13,9 +13,29 @@ function datasetView(dataset: Dataset, dashboard: Dashboard): PublishedView {
 
 const sameView = (a: PublishedView, b: PublishedView) => JSON.stringify(a) === JSON.stringify(b)
 
-/** Everything but tables that are themselves published dashboard datasets, which are in Foundry already. */
-export function publishableDatasets(datasets: Dataset[]) {
-  return datasets.filter((dataset) => !(dataset.kind === 'table' && dataset.object.name.startsWith(`${PUBLISHED_CATALOG}.`)))
+/** The published dashboard table the dataset reads, if any. */
+function builtOn(dataset: Dataset) {
+  const table = sqlTable(datasetSql(dataset))
+  return table?.startsWith(`${PUBLISHED_CATALOG}.`) ? table : undefined
+}
+
+/** "Dashboard › Dataset" for a published table, under the dashboard's current name when it still exists. */
+export function publishedLabel(entry: PublishedDataset, dashboards: Dashboard[]) {
+  const dashboardName = dashboards.find((dashboard) => dashboard.id === entry.dashboardId)?.name ?? entry.dashboardName
+  return `${dashboardName} › ${entry.table.label}`
+}
+
+/** What the dataset's published copy will read from, e.g. "Linked copy of Vendor Master Data › Vendors". */
+export function linkedCopyNote(dataset: Dataset, published: PublishedDataset[], dashboards: Dashboard[]) {
+  const source = builtOn(dataset)
+  const entry = source && published.find((candidate) => candidate.table.name === source)
+  return entry ? `Linked copy of ${publishedLabel(entry, dashboards)}` : undefined
+}
+
+/** False once the dataset is removed from its dashboard; its Foundry copy stays for whoever uses it. */
+export function onItsDashboard(entry: PublishedDataset, dashboards: Dashboard[]) {
+  const dashboard = dashboards.find((candidate) => candidate.id === entry.dashboardId)
+  return !dashboard || listDatasets(dashboard).some((dataset) => dataset.key === entry.datasetKey)
 }
 
 /** Each of the dashboard's published datasets by dataset key. */
@@ -58,6 +78,7 @@ export function toPublished(dataset: Dataset, dashboard: Dashboard, name: string
     dashboardId: dashboard.id,
     dashboardName: previous?.dashboardName ?? dashboard.name,
     datasetKey: dataset.key,
+    builtOn: builtOn(dataset),
     publishedAt: previous?.publishedAt ?? now,
     publishedBy: previous?.publishedBy ?? CURRENT_USER,
     updatedAt: previous ? now : undefined,

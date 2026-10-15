@@ -93,6 +93,11 @@ function TableNode({ node, table, depth, expanded, added, activeTable, onToggle,
         >
           <Table2 className="size-3.5 shrink-0 text-white/45" />
           <span className="min-w-0 truncate text-[13px] text-white/85">{node.label}</span>
+          {node.meta && (
+            <span title={node.meta} className="min-w-0 shrink-[3] truncate text-[11px] text-white/35">
+              {node.meta}
+            </span>
+          )}
         </button>
         {isAdded ? (
           <span title="Already a dataset on this dashboard" className="flex size-6 shrink-0 items-center justify-center text-tlai-mint">

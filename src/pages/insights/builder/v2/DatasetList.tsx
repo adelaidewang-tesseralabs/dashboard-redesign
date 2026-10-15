@@ -24,23 +24,21 @@ type DatasetListProps = {
   /** Builder V3: "Add dataset" opens the production source menu instead of calling `onAddSource`. */
   onAddSourceKind?: (kind: AddSourceKind) => void
   onCollapse?: () => void
-  /** Final builder: each dataset's place in Foundry, and the publish and update-all actions. */
+  /** Final builder: where each dataset stands in Foundry, and the dashboard's publish action. */
   foundry?: FoundrySummary
 }
 
-/** `changed`: edited on the dashboard since it was last published or updated in Foundry. */
-export type FoundryStatus = 'unpublished' | 'published' | 'changed'
+/** `changed`: edited since the dashboard was last published or updated. `new`: added after the dashboard was published. */
+export type FoundryStatus = 'new' | 'published' | 'changed'
 
-export type DatasetFoundry = { status: FoundryStatus; onPublish: () => void; onUpdate: () => void }
+/** The dashboard publishes to Foundry as a whole: first `publish`, then `update` whenever a dataset is new or changed. */
+export type FoundryAction = { state: 'publish' | 'update' | 'published'; hint: string; onClick: () => void }
 
 export type FoundrySummary = {
-  /** Undefined for datasets that can't be published, e.g. a table already published from a dashboard. */
-  actionsFor: (dataset: Dataset) => DatasetFoundry | undefined
-  unpublished: number
-  changed: number
-  anyPublished: boolean
-  onPublishAll: () => void
-  onUpdateAll: () => void
+  /** Undefined until the dashboard is first published. */
+  statusFor: (dataset: Dataset) => FoundryStatus | undefined
+  /** Undefined while the dashboard has no datasets. */
+  action: FoundryAction | undefined
 }
 
 /** Left pane of the Data tab: every dataset the dashboard reads, in one list whatever its kind. */
@@ -48,9 +46,9 @@ export function DatasetList(props: DatasetListProps) {
   const { datasets, widgets, activeKey, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove, onAddSource, onAddSourceKind, onCollapse, foundry } = props
   const [renaming, setRenaming] = useState<string | null>(null)
   const addButton = (onClick: () => void) => (
-    <Button variant="outline" size="xs" onClick={onClick}>
+    <Button variant="outline" size="xs" aria-label={foundry ? 'Add dataset' : undefined} onClick={onClick}>
       <Plus className="size-3.5" />
-      Add dataset
+      {foundry ? 'Add' : 'Add dataset'}
     </Button>
   )
 
@@ -58,6 +56,7 @@ export function DatasetList(props: DatasetListProps) {
     <nav aria-label="Datasets" className="flex w-72 shrink-0 flex-col border-r border-white/10 bg-tlai-1">
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-white/10 pr-2 pl-4">
         <span className="flex-1 text-sm font-medium text-white">Datasets</span>
+        {foundry?.action && <FoundryButton {...foundry.action} />}
         {onAddSourceKind ? <AddDatasetMenu onSelect={onAddSourceKind} trigger={({ toggle }) => addButton(toggle)} /> : addButton(onAddSource)}
         {onCollapse && <CollapseListButton onClick={onCollapse} />}
       </div>
@@ -85,65 +84,51 @@ export function DatasetList(props: DatasetListProps) {
               onDuplicate={() => onDuplicate(dataset)}
               onDownload={() => onDownload(dataset)}
               onRemove={() => onRemove(dataset)}
-              foundry={foundry?.actionsFor(dataset)}
+              foundry={foundry?.statusFor(dataset)}
             />
           ),
         )}
       </div>
-      {foundry && datasets.length > 0 && <FoundryFooter {...foundry} />}
     </nav>
   )
 }
 
-function FoundryFooter({ unpublished, changed, anyPublished, onPublishAll, onUpdateAll }: FoundrySummary) {
-  const count = (n: number) => (n === 1 ? '1 dataset' : `${n} datasets`)
+function FoundryButton({ state, hint, onClick }: FoundryAction) {
+  if (state === 'published') {
+    return (
+      <span title={hint} className="flex h-6 items-center gap-1 px-1.5 text-xs text-white/45">
+        <Check className="size-3.5 text-tlai-mint" />
+        Published
+      </span>
+    )
+  }
+  const Icon = state === 'update' ? RefreshCw : CloudUpload
   return (
-    <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 p-2">
-      {changed > 0 && (
-        <Button variant="outline" size="sm" onClick={onUpdateAll}>
-          <RefreshCw className="size-3.5" />
-          Update {count(changed)} in Foundry
-        </Button>
-      )}
-      {unpublished > 0 && (
-        <Button variant="outline" size="sm" onClick={onPublishAll}>
-          <CloudUpload className="size-3.5" />
-          {anyPublished ? `Publish ${unpublished} new to Foundry` : 'Publish to Foundry'}
-        </Button>
-      )}
-      {changed === 0 && unpublished === 0 && (
-        <p className="flex items-center gap-1.5 px-1 py-1 text-xs text-white/45">
-          <Check className="size-3.5 text-tlai-mint" />
-          Every dataset is up to date in Foundry
-        </p>
-      )}
-    </div>
+    <Button variant="outline" size="xs" title={hint} aria-label={hint} onClick={onClick}>
+      <Icon className="size-3.5" />
+      {state === 'update' ? 'Update' : 'Publish'}
+      {state === 'update' && <span aria-hidden className="size-1.5 rounded-full bg-amber-300" />}
+    </Button>
   )
 }
 
-type DatasetActions = { onRename: () => void; onDuplicate: () => void; onDownload: () => void; onRemove: () => void; foundry?: DatasetFoundry }
-
-function foundryMenuItems(foundry: DatasetFoundry | undefined): MenuItem[] {
-  if (foundry?.status === 'unpublished') return [{ label: 'Publish to Foundry', Icon: CloudUpload, onSelect: foundry.onPublish }]
-  if (foundry?.status === 'changed') return [{ label: 'Update in Foundry', Icon: RefreshCw, onSelect: foundry.onUpdate }]
-  return []
-}
+type DatasetActions = { onRename: () => void; onDuplicate: () => void; onDownload: () => void; onRemove: () => void }
 
 /** One dataset's actions, shared by its row in the list and the workspace header. */
-export function datasetMenuItems({ onRename, onDuplicate, onDownload, onRemove, foundry }: DatasetActions): MenuItem[] {
+export function datasetMenuItems({ onRename, onDuplicate, onDownload, onRemove }: DatasetActions): MenuItem[] {
   return [
     { label: 'Rename', Icon: Pencil, onSelect: onRename },
     { label: 'Duplicate', Icon: Copy, onSelect: onDuplicate },
     { label: 'Download as CSV', Icon: Download, onSelect: onDownload },
-    ...foundryMenuItems(foundry),
     { label: 'Remove', Icon: Trash2, onSelect: onRemove, danger: true },
   ]
 }
 
-/** The Foundry part of a dataset's subtitle; nothing until it's published. */
-export function foundryNote(foundry: DatasetFoundry | undefined) {
-  if (foundry?.status === 'published') return <span className="text-white/45"> · In Foundry</span>
-  if (foundry?.status === 'changed') return <span className="text-amber-300/90"> · Changed since publishing</span>
+/** The Foundry part of a dataset's subtitle; nothing until the dashboard is published. */
+export function foundryNote(status: FoundryStatus | undefined) {
+  if (status === 'published') return <span className="text-white/45"> · In Foundry</span>
+  if (status === 'changed') return <span className="text-amber-300/90"> · Changed since publishing</span>
+  if (status === 'new') return <span className="text-amber-300/90"> · Not in Foundry yet</span>
   return null
 }
 
@@ -157,7 +142,7 @@ type DatasetRowProps = {
   onDuplicate: () => void
   onDownload: () => void
   onRemove: () => void
-  foundry?: DatasetFoundry
+  foundry?: FoundryStatus
 }
 
 function DatasetRow({ dataset, usage, active, unapplied, onActivate, onRename, onDuplicate, onDownload, onRemove, foundry }: DatasetRowProps) {
@@ -180,7 +165,7 @@ function DatasetRow({ dataset, usage, active, unapplied, onActivate, onRename, o
         </span>
       </button>
       <Menu
-        items={datasetMenuItems({ onRename, onDuplicate, onDownload, onRemove, foundry })}
+        items={datasetMenuItems({ onRename, onDuplicate, onDownload, onRemove })}
         trigger={({ open, toggle }) => (
           <button
             type="button"

@@ -281,7 +281,7 @@ export function DataTab(props: DataTabProps) {
                   : undefined
               }
               rowLimit={sqlEditing}
-              foundry={foundry?.actionsFor(active)}
+              foundry={foundry?.statusFor(active)}
             />
           ) : (
             <EmptyData

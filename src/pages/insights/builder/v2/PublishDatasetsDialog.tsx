@@ -1,97 +1,95 @@
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { publishedPath } from '../../../../data/externalSources'
 import { cn } from '../../../../lib/cn'
 import { Button } from '../../../../ui/Button'
 import { Dialog } from '../../../../ui/Dialog'
-import { EditorCheckbox, editorInputClass } from '../EditorFields'
+import { editorInputClass } from '../EditorFields'
 import { datasetIcon, datasetOriginLabel, datasetResult, type Dataset } from './datasets'
 
 type PublishDatasetsDialogProps = {
   dashboard: Dashboard
-  /** The dashboard's datasets not yet in Foundry. */
-  datasets: Dataset[]
+  /** The dashboard's datasets not yet in Foundry; each needs a name in the folder. */
+  fresh: Dataset[]
+  /** Published datasets edited since, updated in the same go. */
+  changed: Dataset[]
+  firstPublish: boolean
   /** Paths already used in the dashboard's Foundry folder. */
   taken: Set<string>
+  /** Extra context under a dataset, e.g. that it's a linked copy of another dashboard's table. */
+  noteFor: (dataset: Dataset) => string | undefined
   onClose: () => void
-  onPublish: (picks: { dataset: Dataset; name: string }[]) => void
+  onPublish: (names: Map<string, string>) => void
 }
 
-type Row = { checked: boolean; name: string }
+const BROKEN = 'The query has an error. Fix it to publish.'
 
-/** Mount only while open, so each opening starts from every dataset ticked under its own name. */
-export function PublishDatasetsDialog({ dashboard, datasets, taken, onClose, onPublish }: PublishDatasetsDialogProps) {
-  const broken = new Set(datasets.filter((dataset) => !datasetResult(dataset, dashboard).ok).map((dataset) => dataset.key))
-  const [rows, setRows] = useState<Record<string, Row>>(() =>
-    Object.fromEntries(datasets.map((dataset) => [dataset.key, { checked: !broken.has(dataset.key), name: dataset.label }])),
-  )
-  const update = (key: string, patch: Partial<Row>) => setRows((current) => ({ ...current, [key]: { ...current[key], ...patch } }))
+/** Mount only while open, so each opening starts from every dataset under its own name. */
+export function PublishDatasetsDialog({ dashboard, fresh, changed, firstPublish, taken, noteFor, onClose, onPublish }: PublishDatasetsDialogProps) {
+  const broken = new Set([...fresh, ...changed].filter((dataset) => !datasetResult(dataset, dashboard).ok).map((dataset) => dataset.key))
+  const [names, setNames] = useState<Record<string, string>>(() => Object.fromEntries(fresh.map((dataset) => [dataset.key, dataset.label])))
 
-  const picked = datasets.filter((dataset) => rows[dataset.key].checked)
-  const pathOf = (dataset: Dataset) => publishedPath(dashboard.id, rows[dataset.key].name.trim())
+  const pathOf = (dataset: Dataset) => publishedPath(dashboard.id, names[dataset.key].trim())
   const errorOf = (dataset: Dataset) => {
-    const row = rows[dataset.key]
-    if (!row.checked) return null
-    if (!row.name.trim()) return 'Add a name'
+    if (broken.has(dataset.key)) return BROKEN
+    if (!names[dataset.key].trim()) return 'Add a name'
     const path = pathOf(dataset)
-    const clashes = taken.has(path) || picked.some((other) => other.key !== dataset.key && pathOf(other) === path)
+    const clashes = taken.has(path) || fresh.some((other) => other.key !== dataset.key && pathOf(other) === path)
     return clashes ? 'Another dataset in this folder has this name' : null
   }
-  const invalid = picked.some((dataset) => errorOf(dataset) !== null)
+  const blocked = broken.size > 0 || fresh.some((dataset) => errorOf(dataset) !== null)
+  const caption = (dataset: Dataset) => noteFor(dataset) ?? `${dataset.label} · ${datasetOriginLabel(dataset)}`
 
   return (
     <Dialog
       open
       onClose={onClose}
       closeOnBackdrop={false}
-      title="Publish to Foundry"
+      title={firstPublish ? 'Publish to Foundry' : 'Update in Foundry'}
       description={`Saved to Foundry › Dashboards › ${dashboard.name}. Everyone with Foundry access can view and use them.`}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            disabled={picked.length === 0 || invalid}
-            onClick={() => onPublish(picked.map((dataset) => ({ dataset, name: rows[dataset.key].name.trim() })))}
-          >
-            {picked.length === 1 ? 'Publish 1 dataset' : `Publish ${picked.length} datasets`}
+          <Button disabled={blocked} onClick={() => onPublish(new Map(fresh.map((dataset) => [dataset.key, names[dataset.key].trim()])))}>
+            {firstPublish ? (fresh.length === 1 ? 'Publish 1 dataset' : `Publish ${fresh.length} datasets`) : 'Update Foundry'}
           </Button>
         </>
       }
     >
-      <ul aria-label="Datasets to publish" className="flex max-h-80 flex-col gap-3 overflow-y-auto">
-        {datasets.map((dataset) => {
-          const row = rows[dataset.key]
+      <ul aria-label="Datasets in the folder" className="flex max-h-80 flex-col gap-3 overflow-y-auto">
+        {fresh.map((dataset) => {
           const error = errorOf(dataset)
           const Icon = datasetIcon(dataset)
           return (
-            <li key={dataset.key} className="flex items-start gap-3">
-              <div className="pt-2">
-                <EditorCheckbox
-                  label={<span className="sr-only">Publish {dataset.label}</span>}
-                  checked={row.checked}
-                  disabled={broken.has(dataset.key)}
-                  onChange={(checked) => update(dataset.key, { checked })}
-                />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <input
-                  aria-label={`Foundry name for ${dataset.label}`}
-                  aria-invalid={error !== null}
-                  value={row.name}
-                  disabled={!row.checked}
-                  onChange={(event) => update(dataset.key, { name: event.target.value })}
-                  className={cn(editorInputClass, error && 'border-red-400/60')}
-                />
-                <span className={cn('flex items-center gap-1.5 text-xs', error || broken.has(dataset.key) ? 'text-red-300' : 'text-white/45')}>
-                  <Icon className="size-3.5 shrink-0" />
-                  {broken.has(dataset.key) ? 'The query has an error. Fix it to publish.' : (error ?? `${dataset.label} · ${datasetOriginLabel(dataset)}`)}
-                </span>
-              </div>
+            <li key={dataset.key} className="flex flex-col gap-1">
+              <input
+                aria-label={`Foundry name for ${dataset.label}`}
+                aria-invalid={error !== null}
+                value={names[dataset.key]}
+                onChange={(event) => setNames((current) => ({ ...current, [dataset.key]: event.target.value }))}
+                className={cn(editorInputClass, error && 'border-red-400/60')}
+              />
+              <span className={cn('flex items-center gap-1.5 text-xs', error ? 'text-red-300' : 'text-white/45')}>
+                <Icon className="size-3.5 shrink-0" />
+                {error ?? (firstPublish ? caption(dataset) : `New · ${caption(dataset)}`)}
+              </span>
             </li>
           )
         })}
+        {changed.map((dataset) => (
+          <li key={dataset.key} className="flex flex-col gap-1 px-1">
+            <span className="flex items-center gap-1.5 text-[13px] text-white">
+              <RefreshCw className="size-3.5 shrink-0 text-white/55" />
+              {dataset.label}
+            </span>
+            <span className={cn('text-xs', broken.has(dataset.key) ? 'text-red-300' : 'text-white/45')}>
+              {broken.has(dataset.key) ? BROKEN : 'Changed since publishing · updates in Foundry'}
+            </span>
+          </li>
+        ))}
       </ul>
     </Dialog>
   )

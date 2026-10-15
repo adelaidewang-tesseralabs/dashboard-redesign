@@ -2,60 +2,74 @@ import { useState } from 'react'
 import type { Dashboard } from '../../../../data/dashboards'
 import { useDashboards } from '../../../../data/DashboardsStore'
 import { useToast } from '../../../../ui/Toast'
-import type { FoundrySummary } from './DatasetList'
-import type { Dataset } from './datasets'
+import type { FoundryAction, FoundrySummary } from './DatasetList'
+import { datasetResult, type Dataset } from './datasets'
 import { PublishDatasetsDialog } from './PublishDatasetsDialog'
-import { publishableDatasets, publishStates, takenPaths, toPublished } from './publishDatasets'
+import { linkedCopyNote, publishStates, takenPaths, toPublished } from './publishDatasets'
 
 const count = (n: number) => (n === 1 ? '1 dataset' : `${n} datasets`)
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
-/** Final builder's Data tab: publishes the dashboard's datasets to Foundry and keeps published ones up to date. */
+/** Final builder's Data tab: publishes the dashboard to Foundry as one folder of all its datasets, and keeps it in sync. */
 export function useFoundryPublishing(dashboard: Dashboard, datasets: Dataset[]) {
-  const { published, publishDatasets } = useDashboards()
+  const { dashboards, published, publishDatasets } = useDashboards()
   const toast = useToast()
-  const [picking, setPicking] = useState<Dataset[] | null>(null)
-  const publishable = publishableDatasets(datasets)
-  const states = publishStates(publishable, dashboard, published)
-  const unpublished = publishable.filter((dataset) => !states.has(dataset.key))
-  const changed = publishable.filter((dataset) => states.get(dataset.key)?.changed)
+  const [open, setOpen] = useState(false)
+  const states = publishStates(datasets, dashboard, published)
+  const fresh = datasets.filter((dataset) => !states.has(dataset.key))
+  const changed = datasets.filter((dataset) => states.get(dataset.key)?.changed)
+  const folder = `Foundry › Dashboards › ${dashboard.name}`
+  const firstPublish = states.size === 0
 
-  const update = (targets: Dataset[]) => {
-    const entries = targets.flatMap((dataset) => {
-      const previous = states.get(dataset.key)?.entry
-      return (previous && toPublished(dataset, dashboard, previous.table.label, previous)) ?? []
-    })
-    if (entries.length < targets.length) toast(`Couldn't update ${count(targets.length - entries.length)}: fix the query first`)
-    if (entries.length === 0) return
+  /** Publishes `names` (the new datasets' Foundry names) and updates every changed dataset, all or nothing. */
+  const sync = (names: Map<string, string>) => {
+    const broken = [...fresh, ...changed].find((dataset) => !datasetResult(dataset, dashboard).ok)
+    if (broken) {
+      toast(`Fix the query in ${broken.label} to ${firstPublish ? 'publish' : 'update'} Foundry`)
+      return
+    }
+    const entries = [
+      ...changed.map((dataset) => {
+        const previous = states.get(dataset.key)?.entry
+        return previous && toPublished(dataset, dashboard, previous.table.label, previous)
+      }),
+      ...fresh.map((dataset) => toPublished(dataset, dashboard, names.get(dataset.key) ?? dataset.label)),
+    ].filter((entry) => entry != null)
     publishDatasets(entries)
-    toast(entries.length === 1 ? `Updated ${entries[0].table.label} in Foundry` : `Updated ${count(entries.length)} in Foundry`)
+    setOpen(false)
+    toast(firstPublish ? `Published ${count(entries.length)} to ${folder}` : `Updated ${folder}`)
   }
 
-  const publish = (picks: { dataset: Dataset; name: string }[]) => {
-    const entries = picks.flatMap(({ dataset, name }) => toPublished(dataset, dashboard, name) ?? [])
-    publishDatasets(entries)
-    setPicking(null)
-    toast(`Published ${count(entries.length)} to Foundry › Dashboards › ${dashboard.name}`)
-  }
+  const pending = [changed.length > 0 && `update ${count(changed.length)}`, fresh.length > 0 && `publish ${fresh.length} new`].filter(Boolean).join(' and ')
+  const action: FoundryAction | undefined =
+    datasets.length === 0
+      ? undefined
+      : firstPublish
+        ? { state: 'publish', hint: `Publish ${count(datasets.length)} to ${folder}`, onClick: () => setOpen(true) }
+        : pending
+          ? { state: 'update', hint: `${sentence(pending)} in ${folder}`, onClick: () => (fresh.length > 0 ? setOpen(true) : sync(new Map())) }
+          : { state: 'published', hint: `Every dataset is up to date in ${folder}`, onClick: () => undefined }
 
   const summary: FoundrySummary = {
-    actionsFor: (dataset) => {
-      if (!publishable.includes(dataset)) return undefined
+    statusFor: (dataset) => {
       const state = states.get(dataset.key)
-      return {
-        status: !state ? 'unpublished' : state.changed ? 'changed' : 'published',
-        onPublish: () => setPicking([dataset]),
-        onUpdate: () => update([dataset]),
-      }
+      if (state) return state.changed ? 'changed' : 'published'
+      return firstPublish ? undefined : 'new'
     },
-    unpublished: unpublished.length,
-    changed: changed.length,
-    anyPublished: states.size > 0,
-    onPublishAll: () => setPicking(unpublished),
-    onUpdateAll: () => update(changed),
+    action,
   }
 
-  const dialog = picking && (
-    <PublishDatasetsDialog dashboard={dashboard} datasets={picking} taken={takenPaths(dashboard, published)} onClose={() => setPicking(null)} onPublish={publish} />
+  const dialog = open && (
+    <PublishDatasetsDialog
+      dashboard={dashboard}
+      fresh={fresh}
+      changed={changed}
+      firstPublish={firstPublish}
+      taken={takenPaths(dashboard, published)}
+      noteFor={(dataset) => linkedCopyNote(dataset, published, dashboards)}
+      onClose={() => setOpen(false)}
+      onPublish={sync}
+    />
   )
   return { summary, dialog }
 }

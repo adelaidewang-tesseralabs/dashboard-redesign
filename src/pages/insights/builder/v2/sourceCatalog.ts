@@ -1,6 +1,8 @@
 import { DATA_OBJECTS, type DataObject, type SourceOrigin } from '../../../../data/dataSources'
 import { externalTables, FOUNDRY_CATALOG, WORKFLOWS, type PublishedDataset, type Workflow } from '../../../../data/externalSources'
+import type { Dashboard } from '../../../../data/dashboards'
 import { formatDateTime } from '../../../../lib/format'
+import { onItsDashboard, publishedLabel } from './publishDatasets'
 
 export type CatalogKind = SourceOrigin | 'catalog' | 'schema' | 'run'
 
@@ -15,12 +17,18 @@ const leaf = (table: DataObject): CatalogNode => ({ key: table.name, label: tabl
  * Final builder: datasets published from dashboards, one folder per dashboard. A dashboard that's since been renamed
  * shows its current name; one that's been deleted keeps the name it had when it published.
  */
-export type FinalCatalog = { published: PublishedDataset[]; dashboardName: (id: string) => string | undefined }
+export type FinalCatalog = { published: PublishedDataset[]; dashboards: Dashboard[] }
 
-function dashboardsCatalog({ published, dashboardName }: FinalCatalog): CatalogNode[] {
-  if (published.length === 0) return []
+function publishedLeaf(entry: PublishedDataset, { published, dashboards }: FinalCatalog): CatalogNode {
+  const source = entry.builtOn && published.find((candidate) => candidate.table.name === entry.builtOn)
+  const meta = !onItsDashboard(entry, dashboards) ? 'No longer on the dashboard' : source ? `Built on ${publishedLabel(source, dashboards)}` : undefined
+  return { ...leaf(entry.table), meta }
+}
+
+function dashboardsCatalog(final: FinalCatalog): CatalogNode[] {
+  if (final.published.length === 0) return []
   const folders = new Map<string, PublishedDataset[]>()
-  for (const entry of published) folders.set(entry.dashboardId, [...(folders.get(entry.dashboardId) ?? []), entry])
+  for (const entry of final.published) folders.set(entry.dashboardId, [...(folders.get(entry.dashboardId) ?? []), entry])
   return [
     {
       key: 'foundry.dashboards',
@@ -28,9 +36,9 @@ function dashboardsCatalog({ published, dashboardName }: FinalCatalog): CatalogN
       kind: 'catalog',
       children: [...folders].map(([id, entries]) => ({
         key: `foundry.dashboards.${id}`,
-        label: dashboardName(id) ?? entries[0].dashboardName,
+        label: final.dashboards.find((dashboard) => dashboard.id === id)?.name ?? entries[0].dashboardName,
         kind: 'schema',
-        children: entries.map((entry) => leaf(entry.table)),
+        children: entries.map((entry) => publishedLeaf(entry, final)),
       })),
     },
   ]
