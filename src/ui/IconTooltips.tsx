@@ -9,9 +9,10 @@ const CONTROL = 'button, a[href], [role="button"], [data-tip]'
 /** `right`: set by `data-tip-side="right"`, for controls stacked in a vertical rail. */
 type Tip = { label: string; anchor: DOMRect; side: 'above' | 'right' }
 
-/** Buttons that show only an icon, so their name lives in `title` or `aria-label`. */
+/** Buttons that show only an icon, so their name lives in `title` or `aria-label`; or any control marked `data-tip-hint`, whose `title` explains it. */
 function iconControl(target: EventTarget | null): HTMLElement | null {
   const control = target instanceof Element ? target.closest<HTMLElement>(CONTROL) : null
+  if (control?.dataset.tipHint !== undefined) return control.title || control.dataset.tooltip ? control : null
   if (!control || control.textContent?.trim() || !control.querySelector('svg')) return null
   return control.title || control.dataset.tooltip || control.getAttribute('aria-label') ? control : null
 }

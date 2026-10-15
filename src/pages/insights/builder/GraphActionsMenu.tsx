@@ -22,8 +22,8 @@ export type WidgetActions = {
     onMove: (pageId: string) => void
     onMoveToNewPage: () => void
   }
-  /** Final builder: pin the block above the grid, or put it back at the top of the grid. */
-  pin?: { pinned: boolean; onToggle: () => void }
+  /** Final builder: pin the block full width to the top of the page. `blocked`: another block holds the page's one pin. */
+  pin?: { pinned: boolean; blocked: boolean; onToggle: () => void }
 }
 
 /** Graphs only. Viewers get full screen, copy link (not in Final) and downloads; lineage and the dataset are for owners and editors. */
@@ -121,7 +121,13 @@ function menuItems(actions: WidgetActions | undefined, view: GraphViewActions | 
   if (!actions) return joinGroups([opening, data])
   const { onDuplicate, onRemove, move: moveTo, onAddSectionAbove, moveToPage, pin } = actions
   const editing: MenuEntry[] = [
-    ...(pin ? [pin.pinned ? { label: 'Unpin', Icon: PinOff, onSelect: pin.onToggle } : { label: 'Pin to top', Icon: Pin, onSelect: pin.onToggle }] : []),
+    ...(pin
+      ? [
+          pin.pinned
+            ? { label: 'Unpin', Icon: PinOff, onSelect: pin.onToggle }
+            : { label: 'Pin to top', Icon: Pin, onSelect: pin.onToggle, disabled: pin.blocked, hint: 'Only 1 block can be pinned. Unpin the current one first.' },
+        ]
+      : []),
     ...(onAddSectionAbove ? [{ label: 'Add section above', Icon: Rows3, onSelect: onAddSectionAbove }] : []),
     ...(onDuplicate ? [{ label: 'Duplicate', Icon: Copy, onSelect: onDuplicate }] : []),
     ...(moveTo?.sections.length

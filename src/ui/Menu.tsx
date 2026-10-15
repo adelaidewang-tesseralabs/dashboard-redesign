@@ -12,6 +12,8 @@ export type MenuItem = {
   danger?: boolean
   active?: boolean
   disabled?: boolean
+  /** Why it's disabled, shown as a tooltip; the item stays hoverable for it. */
+  hint?: string
 }
 
 /** Opens a nested list beside the menu on hover or click. */
@@ -73,14 +75,17 @@ export function Menu({ trigger, items, align = 'end', side = 'bottom', className
       key={item.label}
       type="button"
       role="menuitem"
-      disabled={item.disabled}
+      disabled={item.disabled && !item.hint}
+      aria-disabled={item.disabled || undefined}
+      title={item.disabled ? item.hint : undefined}
+      data-tip-hint={item.disabled && item.hint ? '' : undefined}
       onClick={(event) => {
         event.stopPropagation()
-        select(item)
+        if (!item.disabled) select(item)
       }}
       className={cn(
         menuItemClass,
-        'relative pr-10 disabled:cursor-default disabled:text-white/40 disabled:hover:bg-transparent',
+        'relative pr-10 aria-disabled:cursor-default aria-disabled:text-white/40 aria-disabled:hover:bg-transparent',
         item.danger && 'text-red-300 hover:bg-red-500/10',
       )}
     >

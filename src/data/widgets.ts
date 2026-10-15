@@ -41,13 +41,10 @@ export type TextBoxStyle = {
 }
 
 /**
- * Unset or unknown `pageId` means the dashboard's first page. `pinnedAt` (Final builder): kept on the grid's top rows,
- * where other blocks can sit beside it but never above.
+ * Unset or unknown `pageId` means the dashboard's first page. `pinnedAt` (Final builder): full width on the grid's top
+ * row, one per page; `unpinnedW` is its width from before, restored on unpin.
  */
-type Placement = { pageId?: string; pinnedAt?: number }
-
-/** Pinned blocks a page can hold, so the graphs aren't pushed off screen. */
-export const MAX_PINNED = 3
+type Placement = { pageId?: string; pinnedAt?: number; unpinnedW?: number }
 
 /**
  * A text block Tessera AI writes from its page's graphs. Until someone edits it, its text is rewritten from the graphs

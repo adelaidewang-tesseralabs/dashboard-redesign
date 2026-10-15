@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import GridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
+import GridLayout, { useContainerWidth, verticalCompactor, type Compactor, type Layout, type LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import type { Dashboard } from '../../../data/dashboards'
 import { useDashboards } from '../../../data/DashboardsStore'
-import { GRID_COLS, MAX_PINNED, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
+import { GRID_COLS, isGraph, isPageSummary, itemSize, type CanvasItem, type WidgetRect } from '../../../data/widgets'
 import { useIsFinalBuilder } from '../../../lib/builderVersion'
 import { cn } from '../../../lib/cn'
-import { useToast } from '../../../ui/Toast'
 import { CanvasWidget } from './CanvasWidget'
 import type { CrossHighlight } from './crossHighlight'
 import type { WidgetActions } from './GraphActionsMenu'
 import { dashboardGraphColors } from './graphColors'
 import { insertRect } from './layoutWidgets'
-import { keepPinnedOnTop, pinnedOrder } from './pinnedLayout'
 import { SectionInsertLine } from './SectionInsertLine'
 import { SectionRow } from './SectionRow'
 import { SelectableWidget } from './SelectableWidget'
@@ -65,7 +63,6 @@ const toRects = (layout: readonly WidgetRect[]) => layout.map(({ i, x, y, w, h }
 export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, onSelect, multiSelectedIds, onToggleSelect, readOnly = false, refreshing = false, onComment, askWhileViewing = false, editingId = null, highlight = null, onHighlight, sections = false, pageMove }: CanvasGridProps) {
   const { addGroup, updateGroup, removeGroup, insertWidget, updateWidget } = useDashboards()
   const pinning = useIsFinalBuilder()
-  const toast = useToast()
   const { width, containerRef, mounted } = useContainerWidth()
   useLinkedWidget(mounted)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
@@ -83,22 +80,35 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     }),
   )
   const summary = widgets.find(isPageSummary)
-  const pinnedIds = new Set(widgets.filter((item) => item.pinnedAt).map((item) => item.id))
-  /** Pinned blocks stay on the top rows: dragging or resizing anything settles them back there. */
-  const withPinsOnTop = (rects: WidgetRect[]) => (pinnedIds.size ? keepPinnedOnTop(rects, pinnedOrder(rects, pinnedIds)) : rects)
+  /** One pin per page; pages pinned before that limit keep their latest. */
+  const pinned = widgets.reduce<CanvasItem | null>((latest, item) => ((item.pinnedAt ?? 0) > (latest?.pinnedAt ?? 0) ? item : latest), null)
+  const pinnedId = pinned?.id ?? null
   const shownWidgets = widgets.filter((item) => !hidden.has(item.id) && !isPageSummary(item))
   const shownGroups = groups.filter((group) => !hidden.has(group.id))
   const layout: LayoutItem[] = [
-    ...withPinsOnTop(widgetRects)
+    ...widgetRects
       .filter((rect) => !hidden.has(rect.i))
       .map((rect) => {
         const item = widgets.find((widget) => widget.id === rect.i)
+        if (rect.i === pinnedId) return { ...rect, x: 0, y: 0, w: GRID_COLS, minW: GRID_COLS, maxW: GRID_COLS, minH: item ? itemSize(item).minH : undefined, isDraggable: false }
         return item ? { ...rect, minW: itemSize(item).minW, minH: itemSize(item).minH } : rect
       }),
     ...groupRects.filter((rect) => !hidden.has(rect.i)).map((rect) => ({ ...rect, minH: SECTION_ROWS, maxH: SECTION_ROWS, minW: GRID_COLS, isResizable: false })),
   ]
   const graphColors = dashboardGraphColors(dashboard)
-  const save = (next: Layout) => onLayoutChange(withPinsOnTop(toRects(next)))
+  /** The grid compacts on every drag step, so holding the pin static at the top keeps other blocks below it mid-drag too. */
+  const compactor: Compactor = {
+    ...verticalCompactor,
+    compact: (next, cols) => {
+      if (!pinnedId) return verticalCompactor.compact(next, cols)
+      const compacted = verticalCompactor.compact(
+        next.map((item) => (item.i === pinnedId ? { ...item, x: 0, y: 0, w: cols, static: true } : item)),
+        cols,
+      )
+      return compacted.map((item) => (item.i === pinnedId ? { ...item, static: false } : item))
+    },
+  }
+  const save = (next: Layout) => onLayoutChange(toRects(next))
   const saveDrag = (next: Layout, before: LayoutItem | null, after: LayoutItem | null) => {
     const dy = before && after ? after.y - before.y : 0
     const own = before ? (members.get(before.i) ?? []) : []
@@ -118,7 +128,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
   /** A copy lands right under its original, or at the bottom when pasted where the original isn't. */
   const insertCopy = (item: CanvasItem) => {
     if (isPageSummary(item)) return
-    const copy = { ...item, pinnedAt: undefined, id: `${ID_PREFIX[item.source]}-${crypto.randomUUID()}` }
+    const copy = { ...item, pinnedAt: undefined, unpinnedW: undefined, id: `${ID_PREFIX[item.source]}-${crypto.randomUUID()}` }
     const source = widgetRects.find((rect) => rect.i === item.id)
     const { w, h } = source ?? itemSize(item)
     const bottom = Math.max(0, ...allRects.map((rect) => rect.y + rect.h))
@@ -141,20 +151,21 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
     const { group, layout: next } = newSection(allRects, row)
     addGroup(dashboard.id, group, next)
   }
-  /** A new pin goes first, at the top left. An unpinned block stays where it is unless the remaining pins need its spot. */
+  /** Pinning stretches the block across the top and pushes the rest down; unpinning leaves it there at its old width. */
   const togglePin = (item: CanvasItem) => {
-    const order = pinnedOrder(allRects, pinnedIds).filter((id) => id !== item.id)
-    if (item.pinnedAt) {
-      onLayoutChange(keepPinnedOnTop(allRects, order))
-      updateWidget(dashboard.id, { ...item, pinnedAt: undefined })
+    const rect = widgetRects.find((entry) => entry.i === item.id)
+    if (!rect) return
+    if (item.id === pinnedId) {
+      onLayoutChange(allRects.map((entry) => (entry.i === item.id ? { ...entry, w: item.unpinnedW ?? entry.w } : entry)))
+      updateWidget(dashboard.id, { ...item, pinnedAt: undefined, unpinnedW: undefined })
       return
     }
-    if (pinnedIds.size >= MAX_PINNED) return toast(`A page can have up to ${MAX_PINNED} pinned blocks. Unpin one first.`)
-    onLayoutChange(keepPinnedOnTop(allRects, [item.id, ...order]))
-    updateWidget(dashboard.id, { ...item, pinnedAt: Date.now() })
+    if (pinnedId) return
+    onLayoutChange(insertRect(allRects, { ...rect, x: 0, y: 0, w: GRID_COLS }))
+    updateWidget(dashboard.id, { ...item, pinnedAt: Date.now(), unpinnedW: rect.w })
   }
   const actionsFor = (item: CanvasItem): WidgetActions => ({
-    pin: pinning ? { pinned: !!item.pinnedAt, onToggle: () => togglePin(item) } : undefined,
+    pin: pinning ? { pinned: item.id === pinnedId, blocked: !!pinnedId && item.id !== pinnedId, onToggle: () => togglePin(item) } : undefined,
     onDuplicate: () => insertCopy(item),
     onRemove: () => remove(item.id),
     move: {
@@ -216,6 +227,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
           gridConfig={{ cols: GRID_COLS, rowHeight: ROW_HEIGHT, margin: [GAP, GAP], containerPadding: [0, 0] }}
           dragConfig={{ enabled: !readOnly, cancel: 'button, input, textarea, form, a, [role=toolbar]' }}
           resizeConfig={{ enabled: !readOnly }}
+          compactor={compactor}
           onLayoutChange={setRendered}
           onDragStart={() => setInteracting(true)}
           onDragStop={(next, before, after) => {
@@ -244,7 +256,7 @@ export function CanvasGrid({ dashboard, onLayoutChange, onRemove, selectedId, on
             // Grid items are transformed, so an open comment box or filter list can only rise above its neighbours by lifting the whole item.
             <div key={item.id} className={cn(!readOnly && 'cursor-grab active:cursor-grabbing', 'has-[[data-comment-open]]:z-20 has-[[data-popover-open]]:z-20 has-[[data-editing]]:z-20 has-[[data-editing]]:cursor-auto')}>
               {/* GridLayout overrides mouse handlers on its direct children, so selection lives one level down. */}
-              {renderWidget(item, actionsFor(item), 'h-full')}
+              {renderWidget(item.pinnedAt && item.id !== pinnedId ? { ...item, pinnedAt: undefined } : item, actionsFor(item), 'h-full')}
             </div>
           ))}
         </GridLayout>
