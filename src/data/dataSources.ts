@@ -1,4 +1,5 @@
-import { externalTables } from './externalSources'
+import { externalTables, publishedView } from './externalSources'
+import { applyTransforms } from './transforms'
 
 /** Mock Mosaic objects a graph can be built from — a slice of the main app's dataviz `MOSAIC_META`. */
 export type DataField = { key: string; label: string; values: string[] }
@@ -192,6 +193,8 @@ export function runSql(sql: string): SqlResult {
     return { ok: false, error: `Table "${table}" not found. Try ${DATA_OBJECTS.map((item) => item.name).join(', ')}, or a Foundry table path.` }
   }
   const groupKey = /\bgroup\s+by\s+(\w+)/i.exec(sql)?.[1]
+  const view = publishedView(table)
+  if (view && !groupKey) return applyTransforms(runSql(view.sql), view.transforms)
   if (groupKey) {
     const field = object.fields.find((item) => item.key === groupKey.toLowerCase())
     if (!field) {

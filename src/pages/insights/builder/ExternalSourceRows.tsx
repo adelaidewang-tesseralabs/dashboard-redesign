@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { DataObject } from '../../../data/dataSources'
-import { FOUNDRY_CATALOG, WORKFLOWS } from '../../../data/externalSources'
+import type { Dashboard } from '../../../data/dashboards'
+import { useDashboards } from '../../../data/DashboardsStore'
+import { FOUNDRY_CATALOG, WORKFLOWS, type PublishedDataset } from '../../../data/externalSources'
 import { objectItem, sameSource, type CanvasItem } from '../../../data/widgets'
 import { cn } from '../../../lib/cn'
 import { menuSurfaceClass } from '../../../ui/menuStyles'
@@ -15,6 +17,15 @@ type Located = { object: DataObject; hint: string }
 const FOUNDRY_TABLES: Located[] = FOUNDRY_CATALOG.flatMap((catalog) =>
   catalog.schemas.flatMap((schema) => schema.tables.map((object) => ({ object, hint: `${catalog.name}.${schema.name}` }))),
 )
+
+/** Datasets published from dashboards first, hinted with the dashboard they came from. */
+function foundryTables(published: PublishedDataset[], dashboards: Dashboard[]): Located[] {
+  const fromDashboards = published.map((entry) => ({
+    object: entry.table,
+    hint: `Dashboards · ${dashboards.find((dashboard) => dashboard.id === entry.dashboardId)?.name ?? entry.dashboardName}`,
+  }))
+  return [...fromDashboards, ...FOUNDRY_TABLES]
+}
 const WORKFLOW_OUTPUTS: Located[] = WORKFLOWS.flatMap((workflow) => workflow.outputs.map((object) => ({ object, hint: workflow.name })))
 
 type ExternalSourceRowsProps = {
@@ -28,6 +39,7 @@ type ExternalSourceRowsProps = {
 
 /** Final builder's Add graph menu: every Foundry table and workflow output, graphable without adding it as a dataset first. */
 export function ExternalSourceRows({ widgets, submenu, onOpenSubmenu, side, onPick }: ExternalSourceRowsProps) {
+  const { dashboards, published } = useDashboards()
   /** `top`: the hovered row's offset in the submenu, so the fields line up with it. */
   const [openTable, setOpenTable] = useState<{ name: string; top: number } | null>(null)
   const graphed = (object: DataObject) => widgets.some((widget) => widget.source === 'object' && widget.objectName === object.name)
@@ -80,7 +92,7 @@ export function ExternalSourceRows({ widgets, submenu, onOpenSubmenu, side, onPi
 
   return (
     <>
-      {group(FOUNDRY_SUBMENU, 'foundry', 'Data Foundry', FOUNDRY_TABLES)}
+      {group(FOUNDRY_SUBMENU, 'foundry', 'Data Foundry', foundryTables(published, dashboards))}
       {group(WORKFLOWS_SUBMENU, 'workflow', 'Workflows', WORKFLOW_OUTPUTS)}
     </>
   )

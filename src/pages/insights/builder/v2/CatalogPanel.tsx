@@ -1,7 +1,9 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { FilePlus2, Search, Upload } from 'lucide-react'
 import type { DataObject } from '../../../../data/dataSources'
+import { useDashboards } from '../../../../data/DashboardsStore'
 import { uploadTable } from '../../../../data/externalSources'
+import { useIsFinalBuilder } from '../../../../lib/builderVersion'
 import { cn } from '../../../../lib/cn'
 import { CollapseListButton } from './CollapseListButton'
 import { RunVersionPicker } from './RunVersionPicker'
@@ -26,6 +28,8 @@ type CatalogPanelProps = {
 
 /** The Data tab's Catalog view: browse every source the tenant can read, open tables in the console, or add them as datasets. */
 export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNewSql, onInsertColumn, onCollapse, runVersions }: CatalogPanelProps) {
+  const final = useIsFinalBuilder()
+  const { dashboards, published } = useDashboards()
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(() => new Set(['mosaic']))
   const [dragging, setDragging] = useState(false)
@@ -50,18 +54,25 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
     setDragging(false)
     upload(event.dataTransfer.files)
   }
+  // Final builder: files are uploaded in Foundry, not from a dashboard.
+  const dropHandlers = final
+    ? {}
+    : {
+        onDragOver: (event: DragEvent) => {
+          event.preventDefault()
+          setDragging(true)
+        },
+        onDragLeave: (event: DragEvent) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false)
+        },
+        onDrop,
+      }
+  const catalog = buildSourceCatalog(final ? { published, dashboardName: (id) => dashboards.find((dashboard) => dashboard.id === id)?.name } : undefined)
 
   return (
     <nav
       aria-label="Catalog"
-      onDragOver={(event) => {
-        event.preventDefault()
-        setDragging(true)
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false)
-      }}
-      onDrop={onDrop}
+      {...dropHandlers}
       className={cn('relative flex w-72 shrink-0 flex-col border-r border-white/10 bg-tlai-1', dragging && 'outline-2 -outline-offset-2 outline-sky-300/60 outline-dashed')}
     >
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-white/10 pr-2 pl-4">
@@ -71,20 +82,24 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
             <FilePlus2 className="size-4" />
           </HeaderAction>
         )}
-        <HeaderAction label="Upload file" onClick={() => fileRef.current?.click()}>
-          <Upload className="size-4" />
-        </HeaderAction>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept={ACCEPT}
-          className="sr-only"
-          onChange={(event) => {
-            upload(event.target.files)
-            event.target.value = ''
-          }}
-        />
+        {!final && (
+          <>
+            <HeaderAction label="Upload file" onClick={() => fileRef.current?.click()}>
+              <Upload className="size-4" />
+            </HeaderAction>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept={ACCEPT}
+              className="sr-only"
+              onChange={(event) => {
+                upload(event.target.files)
+                event.target.value = ''
+              }}
+            />
+          </>
+        )}
         {onCollapse && <CollapseListButton onClick={onCollapse} />}
       </div>
       <div className="px-2 pt-2">
@@ -101,7 +116,7 @@ export function CatalogPanel({ added, activeTable, onAddTable, onOpenTable, onNe
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
         <SourceTree
-          nodes={filterCatalog(buildSourceCatalog(), needle)}
+          nodes={filterCatalog(catalog, needle)}
           expanded={expanded}
           forceOpen={!!needle}
           added={added}

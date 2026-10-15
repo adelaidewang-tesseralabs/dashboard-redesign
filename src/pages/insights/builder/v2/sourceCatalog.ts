@@ -1,5 +1,5 @@
 import { DATA_OBJECTS, type DataObject, type SourceOrigin } from '../../../../data/dataSources'
-import { externalTables, FOUNDRY_CATALOG, WORKFLOWS, type Workflow } from '../../../../data/externalSources'
+import { externalTables, FOUNDRY_CATALOG, WORKFLOWS, type PublishedDataset, type Workflow } from '../../../../data/externalSources'
 import { formatDateTime } from '../../../../lib/format'
 
 export type CatalogKind = SourceOrigin | 'catalog' | 'schema' | 'run'
@@ -11,26 +11,50 @@ export const UPLOADS_KEY = 'uploads'
 
 const leaf = (table: DataObject): CatalogNode => ({ key: table.name, label: table.label, kind: table.origin ?? 'mosaic', table })
 
-/** Every table the tenant can chart, by where it lives. Rebuilt on render so fresh uploads show up. */
-export function buildSourceCatalog(): CatalogNode[] {
+/**
+ * Final builder: datasets published from dashboards, one folder per dashboard. A dashboard that's since been renamed
+ * shows its current name; one that's been deleted keeps the name it had when it published.
+ */
+export type FinalCatalog = { published: PublishedDataset[]; dashboardName: (id: string) => string | undefined }
+
+function dashboardsCatalog({ published, dashboardName }: FinalCatalog): CatalogNode[] {
+  if (published.length === 0) return []
+  const folders = new Map<string, PublishedDataset[]>()
+  for (const entry of published) folders.set(entry.dashboardId, [...(folders.get(entry.dashboardId) ?? []), entry])
   return [
-    { key: 'mosaic', label: 'Mosaic objects', kind: 'mosaic', children: DATA_OBJECTS.map(leaf) },
     {
-      key: 'foundry',
-      label: 'Foundry',
-      kind: 'foundry',
-      children: FOUNDRY_CATALOG.map((catalog) => ({
-        key: `foundry.${catalog.name}`,
-        label: catalog.name,
-        kind: 'catalog',
-        children: catalog.schemas.map((schema) => ({
-          key: `foundry.${catalog.name}.${schema.name}`,
-          label: schema.name,
-          kind: 'schema',
-          children: schema.tables.map(leaf),
-        })),
+      key: 'foundry.dashboards',
+      label: 'Dashboards',
+      kind: 'catalog',
+      children: [...folders].map(([id, entries]) => ({
+        key: `foundry.dashboards.${id}`,
+        label: dashboardName(id) ?? entries[0].dashboardName,
+        kind: 'schema',
+        children: entries.map((entry) => leaf(entry.table)),
       })),
     },
+  ]
+}
+
+function foundryCatalogs(final: FinalCatalog | undefined): CatalogNode[] {
+  return FOUNDRY_CATALOG.map((catalog) => ({
+    key: `foundry.${catalog.name}`,
+    label: (final && catalog.label) || catalog.name,
+    kind: 'catalog',
+    children: catalog.schemas.map((schema) => ({
+      key: `foundry.${catalog.name}.${schema.name}`,
+      label: schema.name,
+      kind: 'schema',
+      children: schema.tables.map(leaf),
+    })),
+  }))
+}
+
+/** Every table the tenant can chart, by where it lives. Rebuilt on render so fresh uploads and publishes show up. */
+export function buildSourceCatalog(final?: FinalCatalog): CatalogNode[] {
+  return [
+    { key: 'mosaic', label: 'Mosaic objects', kind: 'mosaic', children: DATA_OBJECTS.map(leaf) },
+    { key: 'foundry', label: 'Foundry', kind: 'foundry', children: [...(final ? dashboardsCatalog(final) : []), ...foundryCatalogs(final)] },
     {
       key: 'workflow',
       label: 'Workflow outputs',
@@ -44,7 +68,9 @@ export function buildSourceCatalog(): CatalogNode[] {
         children: workflow.outputs.map(leaf),
       })),
     },
-    { key: UPLOADS_KEY, label: 'Uploads', kind: 'upload', children: externalTables().filter((table) => table.origin === 'upload').map(leaf) },
+    ...(final
+      ? []
+      : [{ key: UPLOADS_KEY, label: 'Uploads', kind: 'upload' as const, children: externalTables().filter((table) => table.origin === 'upload').map(leaf) }]),
   ]
 }
 

@@ -1,9 +1,11 @@
 import type { DataField, DataObject } from './dataSources'
+import type { DatasetTransforms } from './transforms'
 
 /** Mock Data Foundry catalog, workflow outputs and uploads — the non-Mosaic sources a dashboard can attach. */
 
 export type FoundrySchema = { name: string; tables: DataObject[] }
-export type FoundryCatalog = { name: string; schemas: FoundrySchema[] }
+/** `label`: the name shown in the Final builder's catalog, when it differs from the lake path. */
+export type FoundryCatalog = { name: string; label?: string; schemas: FoundrySchema[] }
 export type Workflow = { id: string; name: string; lastRun: string; outputs: DataObject[] }
 
 export const UPLOAD_DESTINATION = 'tsra.uploads'
@@ -42,6 +44,7 @@ export const FOUNDRY_CATALOG: FoundryCatalog[] = [
   { name: 'cvi_dt', schemas: [schema('cvi_dt', 'vendor_core', ['lfa1_clean', 'lfb1_clean', 'vendor_dedup'])] },
   {
     name: 'dh',
+    label: 'Data checks',
     schemas: [
       schema('dh', 'dash_07155269', ['dc_7a1e2f04_batch_51c0aa12', 'dc_93bd0c6e_batch_51c0aa12']),
       schema('dh', 'dash_07801955', [
@@ -99,10 +102,47 @@ export function uploadTable(fileName: string, destination = UPLOAD_DESTINATION) 
   return uploaded
 }
 
+/** Foundry catalog that holds datasets published from dashboards, one schema per dashboard. */
+export const PUBLISHED_CATALOG = 'dashboards'
+
+/** What a published table runs: the dataset's query with its dataset-level calculations, filters and result shape. */
+export type PublishedView = { sql: string; transforms?: DatasetTransforms }
+
+/** A dashboard dataset published to Foundry. It outlives the dashboard, so it keeps the dashboard's name from publish time. */
+export type PublishedDataset = {
+  table: DataObject
+  /** As of the last publish or update; the dashboard's copy can move on until it's updated again. */
+  view: PublishedView
+  dashboardId: string
+  dashboardName: string
+  datasetKey: string
+  publishedAt: string
+  publishedBy: string
+  updatedAt?: string
+}
+
+/** The lake path for a dataset published from `dashboardId` under `name`, e.g. `dashboards.data_quality_overview.data_checks`. */
+export function publishedPath(dashboardId: string, name: string) {
+  const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '') || 'dataset'
+  return `${PUBLISHED_CATALOG}.${slug(dashboardId)}.${slug(name)}`
+}
+
+const published = new Map<string, PublishedDataset>()
+
+/** Makes published tables queryable by name from any dashboard; republishing a path replaces it. */
+export function registerPublishedTables(entries: PublishedDataset[]) {
+  for (const entry of entries) published.set(entry.table.name, entry)
+}
+
+export function publishedView(table: string): PublishedView | undefined {
+  return published.get(table)?.view
+}
+
 export function externalTables(): DataObject[] {
   return [
     ...FOUNDRY_CATALOG.flatMap((catalog) => catalog.schemas.flatMap((entry) => entry.tables)),
     ...WORKFLOWS.flatMap((entry) => entry.outputs),
     ...uploads,
+    ...[...published.values()].map((entry) => entry.table),
   ]
 }

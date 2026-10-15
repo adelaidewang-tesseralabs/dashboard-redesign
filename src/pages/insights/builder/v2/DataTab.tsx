@@ -28,6 +28,7 @@ import { DatasetWorkspace } from "./DatasetWorkspace";
 import type { ConsoleTab, ConsoleTabs } from "./useConsoleTabs";
 import type { TransformDrafts } from "./transforms/transformDrafts";
 import { useApplyTransforms } from "./transforms/useApplyTransforms";
+import { useFoundryPublishing } from "./useFoundryPublishing";
 
 export type DataPanel = "datasets" | "catalog";
 
@@ -114,6 +115,8 @@ export function DataTab(props: DataTabProps) {
   const toast = useToast();
   const final = useIsFinalBuilder();
   const [removing, setRemoving] = useState<Dataset | null>(null);
+  const foundryPublishing = useFoundryPublishing(dashboard, datasets);
+  const foundry = final ? foundryPublishing.summary : undefined;
   const widgets = dashboard.widgets ?? [];
   const active =
     datasets.find((dataset) => dataset.key === activeKey) ?? datasets[0];
@@ -239,6 +242,7 @@ export function DataTab(props: DataTabProps) {
               onAddSource={() => onPanelChange("catalog")}
               onAddSourceKind={onAddSourceKind}
               onCollapse={onCollapseList}
+              foundry={foundry}
             />
           )}
           {active ? (
@@ -277,16 +281,19 @@ export function DataTab(props: DataTabProps) {
                   : undefined
               }
               rowLimit={sqlEditing}
+              foundry={foundry?.actionsFor(active)}
             />
           ) : (
             <EmptyData
               onAddSource={() => onPanelChange("catalog")}
               onAddSourceKind={onAddSourceKind}
               onNewSql={sqlEditing ? onNewSql : undefined}
+              uploads={!final}
             />
           )}
         </>
       )}
+      {final && foundryPublishing.dialog}
 
       <Dialog
         open={removing !== null}
@@ -324,10 +331,13 @@ function EmptyData({
   onAddSource,
   onAddSourceKind,
   onNewSql,
+  uploads,
 }: {
   onAddSource: () => void;
   onAddSourceKind?: (kind: AddSourceKind) => void;
   onNewSql?: () => void;
+  /** Off in the Final builder, where files are uploaded in Foundry instead. */
+  uploads: boolean;
 }) {
   const addButton = (onClick: () => void) => (
     <Button onClick={onClick}>
@@ -338,7 +348,7 @@ function EmptyData({
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-5 bg-tlai-1 p-8 text-center">
       <div className="flex -space-x-1.5">
-        {EMPTY_ORIGINS.map((origin) => (
+        {EMPTY_ORIGINS.filter((origin) => uploads || origin !== "upload").map((origin) => (
           <span key={origin} className="rounded-lg ring-4 ring-tlai-1">
             <SourceIcon origin={origin} size="lg" />
           </span>
@@ -349,8 +359,10 @@ function EmptyData({
           Add data to this dashboard
         </h2>
         <p className="max-w-sm text-sm text-white/50">
-          Mosaic objects, Foundry tables, workflow outputs and uploads, all in
-          one place. Any number of graphs can chart each one.
+          {uploads
+            ? "Mosaic objects, Foundry tables, workflow outputs and uploads, all in one place."
+            : "Mosaic objects, Foundry tables and workflow outputs, all in one place."}{" "}
+          Any number of graphs can chart each one.
         </p>
       </div>
       <div className="flex flex-col items-center gap-2">

@@ -19,6 +19,7 @@ import {
   type SqlDataset,
   isPageCopy,
 } from './dashboards'
+import { registerPublishedTables, type PublishedDataset } from './externalSources'
 import { dashboardPages, resolvePageId } from './pages'
 import type { DatasetTransforms } from './transforms'
 import { contentOf, recordVersion, restoreVersion, type DashboardContent } from './versions'
@@ -91,6 +92,10 @@ type DashboardsStore = {
   updateSavedFilter: (id: string, savedFilterId: string, patch: Partial<Pick<SavedFilter, 'name' | 'shared' | 'values' | 'operators' | 'pageId'>>) => void
   /** `runId` undefined goes back to the workflow's latest run. */
   pinRun: (id: string, workflowId: string, runId: string | undefined) => void
+  /** Datasets published to Foundry from any dashboard. Not dashboard content, so undo and version restore leave them. */
+  published: PublishedDataset[]
+  /** Adds datasets to Foundry, or updates ones already published at the same path. */
+  publishDatasets: (entries: PublishedDataset[]) => void
   restoreVersion: (id: string, versionId: string) => void
   /** Steps back or forward one content edit on the dashboard; undoing is itself saved as a version. */
   undo: (id: string) => void
@@ -101,7 +106,7 @@ type DashboardsStore = {
 
 /** Content before each edit (`past`, oldest first) and after each undo (`future`, next redo first), per dashboard, for this session. */
 type EditHistory = { past: DashboardContent[]; future: DashboardContent[] }
-type StoreState = { dashboards: Dashboard[]; history: Record<string, EditHistory> }
+type StoreState = { dashboards: Dashboard[]; history: Record<string, EditHistory>; published: PublishedDataset[] }
 
 const MAX_UNDO = 100
 
@@ -125,7 +130,7 @@ function stepHistory(state: StoreState, id: string, direction: 'undo' | 'redo'):
     direction === 'undo'
       ? { past: entry.past.slice(0, -1), future: [current, ...entry.future] }
       : { past: [...entry.past, current], future: entry.future.slice(1) }
-  return { dashboards: state.dashboards.map((candidate) => (candidate.id === id ? next : candidate)), history: { ...state.history, [id]: history } }
+  return { ...state, dashboards: state.dashboards.map((candidate) => (candidate.id === id ? next : candidate)), history: { ...state.history, [id]: history } }
 }
 
 /**
@@ -210,8 +215,9 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StoreState>(() => ({
     dashboards: isNewUserState() ? SAMPLE_DASHBOARDS : [...DASHBOARDS, ...SAMPLE_DASHBOARDS],
     history: {},
+    published: [],
   }))
-  const { dashboards, history } = state
+  const { dashboards, history, published } = state
   const setDashboards = useCallback(
     (update: (current: Dashboard[]) => Dashboard[]) => setState((current) => ({ ...current, dashboards: update(current.dashboards) })),
     [],
@@ -241,7 +247,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
           if (recorded !== next) nextHistory = pushEdit(nextHistory, next.id, contentOf(prev))
           return recorded
         })
-        return { dashboards: nextDashboards, history: nextHistory }
+        return { ...current, dashboards: nextDashboards, history: nextHistory }
       }),
     [],
   )
@@ -337,6 +343,12 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
             return { ...dashboard, pinnedRuns: runId ? { ...rest, [workflowId]: runId } : rest }
           }),
         ),
+      published,
+      publishDatasets: (entries) => {
+        registerPublishedTables(entries)
+        const paths = new Set(entries.map((entry) => entry.table.name))
+        setState((current) => ({ ...current, published: [...current.published.filter((entry) => !paths.has(entry.table.name)), ...entries] }))
+      },
       deleteDashboard: (id) => {
         setDashboards((current) => current.filter((dashboard) => dashboard.id !== id))
         setFavorites(favorites.filter((favorite) => favorite !== id))
@@ -605,6 +617,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
           const restored = restoreVersion(dashboard, versionId, CURRENT_USER)
           if (restored === dashboard) return current
           return {
+            ...current,
             dashboards: current.dashboards.map((candidate) => (candidate.id === id ? { ...restored, updatedAt: nowIso, updatedBy: CURRENT_USER } : candidate)),
             history: pushEdit(current.history, id, contentOf(dashboard)),
           }
@@ -614,7 +627,7 @@ export function DashboardsProvider({ children }: { children: ReactNode }) {
       canUndo: (id) => (history[id]?.past.length ?? 0) > 0,
       canRedo: (id) => (history[id]?.future.length ?? 0) > 0,
     }
-  }, [dashboards, history, favorites, setFavorites, setContent, setDashboards])
+  }, [dashboards, history, published, favorites, setFavorites, setContent, setDashboards])
 
   return <Context.Provider value={value}>{children}</Context.Provider>
 }
